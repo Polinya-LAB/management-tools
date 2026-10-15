@@ -4,6 +4,23 @@ Aplicaciones del laboratorio. Portada: https://polinya-lab.github.io/management-
 
 Repositorio de la organización [Polinya-LAB](https://github.com/Polinya-LAB) en GitHub.
 
+## Control de ensayos
+
+Aplicación para gestionar los ensayos del laboratorio: cola, tablero por estado, planificación y ocupación diaria
+de técnicos y equipos, historial, biblioteca de procedimientos QTP con duraciones y perfiles de carga, e importación
+de las solicitudes exportadas de ARAS. La interfaz está en inglés.
+
+**Abrir la aplicación:** https://polinya-lab.github.io/management-tools/control-ensayos/
+
+- Es una única página ([`control-ensayos/index.html`](control-ensayos/index.html)) que funciona igual que la del seguimiento de la piscina.
+- Los datos están en [`control-ensayos/data/ensayos.json`](control-ensayos/data/ensayos.json): ensayos (`tests`), personas (`personas`),
+  equipos (`bancos`), procedimientos (`qtps`) y ajustes de importación (`config`).
+- Cualquiera con el enlace puede consultarla. Para modificar hay que **Connect GitHub** con la clave de un colaborador del repositorio;
+  es la misma clave que la de la piscina, así que si ya está conectada en ese navegador sirve para las dos.
+- Los cambios hechos en poco tiempo (por ejemplo una importación de ARAS) se guardan juntos en un solo commit. El
+  [historial](https://github.com/Polinya-LAB/management-tools/commits/main/control-ensayos/data/ensayos.json) muestra quién cambió qué y cuándo.
+- Para importar de ARAS: exporta la búsqueda `a_Lab_Dashboard` a Excel y cárgala en la pestaña **Import ARAS**.
+
 ## Seguimiento piscina durabilidad
 
 Aplicación web para llevar la ocupación de la piscina de durabilidad del laboratorio de Polinyà:
