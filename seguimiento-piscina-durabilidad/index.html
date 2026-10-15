@@ -508,7 +508,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
       </div>
       <div class="table-wrap"><table id="tbl-cons-mat" class="tbl-num"></table></div>
     </div>
-    <p class="pot-note">Estimación teórica: cada bomba consume su potencia nominal (HP × 0,746 kW) las 24 horas del día, desde su fecha de inicio hasta su retirada, o hasta hoy si sigue en ensayo. El consumo real será menor si las bombas trabajan a carga parcial o se paran. El precio del kWh se guarda por mes y se aplica también a los meses siguientes hasta que se cambie. Las bombas eliminadas no cuentan; usa «Finalizar ensayo» para conservar su consumo en el histórico.</p>
+    <p class="pot-note">Estimación: cada bomba consume el 80 % de su potencia nominal (HP × 0,746 kW × 0,8) las 24 horas del día, desde su fecha de inicio hasta su retirada, o hasta hoy si sigue en ensayo. El precio del kWh se guarda por mes y se aplica también a los meses siguientes hasta que se cambie. Las bombas eliminadas no cuentan; usa «Finalizar ensayo» para conservar su consumo en el histórico.</p>
   </section>
 
   <footer class="page-foot">
@@ -1072,6 +1072,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
   const mesLbl = k => { const [y, m] = k.split('-').map(Number); return `${MESES_L[m - 1][0].toUpperCase()}${MESES_L[m - 1].slice(1)} ${y}`; };
   const addDays = (s, n) => { const [y, m, d] = s.split('-').map(Number), t = new Date(Date.UTC(y, m - 1, d + n)); return `${t.getUTCFullYear()}-${pad(t.getUTCMonth() + 1)}-${pad(t.getUTCDate())}`; };
   const nextMonth = k => addMonths(`${k}-01`, 1).slice(0, 7);
+  const FACTOR_CARGA = 0.8; // las bombas consumen el 80 % de su potencia nominal
   const fmtEur = n => n.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' });
   const fmtKwh = n => n.toLocaleString('es-ES', { maximumFractionDigits: 0 });
   state.consumoMes = null; state.consumoVista = 'kwh'; state.precioTmp = null;
@@ -1096,7 +1097,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
     const proj = new Map();
     let kwh = 0, prev = 0;
     for (const b of state.bombas) {
-      const kw = Number(b.potencia) * HP_KW;
+      const kw = Number(b.potencia) * HP_KW * FACTOR_CARGA;
       if (!(kw > 0) || !validDate(b.fechaInicio)) continue;
       const activa = isActive(b);
       const end = activa ? hoyEx : (validDate(b.fechaRetirada) ? b.fechaRetirada : null);
@@ -1143,14 +1144,14 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
         <span class="sub">${pr ? `${fmtN(pr.valor, 4)} €/kWh` : 'Falta el precio del kWh'}</span></div>
       <div class="kpi"><span class="lbl">${c.enCurso ? 'Previsión mes completo' : 'Potencia media'}</span>
         <span class="val">${c.enCurso ? `${fmtKwh(c.prev)}<small> kWh</small>` : `${fmtN(c.kwh / (24 * diasMes))}<small> kW</small>`}</span>
-        <span class="sub">${c.enCurso ? `${eur(c.prev)} si siguen las bombas actuales` : 'Media del mes, 24 h al día'}</span></div>
+        <span class="sub">${c.enCurso ? `${eur(c.prev)} si siguen las bombas actuales` : 'Media del mes, 24 h al día al 80 % de la nominal'}</span></div>
       <div class="kpi"><span class="lbl">Proyectos con consumo</span>
         <span class="val">${c.proyectos.length}</span>
         <span class="sub">${c.proyectos.reduce((n, p) => n + p.n, 0)} bombas en el mes</span></div>`;
 
     $('#cons-proj-title').textContent = `Consumo por proyecto · ${mesLbl(c.mes)}`;
     const base = c.enCurso ? c.prev : c.kwh;
-    const head = `<thead><tr><th scope="col">Proyecto</th><th scope="col" class="n">Bombas</th><th scope="col" class="n">kW</th>
+    const head = `<thead><tr><th scope="col">Proyecto</th><th scope="col" class="n">Bombas</th><th scope="col" class="n">kW (80 %)</th>
       <th scope="col" class="n">kWh${c.enCurso ? ' hasta hoy' : ''}</th><th scope="col" class="n">Coste${c.enCurso ? ' hasta hoy' : ''}</th>
       ${c.enCurso ? '<th scope="col" class="n">Previsión kWh</th><th scope="col" class="n">Previsión coste</th>' : ''}<th scope="col">% del ${c.enCurso ? 'previsto' : 'total'}</th></tr></thead>`;
     const rows = c.proyectos.map(p => {
