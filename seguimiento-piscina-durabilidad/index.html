@@ -408,8 +408,8 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
   </section>
 
   <footer class="page-foot">
-    <span>Datos guardados en GitHub · <span class="mono">daniq-93/polinya-lab</span></span>
-    <a href="https://github.com/daniq-93/polinya-lab/commits/main/seguimiento-piscina-durabilidad/data/piscina.json" target="_blank" rel="noopener">Ver historial de cambios</a>
+    <span>Datos guardados en GitHub · <span class="mono">Polinya-LAB/management-tools</span></span>
+    <a href="https://github.com/Polinya-LAB/management-tools/commits/main/seguimiento-piscina-durabilidad/data/piscina.json" target="_blank" rel="noopener">Ver historial de cambios</a>
   </footer>
 </div>
 
@@ -542,7 +542,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
       </div>
       <div id="gh-off" style="display:flex;flex-direction:column;gap:14px">
         <ol class="steps">
-          <li>Pide al responsable que te añada como <b>colaborador</b> del repositorio <span class="mono">daniq-93/polinya-lab</span> y acepta la invitación que te llega por correo.</li>
+          <li>Pide al responsable que te añada como <b>colaborador</b> del repositorio <span class="mono">Polinya-LAB/management-tools</span> y acepta la invitación que te llega por correo.</li>
           <li>Crea una clave de acceso en GitHub: <a href="https://github.com/settings/tokens/new?scopes=public_repo&amp;description=Piscina%20de%20durabilidad" target="_blank" rel="noopener">abrir el formulario</a>. Ya viene marcado el permiso <span class="mono">public_repo</span>; elige la caducidad y pulsa <i>Generate token</i>.</li>
           <li>Copia la clave y pégala aquí. Se guarda solo en este navegador.</li>
         </ol>
@@ -1359,7 +1359,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
   /* ---------- Datos en GitHub ---------- */
   // Todo vive en seguimiento-piscina-durabilidad/data/piscina.json del repositorio. Cualquiera puede consultarlo; para guardar
   // hace falta la clave (token) de un colaborador con permiso de escritura. Cada cambio es un commit.
-  const REPO = { owner: 'daniq-93', repo: 'polinya-lab', branch: 'main', path: 'seguimiento-piscina-durabilidad/data/piscina.json' };
+  const REPO = { owner: 'Polinya-LAB', repo: 'management-tools', branch: 'main', path: 'seguimiento-piscina-durabilidad/data/piscina.json' };
   const API = `https://api.github.com/repos/${REPO.owner}/${REPO.repo}`;
   const RAW = `https://raw.githubusercontent.com/${REPO.owner}/${REPO.repo}/${REPO.branch}/${REPO.path}`;
   const TOKEN_KEY = 'pd-gh-token';
