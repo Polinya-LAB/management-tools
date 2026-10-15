@@ -1,0 +1,1546 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Piscina de durabilidad</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: plano de la piscina elevada (lado A arriba, lado B abajo): playa, muro con petacas y suelo a cada lado de la franja de la piscina; KPIs arriba, listado e historial en pestañas. */
+:root {
+  --bg: #EDF1F0; --surface: #FFFFFF; --surface-2: #F5F8F7; --ink: #142120; --muted: #586765;
+  --line: #D2DAD8; --line-strong: #A9B6B3;
+  --accent: #0B666C; --accent-ink: #FFFFFF; --accent-soft: #D5EAEA;
+  --water: #CFE5E5; --water-2: #BBDADA; --wall: #DCE1DF; --wall-ink: #3E4C4A;
+  --ok: #2C7A4C; --ok-soft: #DBEEE1; --warn: #A86C05; --warn-soft: #F6E8C6;
+  --bad: #B23D2A; --bad-soft: #F5DCD6; --pend: #4A6489; --pend-soft: #DCE4EF;
+  --hb: #D42A20;
+  --p0: #2B66A8; --p1: #B9521E; --p2: #6A45B8; --p3: #2D7F55; --p4: #AE2F7A; --p5: #8A5714; --p6: #007C88; --p7: #56662A; --p-ink: #FFFFFF;
+  --shadow: 0 12px 40px rgb(10 30 30 / .18);
+  --f-display: "Barlow Semi Condensed", "Arial Narrow", "Helvetica Neue", Arial, sans-serif;
+  --f-body: "Barlow", "Segoe UI", "Helvetica Neue", Arial, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1515; --surface: #152020; --surface-2: #1A2726; --ink: #E2EBE9; --muted: #92A29F;
+    --line: #283837; --line-strong: #3E5250;
+    --accent: #52B5BA; --accent-ink: #062020; --accent-soft: #163838;
+    --water: #122E2E; --water-2: #183D3D; --wall: #223130; --wall-ink: #B7C5C2;
+    --ok: #5DBF8A; --ok-soft: #163324; --warn: #E2A83C; --warn-soft: #382B11; --bad: #EE7B64; --bad-soft: #3C1E18; --pend: #91AAD1; --pend-soft: #1D293B;
+    --hb: #FF6A5C;
+    --p0: #78A9E3; --p1: #EE9A66; --p2: #AD92EC; --p3: #6FC596; --p4: #EC86C1; --p5: #D6A766; --p6: #5CC8D2; --p7: #AFC274; --p-ink: #0E1515;
+    --shadow: 0 12px 40px rgb(0 0 0 / .5);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1515; --surface: #152020; --surface-2: #1A2726; --ink: #E2EBE9; --muted: #92A29F;
+  --line: #283837; --line-strong: #3E5250;
+  --accent: #52B5BA; --accent-ink: #062020; --accent-soft: #163838;
+  --water: #122E2E; --water-2: #183D3D; --wall: #223130; --wall-ink: #B7C5C2;
+  --ok: #5DBF8A; --ok-soft: #163324; --warn: #E2A83C; --warn-soft: #382B11; --bad: #EE7B64; --bad-soft: #3C1E18; --pend: #91AAD1; --pend-soft: #1D293B;
+  --hb: #FF6A5C;
+  --p0: #78A9E3; --p1: #EE9A66; --p2: #AD92EC; --p3: #6FC596; --p4: #EC86C1; --p5: #D6A766; --p6: #5CC8D2; --p7: #AFC274; --p-ink: #0E1515;
+  --shadow: 0 12px 40px rgb(0 0 0 / .5);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; }
+.page-foot { font-size: 13px; color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 16px; }
+.page-foot a, .steps a { color: var(--accent); }
+.steps { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 8px; font-size: 14px; }
+body {
+  background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 15px; line-height: 1.45;
+  padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+  padding-block: 20px 48px;
+}
+.wrap { max-width: 1320px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+h1, h2, h3 { font-family: var(--f-display); text-wrap: balance; margin: 0; }
+.mono, .num { font-family: var(--f-mono); font-variant-numeric: tabular-nums; }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Header */
+.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 20px; }
+.brand { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.eyebrow { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.brand h1 { font-size: clamp(26px, 4vw, 36px); font-weight: 700; letter-spacing: -.01em; line-height: 1.05; }
+.actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.btn {
+  display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line-strong); background: var(--surface);
+  padding: 8px 14px; border-radius: 6px; cursor: pointer; font-weight: 500; white-space: nowrap;
+}
+.btn:hover { border-color: var(--accent); }
+.btn.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.08); }
+.btn.danger { color: var(--bad); border-color: color-mix(in srgb, var(--bad) 50%, var(--line)); }
+.btn.danger.solid { background: var(--bad); color: var(--surface); border-color: var(--bad); }
+.btn.ghost { border-color: transparent; background: transparent; }
+.btn[disabled] { opacity: .5; cursor: not-allowed; }
+.btn svg { width: 16px; height: 16px; flex: none; }
+
+.banner { border: 1px solid var(--line-strong); background: var(--surface-2); border-radius: 8px; padding: 10px 14px; font-size: 14px; }
+.banner.warn { border-color: var(--warn); background: var(--warn-soft); }
+.banner.bad { border-color: var(--bad); background: var(--bad-soft); }
+
+/* KPIs */
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px; }
+.kpi {
+  background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px;
+  display: flex; flex-direction: column; gap: 6px; text-align: left; min-width: 0;
+}
+button.kpi { cursor: pointer; }
+button.kpi:hover { border-color: var(--line-strong); }
+.kpi .lbl { font-size: 12px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+.kpi .val { font-family: var(--f-display); font-size: 34px; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
+.kpi .val small { font-size: 18px; color: var(--muted); font-weight: 500; }
+.kpi .sub { font-size: 13px; color: var(--muted); }
+.kpi.warn .val { color: var(--warn); }
+.kpi.bad .val { color: var(--bad); }
+.meter { height: 6px; border-radius: 3px; background: var(--surface-2); border: 1px solid var(--line); overflow: hidden; display: flex; }
+.meter i { display: block; height: 100%; background: var(--accent); }
+.meter i + i { background: color-mix(in srgb, var(--accent) 45%, var(--surface)); }
+
+/* Tabs */
+.tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); overflow-x: auto; }
+.tab {
+  border: 0; background: none; padding: 10px 14px; cursor: pointer; font-family: var(--f-display); font-size: 17px; font-weight: 600;
+  color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -1px; white-space: nowrap;
+}
+.tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.tab .count { font-family: var(--f-mono); font-size: 12px; font-weight: 400; color: var(--muted); margin-left: 4px; }
+
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; justify-content: space-between; }
+.seg { display: inline-flex; border: 1px solid var(--line-strong); border-radius: 6px; overflow: hidden; background: var(--surface); }
+.seg button, .seg label { border: 0; background: none; padding: 6px 12px; cursor: pointer; font-size: 14px; display: inline-flex; align-items: center; gap: 4px; }
+.seg button[aria-pressed="true"], .seg label:has(input:checked) { background: var(--accent); color: var(--accent-ink); }
+.seg label:has(input:disabled) { opacity: .45; cursor: not-allowed; }
+.seg input { position: absolute; opacity: 0; pointer-events: none; }
+.seg label:has(input:focus-visible) { outline: 2px solid var(--accent); outline-offset: -2px; }
+.seg > * + * { border-left: 1px solid var(--line-strong) !important; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 13px; color: var(--muted); align-items: center; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; border: 1px solid var(--line-strong); }
+
+/* Pool map */
+.pool-card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 14px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.pool-scroll { overflow-x: auto; padding: 4px 6px 4px 0; }
+.pool { display: grid; grid-template-columns: 62px repeat(30, minmax(0, 1fr)); gap: 3px; min-width: 980px; }
+.rowlbl {
+  position: sticky; left: 0; z-index: 2; background: var(--surface); display: flex; flex-direction: column; justify-content: center;
+  font-size: 11px; line-height: 1.2; color: var(--muted); padding-right: 6px;
+}
+.rowlbl b { font-family: var(--f-display); font-size: 14px; color: var(--ink); font-weight: 600; }
+.slot {
+  position: relative; height: 50px; border: 1px dashed var(--line-strong); background: var(--surface-2); border-radius: 4px;
+  display: flex; flex-direction: column; align-items: center; justify-content: space-between; padding: 4px 1px 3px; cursor: pointer;
+  font-family: var(--f-mono); font-variant-numeric: tabular-nums; min-width: 0;
+}
+.slot .n { font-size: 11px; color: var(--muted); }
+.slot .c { font-size: 10px; letter-spacing: -.04em; white-space: nowrap; }
+.slot:hover { border-color: var(--accent); border-style: solid; }
+.slot.occ { border-style: solid; }
+.slot.occ .n { color: var(--ink); font-weight: 500; }
+.slot.st-curso { background: var(--ok-soft); border-color: var(--ok); }
+.slot.st-proximo { background: var(--warn-soft); border-color: var(--warn); }
+.slot.st-vencido { background: var(--bad-soft); border-color: var(--bad); }
+.slot.st-pendiente { background: var(--pend-soft); border-color: var(--pend); }
+.slot.byp { background: var(--pc); border-color: var(--pc); }
+.slot.byp .n, .slot.byp .c { color: var(--p-ink); }
+.slot.conflict::after { content: "!"; position: absolute; top: -6px; right: -4px; width: 15px; height: 15px; border-radius: 50%; background: var(--bad); color: var(--surface); font-size: 10px; display: grid; place-items: center; font-weight: 700; }
+.slot.linked, .pet.linked { outline: 2px solid var(--ink); outline-offset: 1px; z-index: 1; }
+.slot.dim { opacity: .28; }
+
+.pet {
+  height: 40px; background: var(--wall); color: var(--wall-ink); border: 1px solid var(--line-strong); border-radius: 3px; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px; padding: 2px; min-width: 0;
+}
+.pet .pn { font-family: var(--f-mono); font-size: 11px; font-weight: 500; }
+.pips { display: flex; gap: 2px; }
+.pips i { width: 7px; height: 7px; border-radius: 50%; border: 1px solid var(--wall-ink); display: block; }
+.pips i.on { background: var(--wall-ink); }
+.pips.tri i { width: 25px; height: 7px; border-radius: 2px; background: var(--wall-ink); }
+.pet:hover { border-color: var(--accent); }
+.pet.full { box-shadow: inset 0 -3px 0 var(--accent); }
+
+.water {
+  grid-column: 2 / -1; height: 46px; border-radius: 4px; position: relative; overflow: hidden;
+  background: repeating-linear-gradient(115deg, var(--water) 0 14px, var(--water-2) 14px 16px);
+  display: flex; align-items: center; justify-content: center; gap: 24px;
+  font-family: var(--f-mono); font-size: 11px; letter-spacing: .14em; text-transform: uppercase; color: var(--muted);
+}
+.water span { background: var(--water); padding: 2px 8px; border-radius: 3px; }
+.slot.hb::before { content: ""; position: absolute; top: -3px; bottom: -3px; left: -2px; right: -2px; border-top: 2px solid var(--hb); border-bottom: 2px solid var(--hb); pointer-events: none; }
+.slot.hb.hb-s::before { left: -3px; border-left: 2px solid var(--hb); }
+.slot.hb.hb-e::before { right: -3px; border-right: 2px solid var(--hb); }
+.slot.hb.hb-free::before { border-top-style: dashed; border-bottom-style: dashed; }
+.slot.hb.hb-free.hb-s::before { border-left-style: dashed; }
+.slot.hb.hb-free.hb-e::before { border-right-style: dashed; }
+.slot.hb-free { border-color: transparent; }
+.slot.hb-free:hover { border-color: var(--accent); }
+.legend .hb-leg { display: inline-flex; flex-wrap: wrap; gap: 4px 12px; padding-left: 12px; border-left: 1px solid var(--line); }
+.legend .hb-leg b { color: var(--ink); font-weight: 600; }
+.pos { display: inline-block; min-width: 2.6em; text-align: center; border: 2px solid transparent; border-radius: 4px; padding: 0 4px; }
+.pos.hb { border-color: var(--hb); }
+.hb-list { display: flex; flex-direction: column; gap: 6px; }
+.hb-row { display: flex; align-items: center; gap: 10px; padding: 6px 10px; border: 2px solid var(--hb); border-radius: 6px; font-size: 14px; }
+.hb-row .spacer { flex: 1; }
+.hb-row .btn { padding: 4px 10px; }
+.obs-btn { padding: 4px 8px; font-size: 13px; gap: 4px; }
+.obs-btn svg { width: 15px; height: 15px; }
+#tbl-act { font-size: 13.5px; }
+#tbl-act th, #tbl-act td { white-space: normal; padding: 8px 7px; vertical-align: middle; }
+#tbl-act th:first-child, #tbl-act td:first-child { padding-left: 12px; }
+#tbl-act td.mono { font-size: 12.5px; }
+#tbl-act .nw { white-space: nowrap; }
+#tbl-act .brk { overflow-wrap: anywhere; min-width: 7em; }
+#tbl-act .pill { white-space: nowrap; }
+#tbl-act .rest { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; }
+.obs-btn .n { font-family: var(--f-mono); font-size: 11px; background: var(--accent); color: var(--accent-ink); border-radius: 999px; padding: 0 6px; }
+.obs-new { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 12px; }
+.obs-list { display: flex; flex-direction: column; gap: 8px; }
+.obs-item { display: grid; grid-template-columns: 96px minmax(0, 1fr) auto; gap: 12px; align-items: start; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; }
+.obs-item .d { font-family: var(--f-mono); font-size: 13px; color: var(--muted); padding-top: 2px; }
+.obs-item .t { white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
+.obs-item .btn { padding: 4px 10px; }
+#inc-list { display: flex; flex-direction: column; gap: 24px; }
+.inc-group { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.inc-group h3 { font-size: 20px; font-weight: 600; display: flex; align-items: center; gap: 4px; }
+.inc-group h3 .count { font-family: var(--f-mono); font-size: 12px; font-weight: 400; color: var(--muted); margin-left: 6px; }
+.inc-group td.wrap { min-width: 280px; white-space: pre-wrap; }
+@media (max-width: 640px) { .obs-new, .obs-item { grid-template-columns: 1fr; gap: 6px; } }
+.hb-add { display: grid; grid-template-columns: minmax(0, 1fr) 76px 76px auto; gap: 6px; }
+
+.colnum { font-family: var(--f-mono); font-size: 10px; color: var(--muted); text-align: center; }
+
+.empty-note { font-size: 14px; color: var(--muted); }
+
+/* Tables */
+.filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.filters input, .filters select, .field input, .field select, .field textarea {
+  border: 1px solid var(--line-strong); background: var(--surface); border-radius: 6px; padding: 7px 10px; min-width: 0;
+}
+.filters input[type="search"] { width: min(280px, 100%); }
+.table-wrap { overflow-x: auto; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { padding: 9px 12px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+th { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; background: var(--surface-2); position: sticky; top: 0; }
+th button { all: unset; cursor: pointer; display: inline-flex; gap: 4px; align-items: center; }
+th button:focus-visible { outline: 2px solid var(--accent); }
+tbody tr { cursor: pointer; }
+tbody tr:hover { background: var(--surface-2); }
+tbody tr:last-child td { border-bottom: 0; }
+td.mono { font-family: var(--f-mono); font-size: 13px; }
+td.wrap { white-space: normal; min-width: 160px; }
+.dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; margin-right: 6px; vertical-align: 1px; }
+.pill { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; font-size: 12px; font-weight: 600; border: 1px solid; }
+.pill.curso { color: var(--ok); background: var(--ok-soft); }
+.pill.proximo { color: var(--warn); background: var(--warn-soft); }
+.pill.vencido { color: var(--bad); background: var(--bad-soft); }
+.pill.pendiente { color: var(--pend); background: var(--pend-soft); }
+.pill.finalizada { color: var(--muted); background: var(--surface-2); }
+.tag { font-family: var(--f-mono); font-size: 11px; border: 1px solid var(--line-strong); border-radius: 3px; padding: 0 5px; color: var(--muted); }
+.td-empty { padding: 28px 16px; text-align: center; color: var(--muted); white-space: normal; cursor: default; }
+
+/* Overlays */
+.overlay {
+  position: fixed; inset: 0; z-index: 50; background: rgb(8 20 20 / .45); display: flex; align-items: flex-start; justify-content: center;
+  padding: max(24px, env(safe-area-inset-top, 0px)) max(12px, env(safe-area-inset-right, 0px)) max(24px, env(safe-area-inset-bottom, 0px)) max(12px, env(safe-area-inset-left, 0px));
+  overflow-y: auto;
+}
+.sheet { background: var(--surface); border-radius: 12px; width: min(760px, 100%); box-shadow: var(--shadow); display: flex; flex-direction: column; margin: auto 0; }
+.sheet.narrow { width: min(460px, 100%); }
+.sheet > header { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 16px 20px; border-bottom: 1px solid var(--line); }
+.sheet > header h2 { font-size: 24px; font-weight: 600; }
+.sheet > header .sub { font-size: 13px; color: var(--muted); }
+.sheet-body { padding: 16px 20px; display: flex; flex-direction: column; gap: 18px; }
+.sheet > footer { padding: 14px 20px; border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: 10px; }
+.foot-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+.foot-row .spacer { flex: 1; }
+.confirm { background: var(--surface-2); border: 1px solid var(--line-strong); border-radius: 8px; padding: 10px 12px; display: flex; flex-wrap: wrap; gap: 8px 12px; align-items: center; font-size: 14px; }
+.confirm.bad { border-color: var(--bad); background: var(--bad-soft); }
+.confirm input { border: 1px solid var(--line-strong); background: var(--surface); border-radius: 6px; padding: 6px 8px; }
+.x { border: 0; background: none; font-size: 26px; line-height: 1; cursor: pointer; color: var(--muted); padding: 4px 8px; border-radius: 6px; }
+.x:hover { color: var(--ink); background: var(--surface-2); }
+
+fieldset { border: 0; padding: 0; margin: 0; display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; }
+legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); padding: 0; margin-bottom: 10px; grid-column: 1 / -1; }
+.field { display: flex; flex-direction: column; gap: 4px; min-width: 0; grid-column: span 3; }
+.field.s2 { grid-column: span 2; } .field.s4 { grid-column: span 4; } .field.s6 { grid-column: 1 / -1; }
+.field label, .field .flabel { font-size: 13px; font-weight: 600; }
+.field .req::after { content: " *"; color: var(--bad); font-weight: 400; }
+.field textarea { resize: vertical; min-height: 60px; }
+.field input[aria-invalid="true"], .field select[aria-invalid="true"] { border-color: var(--bad); box-shadow: 0 0 0 1px var(--bad); }
+.hint { font-size: 12.5px; color: var(--muted); min-height: 1.2em; }
+.hint.bad { color: var(--bad); } .hint.ok { color: var(--ok); } .hint.warn { color: var(--warn); }
+.inline { display: flex; gap: 6px; } .inline > :first-child { flex: 1; min-width: 0; }
+.conn-preview { font-family: var(--f-mono); font-size: 22px; font-weight: 500; color: var(--accent); }
+.msgs { display: flex; flex-direction: column; gap: 6px; }
+.msgs:empty { display: none; }
+.msg { font-size: 13.5px; padding: 8px 10px; border-radius: 6px; border: 1px solid; }
+.msg.bad { color: var(--bad); background: var(--bad-soft); }
+.msg.warn { color: var(--warn); background: var(--warn-soft); }
+.ro-note { font-size: 13px; color: var(--muted); }
+
+.pet-list { display: flex; flex-direction: column; gap: 8px; }
+.pet-row { display: grid; grid-template-columns: 70px 1fr auto; gap: 10px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; }
+.pet-row .ph { font-family: var(--f-mono); font-size: 15px; font-weight: 500; }
+.pet-row .who { font-size: 14px; min-width: 0; }
+.pet-row .who small { display: block; color: var(--muted); }
+.pet-row.free .who { color: var(--muted); }
+
+.radio-list { display: flex; flex-direction: column; gap: 6px; }
+.radio-list label { display: flex; gap: 10px; align-items: flex-start; padding: 8px 10px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; }
+.radio-list label:has(input:checked) { border-color: var(--accent); background: var(--accent-soft); }
+.radio-list small { display: block; color: var(--muted); font-size: 12.5px; }
+
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(20px + env(safe-area-inset-bottom, 0px)); z-index: 80;
+  background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-size: 14px; box-shadow: var(--shadow); max-width: calc(100% - 32px);
+}
+
+@media (max-width: 640px) {
+  fieldset { grid-template-columns: 1fr 1fr; }
+  .field, .field.s2, .field.s4 { grid-column: 1 / -1; }
+  .field.half { grid-column: span 1; }
+  .sheet-body, .sheet > header, .sheet > footer { padding-left: 14px; padding-right: 14px; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .slot, .pet, .btn { transition: border-color .12s, background-color .12s, opacity .12s; }
+}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <header class="top">
+    <div class="brand">
+      <span class="eyebrow">Laboratorio · Ensayos de durabilidad</span>
+      <h1>Piscina de durabilidad</h1>
+    </div>
+    <div class="actions">
+      <button class="btn" id="btn-copy" type="button" title="Copia la tabla completa para pegarla en Excel">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Copiar para Excel</button>
+      <button class="btn" id="btn-csv" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 19h16"/></svg>Exportar CSV</button>
+      <button class="btn" id="btn-gh" type="button" title="Conectar con GitHub para registrar y modificar">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.52 2.34 1.08 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02a9.6 9.6 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2z"/></svg><span id="btn-gh-label">Conectar con GitHub</span></button>
+      <button class="btn" id="btn-cfg" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>Ajustes</button>
+      <button class="btn primary" id="btn-new" type="button">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>Nueva bomba</button>
+    </div>
+  </header>
+
+  <div id="banners"></div>
+
+  <section class="kpis" id="kpis" aria-label="Resumen de ocupación"></section>
+
+  <nav class="tabs" role="tablist" aria-label="Vistas">
+    <button class="tab" role="tab" id="tab-plano" data-view="plano" aria-selected="true">Plano</button>
+    <button class="tab" role="tab" id="tab-listado" data-view="listado" aria-selected="false">En ensayo<span class="count" id="cnt-act"></span></button>
+    <button class="tab" role="tab" id="tab-historial" data-view="historial" aria-selected="false">Historial<span class="count" id="cnt-hist"></span></button>
+    <button class="tab" role="tab" id="tab-incidencias" data-view="incidencias" aria-selected="false">Incidencias<span class="count" id="cnt-inc"></span></button>
+  </nav>
+
+  <section id="view-plano" class="pool-card" role="tabpanel" aria-labelledby="tab-plano">
+    <div class="toolbar">
+      <div class="legend" id="legend"></div>
+      <div class="seg" role="group" aria-label="Colorear por">
+        <button type="button" data-color="estado" aria-pressed="true">Estado</button>
+        <button type="button" data-color="proyecto" aria-pressed="false">Proyecto</button>
+      </div>
+    </div>
+    <div class="pool-scroll"><div class="pool" id="pool"></div></div>
+    <p class="empty-note" id="pool-note">Pulsa una posición libre para registrar una bomba en ella, o una petaca para ver sus fases. Pasa el ratón sobre una bomba para ver a qué petaca está conectada.</p>
+  </section>
+
+  <section id="view-listado" role="tabpanel" aria-labelledby="tab-listado" hidden>
+    <div class="toolbar" style="margin-bottom:12px">
+      <div class="filters">
+        <input type="search" id="q" placeholder="Buscar referencia, nº serie, proyecto…" aria-label="Buscar">
+        <select id="fl-proyecto" aria-label="Filtrar por proyecto"></select>
+        <select id="fl-estado" aria-label="Filtrar por estado">
+          <option value="">Todos los estados</option>
+          <option value="curso">En curso</option>
+          <option value="proximo">Finaliza pronto</option>
+          <option value="vencido">Fin superado</option>
+          <option value="pendiente">Programado</option>
+        </select>
+        <select id="fl-zona" aria-label="Filtrar por zona">
+          <option value="">Todas las zonas</option>
+          <option value="Suelo">Suelo</option>
+          <option value="Playa">Playa</option>
+          <option value="HotBox">Solo HotBox</option>
+        </select>
+      </div>
+      <span class="ro-note" id="list-count"></span>
+    </div>
+    <div class="table-wrap"><table id="tbl-act"></table></div>
+  </section>
+
+  <section id="view-historial" role="tabpanel" aria-labelledby="tab-historial" hidden>
+    <div class="toolbar" style="margin-bottom:12px">
+      <div class="filters"><input type="search" id="qh" placeholder="Buscar en el historial…" aria-label="Buscar en el historial"></div>
+    </div>
+    <div class="table-wrap"><table id="tbl-hist"></table></div>
+  </section>
+
+  <section id="view-incidencias" role="tabpanel" aria-labelledby="tab-incidencias" hidden>
+    <div class="toolbar" style="margin-bottom:16px">
+      <div class="filters">
+        <input type="search" id="qi" placeholder="Buscar en las observaciones…" aria-label="Buscar en las observaciones">
+        <select id="fl-inc" aria-label="Filtrar por proyecto"></select>
+      </div>
+      <span class="ro-note" id="inc-count"></span>
+    </div>
+    <div id="inc-list"></div>
+  </section>
+
+  <footer class="page-foot">
+    <span>Datos guardados en GitHub · <span class="mono">daniq-93/polinya-lab</span></span>
+    <a href="https://github.com/daniq-93/polinya-lab/commits/main/seguimiento-piscina-durabilidad/data/piscina.json" target="_blank" rel="noopener">Ver historial de cambios</a>
+  </footer>
+</div>
+
+<!-- Formulario de bomba -->
+<div class="overlay" id="ov-form" hidden>
+  <form class="sheet" id="form" novalidate autocomplete="off">
+    <header>
+      <div><h2 id="f-title">Nueva bomba</h2><div class="sub" id="f-sub"></div></div>
+      <button type="button" class="x" data-close aria-label="Cerrar">×</button>
+    </header>
+    <div class="sheet-body">
+      <fieldset>
+        <legend>Bomba</legend>
+        <div class="field s6"><label class="req" for="f-proyecto">Proyecto</label><input id="f-proyecto" list="dl-proyectos" required></div>
+        <div class="field"><label for="f-referencia">Referencia</label><input id="f-referencia"></div>
+        <div class="field"><label for="f-serie">Nº de serie</label><input id="f-serie"><div class="hint" id="h-serie"></div></div>
+        <div class="field s2"><label for="f-fabricante">Fabricante motor</label><input id="f-fabricante" list="dl-fabricantes"></div>
+        <div class="field s2"><label class="req" for="f-potencia">Potencia (HP)</label>
+          <input id="f-potencia" type="number" step="0.01" min="0" inputmode="decimal" required placeholder="p. ej. 1,5">
+        </div>
+        <div class="field s2"><span class="flabel req" id="lbl-tipo">Mono / trifásica</span>
+          <div class="seg" role="radiogroup" aria-labelledby="lbl-tipo">
+            <label><input type="radio" name="tipo" value="mono" id="f-tipo-mono" checked>Monofásica</label>
+            <label><input type="radio" name="tipo" value="tri" id="f-tipo-tri">Trifásica</label>
+          </div>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Ubicación en la piscina</legend>
+        <div class="field s2"><label class="req" for="f-posicion">Posición (1–120)</label><input id="f-posicion" type="number" min="1" max="120" step="1" inputmode="numeric" required><div class="hint" id="h-posicion"></div></div>
+        <div class="field s2"><label class="req" for="f-petaca">Petaca (1–60)</label><input id="f-petaca" type="number" min="1" max="60" step="1" inputmode="numeric" required><div class="hint" id="h-petaca"></div></div>
+        <div class="field s2" id="fase-wrap"><span class="flabel req" id="lbl-fase">Fase de la petaca</span>
+          <div class="seg" role="radiogroup" aria-labelledby="lbl-fase">
+            <label><input type="radio" name="fase" value="1" id="f-fase-1">.1</label>
+            <label><input type="radio" name="fase" value="2" id="f-fase-2">.2</label>
+            <label><input type="radio" name="fase" value="3" id="f-fase-3">.3</label>
+          </div>
+          <div class="hint">Conexión: <span class="conn-preview" id="conn-preview">—</span></div>
+        </div>
+      </fieldset>
+      <fieldset>
+        <legend>Ensayo</legend>
+        <div class="field s2"><label class="req" for="f-inicio">Fecha de inicio</label><input id="f-inicio" type="date" required></div>
+        <div class="field s2"><label class="req" for="f-fin">Fecha fin <span style="font-weight:400;color:var(--muted)">(inicio + 6 meses)</span></label><input id="f-fin" type="date" required></div>
+        <div class="field s2"><span class="flabel">Duración prevista</span><div class="hint" id="h-dur" style="font-size:14px;color:var(--ink)">—</div></div>
+        <div class="field s6"><label for="f-notas">Notas</label><textarea id="f-notas" rows="2" placeholder="Condiciones del ensayo, incidencias…"></textarea></div>
+      </fieldset>
+      <div class="msgs" id="f-msgs" aria-live="polite"></div>
+    </div>
+    <footer>
+      <div class="confirm bad" id="cf-del" hidden>
+        <span>¿Eliminar esta bomba del registro? No se puede deshacer.</span>
+        <span class="foot-row"><button type="button" class="btn danger solid" id="cf-del-yes">Sí, eliminar</button><button type="button" class="btn ghost" id="cf-del-no">No</button></span>
+      </div>
+      <div class="confirm" id="cf-fin" hidden>
+        <label for="f-retirada">Fecha de retirada</label><input type="date" id="f-retirada">
+        <span class="foot-row"><button type="button" class="btn primary" id="cf-fin-yes">Finalizar y liberar posición</button><button type="button" class="btn ghost" id="cf-fin-no">Cancelar</button></span>
+      </div>
+      <div class="foot-row">
+        <button type="button" class="btn danger" id="b-del">Eliminar</button>
+        <button type="button" class="btn" id="b-fin">Finalizar ensayo</button>
+        <button type="button" class="btn" id="b-reopen">Reactivar ensayo</button>
+        <button type="button" class="btn" id="b-obs">Observaciones</button>
+        <span class="spacer"></span>
+        <button type="button" class="btn ghost" data-close id="b-cancel">Cancelar</button>
+        <button type="submit" class="btn primary" id="b-save">Guardar</button>
+      </div>
+    </footer>
+  </form>
+</div>
+<datalist id="dl-proyectos"></datalist>
+<datalist id="dl-fabricantes"></datalist>
+
+<!-- Observaciones de una bomba -->
+<div class="overlay" id="ov-obs" hidden>
+  <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="obs-title">
+    <header><div><h2 id="obs-title">Observaciones</h2><div class="sub" id="obs-sub"></div></div><button type="button" class="x" data-close aria-label="Cerrar">×</button></header>
+    <div class="sheet-body">
+      <form id="obs-form" novalidate autocomplete="off" style="display:flex;flex-direction:column;gap:10px">
+        <div class="obs-new">
+          <div class="field"><label for="obs-fecha">Fecha</label><input type="date" id="obs-fecha"></div>
+          <div class="field"><label for="obs-texto">Observación</label><textarea id="obs-texto" rows="3" placeholder="Qué se ha observado, revisado o cambiado…"></textarea></div>
+        </div>
+        <div class="foot-row"><span class="hint" id="obs-hint"></span><span class="spacer"></span><button type="submit" class="btn primary" id="obs-save">Añadir observación</button></div>
+      </form>
+      <div class="obs-list" id="obs-list" aria-live="polite"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Panel de petaca -->
+<div class="overlay" id="ov-pet" hidden>
+  <div class="sheet narrow" role="dialog" aria-modal="true" aria-labelledby="pet-title">
+    <header><div><h2 id="pet-title">Petaca</h2><div class="sub" id="pet-sub"></div></div><button type="button" class="x" data-close aria-label="Cerrar">×</button></header>
+    <div class="sheet-body"><div class="pet-list" id="pet-list"></div></div>
+  </div>
+</div>
+
+<!-- Ajustes de numeración -->
+<div class="overlay" id="ov-cfg" hidden>
+  <form class="sheet narrow" id="cfg-form" novalidate>
+    <header><div><h2>Ajustes</h2><div class="sub">Se comparten con todo el equipo</div></div><button type="button" class="x" data-close aria-label="Cerrar">×</button></header>
+    <div class="sheet-body">
+      <div class="field s6"><label for="cfg-aviso">Avisar cuando falten (días)</label><input id="cfg-aviso" type="number" min="0" max="90" step="1" style="max-width:120px"></div>
+      <div class="field s6"><span class="flabel">HotBox</span>
+        <div class="hb-list" id="hb-list"></div>
+        <div class="hb-add" id="hb-add">
+          <input id="hb-nombre" placeholder="Nombre" aria-label="Nombre del HotBox">
+          <input id="hb-desde" type="number" min="1" max="120" inputmode="numeric" placeholder="Desde" aria-label="Primera posición">
+          <input id="hb-hasta" type="number" min="1" max="120" inputmode="numeric" placeholder="Hasta" aria-label="Última posición">
+          <button type="button" class="btn" id="hb-btn">Añadir</button>
+        </div>
+        <div class="hint" id="hb-hint">Un HotBox agrupa posiciones seguidas de una misma fila.</div>
+      </div>
+      <p class="ro-note">Numeración perimetral. Suelo: 1–30 en el lado Valla y 31–60 de vuelta por el lado Pared. Playa: 61–90 en el lado Valla y 91–120 por el lado Pared. Cada petaca está junto a la posición de suelo con su mismo número.</p>
+    </div>
+    <footer><div class="foot-row"><span class="spacer"></span><button type="button" class="btn ghost" data-close>Cancelar</button><button type="submit" class="btn primary" id="cfg-save">Guardar ajustes</button></div></footer>
+  </form>
+</div>
+
+<!-- Conexión con GitHub -->
+<div class="overlay" id="ov-gh" hidden>
+  <form class="sheet narrow" id="gh-form" novalidate autocomplete="off">
+    <header><div><h2>Conectar con GitHub</h2><div class="sub">Para registrar y modificar bombas</div></div><button type="button" class="x" data-close aria-label="Cerrar">×</button></header>
+    <div class="sheet-body">
+      <div id="gh-on" hidden style="display:flex;flex-direction:column;gap:12px">
+        <p style="margin:0">Conectado como <b id="gh-login"></b>.</p>
+        <p class="ro-note" id="gh-perm" style="margin:0"></p>
+        <div><button type="button" class="btn" id="gh-out">Desconectar</button></div>
+      </div>
+      <div id="gh-off" style="display:flex;flex-direction:column;gap:14px">
+        <ol class="steps">
+          <li>Pide al responsable que te añada como <b>colaborador</b> del repositorio <span class="mono">daniq-93/polinya-lab</span> y acepta la invitación que te llega por correo.</li>
+          <li>Crea una clave de acceso en GitHub: <a href="https://github.com/settings/tokens/new?scopes=public_repo&amp;description=Piscina%20de%20durabilidad" target="_blank" rel="noopener">abrir el formulario</a>. Ya viene marcado el permiso <span class="mono">public_repo</span>; elige la caducidad y pulsa <i>Generate token</i>.</li>
+          <li>Copia la clave y pégala aquí. Se guarda solo en este navegador.</li>
+        </ol>
+        <div class="field s6"><label for="gh-token">Clave de acceso (token)</label><input id="gh-token" type="password" placeholder="ghp_…" autocomplete="off" spellcheck="false"></div>
+        <div class="hint" id="gh-hint" aria-live="polite"></div>
+      </div>
+    </div>
+    <footer><div class="foot-row"><span class="spacer"></span><button type="button" class="btn ghost" data-close>Cerrar</button><button type="submit" class="btn primary" id="gh-save">Conectar</button></div></footer>
+  </form>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
+
+<script>
+(() => {
+  const $ = (s, r = document) => r.querySelector(s);
+  const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+  const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+
+  const DEFAULT_CFG = { avisoDias: 7 };
+  const ESTADOS = {
+    curso: 'En curso', proximo: 'Finaliza pronto', vencido: 'Fin superado', pendiente: 'Programado', finalizada: 'Finalizada'
+  };
+  const state = {
+    db: null, downloads: null, canWrite: false, dbStatus: 'connecting',
+    bombas: [], hotboxes: [], obs: [], obsBomba: null, obsConfirm: null, cfg: { ...DEFAULT_CFG }, loaded: false,
+    view: 'plano', colorBy: 'estado', sort: { key: 'posicion', dir: 1 },
+    editing: null, petacaAuto: true
+  };
+
+  try { const v = localStorage.getItem('pd-view'); if (['plano', 'listado', 'historial', 'incidencias'].includes(v)) state.view = v; } catch (e) {}
+  try { const c = localStorage.getItem('pd-color'); if (c === 'estado' || c === 'proyecto') state.colorBy = c; } catch (e) {}
+
+  /* ---------- Fechas ---------- */
+  const pad = n => String(n).padStart(2, '0');
+  const todayStr = () => { const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`; };
+  const dayNum = s => { const [y, m, d] = s.split('-').map(Number); return Date.UTC(y, m - 1, d) / 86400000; };
+  const diffDays = (a, b) => dayNum(a) - dayNum(b);
+  const fmtDate = s => s ? s.split('-').reverse().join('/') : '—';
+  const MESES = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+  const fmtShort = s => { if (!s) return '—'; const [, m, d] = s.split('-'); return `${+d} ${MESES[+m - 1]}`; };
+  const validDate = s => /^\d{4}-\d{2}-\d{2}$/.test(s || '');
+  const MESES_ENSAYO = 6;
+  const addMonths = (s, n) => {
+    const [y, m, d] = s.split('-').map(Number), t = new Date(Date.UTC(y, m - 1 + n, 1));
+    const last = new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth() + 1, 0)).getUTCDate();
+    return `${t.getUTCFullYear()}-${pad(t.getUTCMonth() + 1)}-${pad(Math.min(d, last))}`;
+  };
+
+  /* ---------- Geometría de la piscina ---------- */
+  // Numeración perimetral, como en la hoja «Distribución bombas»:
+  // lado Pared (arriba): suelo 60→31, playa 120→91, petacas 60→31
+  // lado Valla (abajo):  suelo 1→30,  playa 61→90,  petacas 1→30
+  // Cada petaca queda junto a la posición de suelo con su mismo número.
+  function buildLayout() {
+    const cols = { Pared: [], Valla: [] }, pos = new Map(), pet = new Map();
+    for (let c = 0; c < 30; c++) {
+      const a = { side: 'Pared', c, petaca: 60 - c, suelo: 60 - c, playa: 120 - c };
+      const b = { side: 'Valla', c, petaca: c + 1, suelo: c + 1, playa: 61 + c };
+      for (const col of [a, b]) {
+        cols[col.side].push(col);
+        pos.set(col.suelo, { side: col.side, nivel: 'Suelo', petaca: col.petaca });
+        pos.set(col.playa, { side: col.side, nivel: 'Playa', petaca: col.petaca });
+        pet.set(col.petaca, { side: col.side });
+      }
+    }
+    return { cols, pos, pet };
+  }
+  const L = buildLayout();
+  const zona = p => { const i = L.pos.get(p), hb = IDX.hbByPos.get(p); return i ? `Lado ${i.side} · ${i.nivel}${hb ? ' · ' + hb.nombre : ''}` : '—'; };
+
+  /* ---------- Modelo ---------- */
+  const isActive = b => b.estado !== 'finalizada';
+  const conexion = b => !b.petaca ? '—' : (b.tipo === 'tri' || !b.fase) ? `${b.petaca}` : `${b.petaca}.${b.fase}`;
+  function estadoDe(b) {
+    if (!isActive(b)) return 'finalizada';
+    const hoy = todayStr();
+    if (validDate(b.fechaInicio) && b.fechaInicio > hoy) return 'pendiente';
+    if (!validDate(b.fechaFin)) return 'curso';
+    const d = diffDays(b.fechaFin, hoy);
+    if (d < 0) return 'vencido';
+    if (d <= (state.cfg.avisoDias ?? 7)) return 'proximo';
+    return 'curso';
+  }
+  function restante(b) {
+    if (!validDate(b.fechaFin)) return '';
+    const d = diffDays(b.fechaFin, todayStr());
+    if (d < 0) return `hace ${-d} d`;
+    if (d === 0) return 'hoy';
+    return `en ${d} d`;
+  }
+  function fmtPot(b) {
+    if (b.potencia === '' || b.potencia == null || isNaN(b.potencia)) return '—';
+    return `${Number(b.potencia).toLocaleString('es-ES', { maximumFractionDigits: 3 })} HP`;
+  }
+  const PROJ_COLORS = 8;
+  function projColor(name) {
+    let h = 0; for (const ch of String(name || '').trim().toLowerCase()) h = (h * 31 + ch.codePointAt(0)) >>> 0;
+    return `var(--p${h % PROJ_COLORS})`;
+  }
+
+  let IDX = { byPos: new Map(), byPet: new Map(), conflicts: new Set(), act: [], hist: [], hbByPos: new Map() };
+  function buildIndex() {
+    const act = state.bombas.filter(isActive), hist = state.bombas.filter(b => !isActive(b));
+    const byPos = new Map(), byPet = new Map(), conflicts = new Set();
+    for (const b of act) {
+      const other = byPos.get(b.posicion);
+      if (other) { conflicts.add(b.id); conflicts.add(other.id); } else byPos.set(b.posicion, b);
+      let p = byPet.get(b.petaca);
+      if (!p) { p = { tri: null, f: [null, null, null, null], all: [] }; byPet.set(b.petaca, p); }
+      const clash = b.tipo === 'tri' ? p.all.length > 0 : (p.tri || p.f[b.fase]);
+      if (clash) { conflicts.add(b.id); p.all.forEach(o => conflicts.add(o.id)); }
+      if (b.tipo === 'tri') { if (!p.tri) p.tri = b; } else if (!p.f[b.fase]) p.f[b.fase] = b;
+      p.all.push(b);
+    }
+    const hbByPos = new Map();
+    for (const h of state.hotboxes) {
+      const lo = Math.min(h.desde, h.hasta), hi = Math.max(h.desde, h.hasta);
+      for (let p = lo; p <= hi; p++) hbByPos.set(p, h);
+    }
+    IDX = { byPos, byPet, conflicts, act, hist, hbByPos };
+  }
+
+  /* ---------- Render: KPIs ---------- */
+  function renderKpis() {
+    const { act, byPet } = IDX;
+    const occ = new Set(act.map(b => b.posicion));
+    let suelo = 0, playa = 0;
+    occ.forEach(p => { const i = L.pos.get(p); if (i?.nivel === 'Suelo') suelo++; else if (i) playa++; });
+    let triP = 0, monoP = 0, monoF = 0;
+    byPet.forEach(p => { if (p.tri) triP++; else { const n = p.f.filter(Boolean).length; if (n) { monoP++; monoF += n; } } });
+    const freePet = 60 - triP - monoP;
+    const freeF = (60 - triP) * 3 - monoF;
+    const prox = act.filter(b => estadoDe(b) === 'proximo').sort((a, b) => a.fechaFin.localeCompare(b.fechaFin));
+    const venc = act.filter(b => estadoDe(b) === 'vencido');
+    const next = prox[0];
+    $('#kpis').innerHTML = `
+      <div class="kpi">
+        <span class="lbl">Posiciones ocupadas</span>
+        <span class="val">${occ.size}<small> / 120</small></span>
+        <div class="meter" aria-hidden="true"><i style="width:${suelo / 1.2}%"></i><i style="width:${playa / 1.2}%"></i></div>
+        <span class="sub">Suelo ${suelo}/60 · Playa ${playa}/60</span>
+      </div>
+      <div class="kpi">
+        <span class="lbl">Petacas libres</span>
+        <span class="val">${freePet}<small> / 60</small></span>
+        <span class="sub">${triP} con trifásica · ${monoP} con monofásicas (${monoF} fases)<br>${freeF} fases monofásicas disponibles</span>
+      </div>
+      <button class="kpi ${prox.length ? 'warn' : ''}" type="button" data-goto="proximo">
+        <span class="lbl">Finalizan en ≤ ${state.cfg.avisoDias} días</span>
+        <span class="val">${prox.length}</span>
+        <span class="sub">${next ? `Próxima: pos. ${next.posicion} · ${esc(next.referencia || next.proyecto)} · ${fmtShort(next.fechaFin)}` : 'Ningún ensayo termina pronto'}</span>
+      </button>
+      <button class="kpi ${venc.length ? 'bad' : ''}" type="button" data-goto="vencido">
+        <span class="lbl">Fin previsto superado</span>
+        <span class="val">${venc.length}</span>
+        <span class="sub">${venc.length ? 'Retirar o actualizar la fecha de fin' : 'Todo al día'}</span>
+      </button>`;
+  }
+
+  /* ---------- Render: plano ---------- */
+  function slotHtml(p, hbi) {
+    const b = IDX.byPos.get(p);
+    const hbc = hbi ? ` hb${hbi.s ? ' hb-s' : ''}${hbi.e ? ' hb-e' : ''}${b ? '' : ' hb-free'}` : '';
+    if (!b) return `<button type="button" class="slot${hbc}" data-pos="${p}" title="Posición ${p} · ${esc(zona(p))} · libre" aria-label="Posición ${p}, libre"><span class="n">${p}</span><span class="c"></span></button>`;
+    const st = estadoDe(b);
+    const cls = state.colorBy === 'proyecto' ? 'byp' : `st-${st}`;
+    const tip = `Posición ${p} · ${zona(p)}\n${b.proyecto}${b.referencia ? ' · ' + b.referencia : ''}${b.numSerie ? '\nNº serie ' + b.numSerie : ''}${b.fabricante ? `\nMotor ${b.fabricante}` : ''}\nPetaca ${conexion(b)} · ${fmtPot(b)} · ${tipoLbl(b)}\nFin previsto ${fmtDate(b.fechaFin)} · ${ESTADOS[st]}`;
+    return `<button type="button" class="slot occ ${cls}${hbc}${IDX.conflicts.has(b.id) ? ' conflict' : ''}" data-pos="${p}" data-id="${esc(b.id)}" data-pet="${b.petaca}" data-fase="${b.tipo === 'tri' ? '' : b.fase}" style="--pc:${projColor(b.proyecto)}" title="${esc(tip)}" aria-label="${esc(tip.replace(/\n/g, '. '))}"><span class="n">${p}</span><span class="c">${conexion(b)}</span></button>`;
+  }
+  function petHtml(n) {
+    const p = IDX.byPet.get(n);
+    let pips, full = false, desc = 'libre';
+    if (p?.tri) { pips = '<span class="pips tri"><i></i></span>'; full = true; desc = 'trifásica ocupada'; }
+    else {
+      const f = p?.f || [];
+      pips = `<span class="pips">${[1, 2, 3].map(i => `<i class="${f[i] ? 'on' : ''}"></i>`).join('')}</span>`;
+      const n2 = [1, 2, 3].filter(i => f[i]).length;
+      full = n2 === 3; if (n2) desc = `${n2} de 3 fases ocupadas`;
+    }
+    return `<button type="button" class="pet${full ? ' full' : ''}" data-petaca="${n}" title="Petaca ${n} · ${desc}" aria-label="Petaca ${n}, ${desc}"><span class="pn">${n}</span>${pips}</button>`;
+  }
+  function renderPool() {
+    const rowLbl = (t, sub) => `<div class="rowlbl"><b>${t}</b>${sub}</div>`;
+    const slots = (cols, key) => cols.map((c, i) => {
+      const p = c[key], hb = IDX.hbByPos.get(p);
+      if (!hb) return slotHtml(p);
+      const l = i > 0 ? IDX.hbByPos.get(cols[i - 1][key]) : null;
+      const r = i < cols.length - 1 ? IDX.hbByPos.get(cols[i + 1][key]) : null;
+      return slotHtml(p, { s: l !== hb, e: r !== hb });
+    }).join('');
+    const pets = cols => cols.map(c => petHtml(c.petaca)).join('');
+    const P = L.cols.Pared, V = L.cols.Valla;
+    let h = '';
+    h += rowLbl('Playa', 'Lado Pared') + slots(P, 'playa');
+    h += rowLbl('Petacas', 'Lado Pared') + pets(P);
+    h += rowLbl('Suelo', 'Lado Pared') + slots(P, 'suelo');
+    h += `<div class="rowlbl"></div><div class="water" aria-hidden="true"><span>↑ Lado Pared</span><span>Piscina</span><span>Lado Valla ↓</span></div>`;
+    h += rowLbl('Suelo', 'Lado Valla') + slots(V, 'suelo');
+    h += rowLbl('Petacas', 'Lado Valla') + pets(V);
+    h += rowLbl('Playa', 'Lado Valla') + slots(V, 'playa');
+    $('#pool').innerHTML = h;
+    $$('.seg [data-color]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.color === state.colorBy)));
+    renderLegend();
+  }
+  function renderLegend() {
+    let h;
+    if (state.colorBy === 'estado') {
+      const n = s => IDX.act.filter(b => estadoDe(b) === s).length;
+      h = [['curso', 'var(--ok-soft)', 'var(--ok)'], ['proximo', 'var(--warn-soft)', 'var(--warn)'], ['vencido', 'var(--bad-soft)', 'var(--bad)'], ['pendiente', 'var(--pend-soft)', 'var(--pend)']]
+        .map(([k, bg, bd]) => `<span><i class="sw" style="background:${bg};border-color:${bd}"></i>${ESTADOS[k]} <span class="mono">${n(k)}</span></span>`).join('')
+        + `<span><i class="sw" style="border-style:dashed"></i>Libre <span class="mono">${120 - IDX.byPos.size}</span></span>`;
+    } else {
+      const m = new Map(); IDX.act.forEach(b => m.set(b.proyecto, (m.get(b.proyecto) || 0) + 1));
+      h = [...m].sort((a, b) => b[1] - a[1]).map(([p, n]) => `<span><i class="sw" style="background:${projColor(p)};border-color:${projColor(p)}"></i>${esc(p)} <span class="mono">${n}</span></span>`).join('') || '<span>Sin bombas en ensayo</span>';
+    }
+    if (state.hotboxes.length) {
+      let occ = 0, free = 0;
+      IDX.hbByPos.forEach((hb, p) => { if (IDX.byPos.has(p)) occ++; else free++; });
+      h += `<span class="hb-leg"><b>HotBox</b>`
+        + `<span><i class="sw" style="background:transparent;border:2px solid var(--hb)"></i>Ocupadas <span class="mono">${occ}</span></span>`
+        + `<span><i class="sw" style="background:transparent;border:2px dashed var(--hb)"></i>Libres <span class="mono">${free}</span></span></span>`;
+    }
+    $('#legend').innerHTML = h;
+  }
+
+  /* ---------- Render: tablas ---------- */
+  const COLS_ACT = [
+    ['posicion', 'Pos.'], ['conexion', 'Petaca'], ['proyecto', 'Proyecto'], ['potencia', 'Potencia'], ['tipo', 'Mono / Tri'],
+    ['fechaInicio', 'Fecha inicio'], ['fechaFin', 'Fecha fin'], ['referencia', 'Referencia'], ['numSerie', 'Nº de serie'],
+    ['fabricante', 'Fabricante motor'], ['estado', 'Estado']
+  ];
+  const sortVal = (b, k) => {
+    switch (k) {
+      case 'zona': { const i = L.pos.get(b.posicion); return i ? `${i.side}${i.nivel}` : ''; }
+      case 'conexion': return b.petaca * 10 + (b.tipo === 'tri' ? 0 : b.fase);
+      case 'potencia': return Number(b.potencia) || 0;
+      case 'estado': return ['vencido', 'proximo', 'curso', 'pendiente', 'finalizada'].indexOf(estadoDe(b));
+      default: { const v = b[k]; return typeof v === 'number' ? v : String(v ?? '').toLowerCase(); }
+    }
+  };
+  function sortList(list) {
+    const { key, dir } = state.sort;
+    return list.slice().sort((a, b) => { const x = sortVal(a, key), y = sortVal(b, key); return (x < y ? -1 : x > y ? 1 : a.posicion - b.posicion) * dir; });
+  }
+  function headHtml(cols) {
+    return `<thead><tr>${cols.map(([k, t]) => `<th scope="col"><button type="button" data-sort="${k}">${t}${state.sort.key === k ? (state.sort.dir > 0 ? ' ▲' : ' ▼') : ''}</button></th>`).join('')}</tr></thead>`;
+  }
+  const tipoLbl = b => b.tipo === 'tri' ? 'Trifásica' : 'Monofásica';
+  const quien = b => b.referencia ? `${b.referencia} (${b.proyecto})` : (b.proyecto || 'otra bomba');
+  const matchQ = (b, q) => !q || [b.proyecto, b.referencia, b.numSerie, b.fabricante, b.notas, String(b.posicion), conexion(b)].some(v => String(v ?? '').toLowerCase().includes(q));
+  function renderListado() {
+    const q = $('#q').value.trim().toLowerCase(), fp = $('#fl-proyecto').value, fe = $('#fl-estado').value, fz = $('#fl-zona').value;
+    const list = sortList(IDX.act.filter(b => matchQ(b, q) && (!fp || b.proyecto === fp) && (!fe || estadoDe(b) === fe) && (!fz || (fz === 'HotBox' ? IDX.hbByPos.has(b.posicion) : L.pos.get(b.posicion)?.nivel === fz))));
+    const oc = new Map();
+    state.obs.forEach(o => oc.set(o.bombaId, (oc.get(o.bombaId) || 0) + 1));
+    const rows = list.map(b => {
+      const st = estadoDe(b), n = oc.get(b.id) || 0;
+      return `<tr data-id="${esc(b.id)}" tabindex="0">
+        <td class="mono"><span class="pos${IDX.hbByPos.has(b.posicion) ? ' hb' : ''}"${IDX.hbByPos.has(b.posicion) ? ` title="${esc(IDX.hbByPos.get(b.posicion).nombre)}"` : ''}>${b.posicion}</span>${IDX.conflicts.has(b.id) ? ' <span class="pill vencido" title="Conflicto de posición o petaca">!</span>' : ''}</td>
+        <td class="mono nw">${conexion(b)}</td>
+        <td class="brk"><span class="dot" style="background:${projColor(b.proyecto)}"></span>${esc(b.proyecto)}</td>
+        <td class="mono nw">${fmtPot(b)}</td>
+        <td class="nw">${b.tipo === 'tri' ? 'Tri' : 'Mono'}</td>
+        <td class="mono nw">${fmtDate(b.fechaInicio)}</td>
+        <td class="mono nw">${fmtDate(b.fechaFin)}</td>
+        <td class="brk">${esc(b.referencia)}</td>
+        <td class="mono brk">${esc(b.numSerie)}</td>
+        <td class="brk">${esc(b.fabricante || '—')}</td>
+        <td><span class="pill ${st}">${ESTADOS[st]}</span>${st !== 'pendiente' && restante(b) ? `<span class="rest">${restante(b)}</span>` : ''}</td>
+        <td class="nw"><button type="button" class="btn obs-btn" data-obs="${esc(b.id)}" title="Observaciones" aria-label="Observaciones${n ? ` (${n})` : ''}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z"/><path d="M8 9h8M8 12h5"/></svg>${n ? `<span class="n">${n}</span>` : '+'}</button></td></tr>`;
+    }).join('');
+    const empty = !state.loaded ? 'Cargando datos…' : IDX.act.length ? 'Ninguna bomba coincide con los filtros.' : 'Aún no hay bombas en ensayo. Pulsa «Nueva bomba» o una posición libre del plano para registrar la primera.';
+    $('#tbl-act').innerHTML = headHtml(COLS_ACT).replace('</tr></thead>', '<th scope="col"><span class="visually-hidden">Observaciones</span></th></tr></thead>')
+      + `<tbody>${rows || `<tr><td class="td-empty" colspan="${COLS_ACT.length + 1}">${empty}</td></tr>`}</tbody>`;
+    $('#list-count').textContent = state.loaded ? `${list.length} de ${IDX.act.length} bombas` : '';
+  }
+  const COLS_HIST = [
+    ['posicion', 'Pos.'], ['nivel', 'Zona'], ['conexion', 'Petaca'], ['proyecto', 'Proyecto'], ['potencia', 'Potencia'], ['tipo', 'Mono / Tri'],
+    ['fechaInicio', 'Fecha inicio'], ['fechaFin', 'Fecha fin'], ['referencia', 'Referencia'], ['numSerie', 'Nº de serie'],
+    ['fabricante', 'Fabricante motor'], ['fechaRetirada', 'Retirada'], ['notas', 'Notas']
+  ];
+  function renderHistorial() {
+    const q = $('#qh').value.trim().toLowerCase();
+    const list = IDX.hist.filter(b => matchQ(b, q)).sort((a, b) => String(b.fechaRetirada || '').localeCompare(String(a.fechaRetirada || '')));
+    const rows = list.map(b => `<tr data-id="${esc(b.id)}" tabindex="0">
+      <td class="mono">${b.posicion || '—'}</td><td>${L.pos.get(b.posicion)?.nivel || '—'}</td><td class="mono">${conexion(b)}</td>
+      <td><span class="dot" style="background:${projColor(b.proyecto)}"></span>${esc(b.proyecto)}</td>
+      <td class="mono">${fmtPot(b)}</td><td>${tipoLbl(b)}</td>
+      <td class="mono">${fmtDate(b.fechaInicio)}</td><td class="mono">${fmtDate(b.fechaFin)}</td>
+      <td>${esc(b.referencia)}</td><td class="mono">${esc(b.numSerie)}</td><td>${esc(b.fabricante || '—')}</td>
+      <td class="mono">${fmtDate(b.fechaRetirada)}</td>
+      <td class="wrap">${esc(b.notas || '')}</td></tr>`).join('');
+    const empty = IDX.hist.length ? 'Ningún ensayo coincide con la búsqueda.' : 'Los ensayos finalizados aparecerán aquí, con su fecha de retirada.';
+    $('#tbl-hist').innerHTML = `<thead><tr>${COLS_HIST.map(([, t]) => `<th scope="col">${t}</th>`).join('')}</tr></thead><tbody>${rows || `<tr><td class="td-empty" colspan="${COLS_HIST.length}">${empty}</td></tr>`}</tbody>`;
+  }
+
+  function renderBanners() {
+    const out = [];
+    if (state.dbStatus === 'connecting') out.push('<div class="banner">Cargando datos…</div>');
+    if (state.dbStatus === 'error') out.push('<div class="banner bad">No se pudieron cargar los datos desde GitHub. Comprueba la conexión y recarga la página.</div>');
+    if (state.gh?.tokenInvalid) out.push('<div class="banner warn">Tu clave de GitHub ya no es válida o ha caducado. Pulsa «Conectar con GitHub» y pega una nueva.</div>');
+    else if (state.dbStatus === 'ok' && state.gh?.login && !state.canWrite) out.push(`<div class="banner">Estás conectado como @${esc(state.gh.login)}, pero sin permiso de escritura. Pide al responsable que te añada como colaborador del repositorio.</div>`);
+    else if (state.dbStatus === 'ok' && !state.canWrite) out.push('<div class="banner">Modo consulta. Para registrar o modificar bombas, pulsa «Conectar con GitHub».</div>');
+    if (IDX.conflicts.size) out.push(`<div class="banner warn">Hay ${IDX.conflicts.size} bombas con la misma posición o petaca/fase (marcadas con «!»). Revísalas y corrige su ubicación.</div>`);
+    $('#banners').innerHTML = out.join('');
+    $('#banners').hidden = !out.length;
+  }
+
+  function renderAll() {
+    buildIndex();
+    renderBanners();
+    renderKpis();
+    renderPool();
+    const projs = [...new Set(state.bombas.map(b => b.proyecto).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+    const fp = $('#fl-proyecto'), cur = fp.value;
+    fp.innerHTML = '<option value="">Todos los proyectos</option>' + projs.map(p => `<option${p === cur ? ' selected' : ''}>${esc(p)}</option>`).join('');
+    $('#dl-proyectos').innerHTML = projs.map(p => `<option value="${esc(p)}"></option>`).join('');
+    const fabs = [...new Set(state.bombas.map(b => b.fabricante).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+    $('#dl-fabricantes').innerHTML = fabs.map(f => `<option value="${esc(f)}"></option>`).join('');
+    const iprojs = [...new Set(state.obs.map(o => o.proyecto).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'es'));
+    const fi = $('#fl-inc'), curI = fi.value;
+    fi.innerHTML = '<option value="">Todos los proyectos</option>' + iprojs.map(p => `<option${p === curI ? ' selected' : ''}>${esc(p)}</option>`).join('');
+    renderListado();
+    renderHistorial();
+    renderIncidencias();
+    $('#cnt-inc').textContent = state.obs.length || '';
+    $('#cnt-act').textContent = state.loaded ? IDX.act.length : '';
+    $('#cnt-hist').textContent = state.loaded ? IDX.hist.length : '';
+    $('#btn-new').hidden = !state.canWrite;
+    if (!$('#ov-form').hidden) refreshFormHints();
+  }
+
+  function setView(v) {
+    state.view = v;
+    try { localStorage.setItem('pd-view', v); } catch (e) {}
+    $$('.tab').forEach(t => t.setAttribute('aria-selected', String(t.dataset.view === v)));
+    $('#view-plano').hidden = v !== 'plano';
+    $('#view-listado').hidden = v !== 'listado';
+    $('#view-historial').hidden = v !== 'historial';
+    $('#view-incidencias').hidden = v !== 'incidencias';
+  }
+
+  /* ---------- Observaciones e incidencias ---------- */
+  const obsOrden = (a, b) => String(b.fecha || '').localeCompare(String(a.fecha || '')) || String(b.creado || '').localeCompare(String(a.creado || ''));
+  function openObs(id) {
+    const b = state.bombas.find(x => x.id === id);
+    if (!b) return;
+    state.obsBomba = id; state.obsConfirm = null;
+    F('obs-title').textContent = `Observaciones · posición ${b.posicion}`;
+    F('obs-sub').textContent = [b.proyecto, b.referencia, b.numSerie && `Nº ${b.numSerie}`, `Petaca ${conexion(b)}`].filter(Boolean).join(' · ');
+    F('obs-fecha').value = todayStr(); F('obs-texto').value = '';
+    F('obs-hint').textContent = ''; F('obs-hint').className = 'hint';
+    F('obs-form').hidden = !state.canWrite;
+    renderObsList();
+    openOverlay('ov-obs', state.canWrite ? F('obs-texto') : null);
+  }
+  function renderObsList() {
+    if (!state.obsBomba) return;
+    const list = state.obs.filter(o => o.bombaId === state.obsBomba).sort(obsOrden);
+    F('obs-list').innerHTML = list.map(o => {
+      const act = !state.canWrite ? '<span></span>'
+        : state.obsConfirm === o.id ? `<span class="foot-row"><button type="button" class="btn danger solid" data-obsdelyes="${esc(o.id)}">Borrar</button><button type="button" class="btn ghost" data-obsno>No</button></span>`
+        : `<button type="button" class="btn ghost" data-obsdel="${esc(o.id)}">Borrar</button>`;
+      return `<div class="obs-item"><span class="d">${fmtDate(o.fecha)}</span><div class="t">${esc(o.texto)}</div>${act}</div>`;
+    }).join('') || '<p class="ro-note">Todavía no hay observaciones para esta bomba.</p>';
+  }
+  function renderIncidencias() {
+    const q = $('#qi').value.trim().toLowerCase(), fp = $('#fl-inc').value;
+    const list = state.obs.filter(o => (!fp || o.proyecto === fp)
+      && (!q || [o.texto, o.referencia, o.numSerie, o.proyecto, String(o.posicion)].some(v => String(v ?? '').toLowerCase().includes(q))));
+    const groups = new Map();
+    list.forEach(o => { const k = o.proyecto || 'Sin proyecto'; if (!groups.has(k)) groups.set(k, []); groups.get(k).push(o); });
+    const live = new Set(state.bombas.map(b => b.id));
+    $('#inc-list').innerHTML = [...groups.keys()].sort((a, b) => a.localeCompare(b, 'es')).map(k => {
+      const items = groups.get(k).sort(obsOrden);
+      const rows = items.map(o => `<tr${live.has(o.bombaId) ? ` data-bomba="${esc(o.bombaId)}" tabindex="0"` : ' style="cursor:default"'}>
+        <td class="mono">${fmtDate(o.fecha)}</td><td class="mono">${o.posicion || '—'}</td><td class="mono">${esc(o.conexion || '—')}</td>
+        <td>${esc(o.referencia || '—')}</td><td class="mono">${esc(o.numSerie || '—')}</td><td class="wrap">${esc(o.texto)}</td></tr>`).join('');
+      return `<div class="inc-group"><h3><span class="dot" style="background:${projColor(k)}"></span>${esc(k)}<span class="count">${items.length} ${items.length === 1 ? 'observación' : 'observaciones'}</span></h3>
+        <div class="table-wrap"><table><thead><tr><th scope="col">Fecha</th><th scope="col">Pos.</th><th scope="col">Petaca</th><th scope="col">Referencia</th><th scope="col">Nº de serie</th><th scope="col">Observación</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+    }).join('') || `<p class="empty-note">${state.obs.length ? 'Ninguna observación coincide con la búsqueda.' : 'Aún no hay observaciones. Pulsa «Observaciones» en una bomba de la pestaña En ensayo para registrar la primera.'}</p>`;
+    $('#inc-count').textContent = state.obs.length ? `${list.length} de ${state.obs.length} observaciones` : '';
+  }
+
+  /* ---------- Validación ---------- */
+  function validate(d, selfId) {
+    const errors = [], warnings = [], bad = new Set();
+    const others = IDX.act.filter(b => b.id !== selfId);
+    if (!d.proyecto) { errors.push('Indica el proyecto.'); bad.add('f-proyecto'); }
+    if (d.potencia === '' || isNaN(d.potencia) || d.potencia < 0) { errors.push('Indica la potencia de la bomba.'); bad.add('f-potencia'); }
+    if (!Number.isInteger(d.posicion) || d.posicion < 1 || d.posicion > 120) { errors.push('La posición debe ser un número entre 1 y 120.'); bad.add('f-posicion'); }
+    if (!Number.isInteger(d.petaca) || d.petaca < 1 || d.petaca > 60) { errors.push('La petaca debe ser un número entre 1 y 60.'); bad.add('f-petaca'); }
+    if (d.tipo === 'mono' && ![1, 2, 3].includes(d.fase)) { errors.push('Elige la fase de la petaca (.1, .2 o .3).'); }
+    if (!validDate(d.fechaInicio)) { errors.push('Indica la fecha de inicio.'); bad.add('f-inicio'); }
+    if (!validDate(d.fechaFin)) { errors.push('Indica la fecha de fin prevista.'); bad.add('f-fin'); }
+    if (validDate(d.fechaInicio) && validDate(d.fechaFin) && d.fechaFin < d.fechaInicio) { errors.push('La fecha de fin prevista es anterior a la de inicio.'); bad.add('f-fin'); }
+    if (d.estado !== 'finalizada') {
+      const o = others.find(b => b.posicion === d.posicion);
+      if (o) { errors.push(`La posición ${d.posicion} está ocupada por ${quien(o)}.`); bad.add('f-posicion'); }
+      const onPet = others.filter(b => b.petaca === d.petaca);
+      if (Number.isInteger(d.petaca) && onPet.length) {
+        if (d.tipo === 'tri') { errors.push(`La petaca ${d.petaca} ya tiene ${onPet.length === 1 ? 'una bomba conectada' : onPet.length + ' bombas conectadas'} (${onPet.map(conexion).join(', ')}). Una trifásica necesita la petaca completa.`); bad.add('f-petaca'); }
+        else {
+          const t = onPet.find(b => b.tipo === 'tri');
+          if (t) { errors.push(`La petaca ${d.petaca} está ocupada por la trifásica ${quien(t)}.`); bad.add('f-petaca'); }
+          const f = onPet.find(b => b.tipo === 'mono' && b.fase === d.fase);
+          if (f) errors.push(`La fase ${d.petaca}.${d.fase} está ocupada por ${quien(f)}.`);
+        }
+      }
+      const dup = others.find(b => d.numSerie && String(b.numSerie).trim().toLowerCase() === d.numSerie.toLowerCase());
+      if (dup) warnings.push(`Ya hay una bomba en ensayo con el nº de serie ${d.numSerie} (posición ${dup.posicion}).`);
+    }
+    return { errors, warnings, bad };
+  }
+
+  /* ---------- Formulario ---------- */
+  const F = id => document.getElementById(id);
+  function readForm() {
+    const tipo = document.querySelector('input[name="tipo"]:checked')?.value || 'mono';
+    const fase = Number(document.querySelector('input[name="fase"]:checked')?.value) || null;
+    const pot = F('f-potencia').value.trim();
+    const editing = state.editing && state.bombas.find(b => b.id === state.editing);
+    return {
+      proyecto: F('f-proyecto').value.trim(), referencia: F('f-referencia').value.trim(), numSerie: F('f-serie').value.trim(),
+      fabricante: F('f-fabricante').value.trim(),
+      potencia: pot === '' ? '' : Number(pot), unidad: 'HP',
+      tipo, posicion: Number(F('f-posicion').value), petaca: Number(F('f-petaca').value), fase: tipo === 'tri' ? null : fase,
+      fechaInicio: F('f-inicio').value, fechaFin: F('f-fin').value, notas: F('f-notas').value.trim(),
+      estado: editing ? editing.estado : 'activa'
+    };
+  }
+  function setRadio(name, val) { const el = document.querySelector(`input[name="${name}"][value="${val}"]`); if (el) el.checked = true; else $$(`input[name="${name}"]`).forEach(i => i.checked = false); }
+
+  function openForm(b, preset = {}) {
+    state.editing = b ? b.id : null;
+    const v = b || { proyecto: '', referencia: '', numSerie: '', fabricante: '', potencia: '', unidad: 'HP', tipo: 'mono', posicion: '', petaca: '', fase: null, fechaInicio: todayStr(), fechaFin: '', notas: '', ...preset };
+    F('f-proyecto').value = v.proyecto || ''; F('f-referencia').value = v.referencia || ''; F('f-serie').value = v.numSerie || ''; F('f-fabricante').value = v.fabricante || '';
+    F('f-potencia').value = v.potencia ?? '';
+    setRadio('tipo', v.tipo || 'mono'); setRadio('fase', v.fase ?? '');
+    F('f-posicion').value = v.posicion || ''; F('f-petaca').value = v.petaca || '';
+    F('f-inicio').value = v.fechaInicio || ''; F('f-fin').value = v.fechaFin || ''; F('f-notas').value = v.notas || '';
+    state.finAuto = !v.fechaFin;
+    if (state.finAuto && validDate(v.fechaInicio)) F('f-fin').value = addMonths(v.fechaInicio, MESES_ENSAYO);
+    state.petacaAuto = !b && !preset.petaca;
+    const fin = b && !isActive(b);
+    F('f-title').textContent = !b ? 'Nueva bomba' : fin ? 'Ensayo finalizado' : `Bomba en posición ${b.posicion}`;
+    F('f-sub').textContent = !b ? 'Registra la bomba y su conexión' : fin ? `Retirada el ${fmtDate(b.fechaRetirada)}` : `${b.proyecto} · ${ESTADOS[estadoDe(b)]}`;
+    const ro = !state.canWrite;
+    $$('#form input, #form select, #form textarea').forEach(el => el.disabled = ro);
+    F('b-del').hidden = ro || !b; F('b-obs').hidden = !b; F('b-fin').hidden = ro || !b || fin; F('b-reopen').hidden = ro || !fin;
+    F('b-save').hidden = ro; F('b-save').textContent = b ? 'Guardar cambios' : 'Registrar bomba';
+    F('b-cancel').textContent = ro ? 'Cerrar' : 'Cancelar';
+    F('cf-del').hidden = true; F('cf-fin').hidden = true;
+    F('f-msgs').innerHTML = '';
+    $$('#form [aria-invalid]').forEach(el => el.removeAttribute('aria-invalid'));
+    if (!b && preset.posicion && !preset.petaca) autoPetaca();
+    refreshFormHints();
+    openOverlay('ov-form', b ? null : (preset.posicion ? F('f-proyecto') : F('f-proyecto')));
+  }
+
+  function freePhases(petaca, selfId) {
+    const on = IDX.act.filter(b => b.petaca === petaca && b.id !== selfId);
+    if (on.some(b => b.tipo === 'tri')) return [];
+    return [1, 2, 3].filter(f => !on.some(b => b.fase === f));
+  }
+  function autoPetaca() {
+    const p = Number(F('f-posicion').value), info = L.pos.get(p);
+    if (!info) return;
+    F('f-petaca').value = info.petaca;
+    const tipo = document.querySelector('input[name="tipo"]:checked')?.value;
+    if (tipo === 'mono') { const fr = freePhases(info.petaca, state.editing); setRadio('fase', fr[0] ?? ''); }
+  }
+
+  function refreshFormHints() {
+    const d = readForm(), self = state.editing;
+    // posición
+    const hp = F('h-posicion'), info = L.pos.get(d.posicion);
+    if (!F('f-posicion').value) { hp.textContent = ''; hp.className = 'hint'; }
+    else if (!info) { hp.textContent = 'Fuera de rango'; hp.className = 'hint bad'; }
+    else {
+      const o = IDX.act.find(b => b.posicion === d.posicion && b.id !== self);
+      if (o && d.estado !== 'finalizada') { hp.textContent = `Ocupada por ${quien(o)}`; hp.className = 'hint bad'; }
+      else { hp.textContent = `${zona(d.posicion)} · petaca cercana ${info.petaca}`; hp.className = 'hint ok'; }
+    }
+    // petaca y fases
+    F('fase-wrap').hidden = d.tipo === 'tri';
+    const hpe = F('h-petaca');
+    if (!F('f-petaca').value) { hpe.textContent = ''; hpe.className = 'hint'; $$('input[name="fase"]').forEach(i => i.disabled = !state.canWrite); }
+    else if (!L.pet.has(d.petaca)) { hpe.textContent = 'Fuera de rango'; hpe.className = 'hint bad'; }
+    else {
+      const fr = freePhases(d.petaca, self), on = IDX.act.filter(b => b.petaca === d.petaca && b.id !== self);
+      const side = L.pet.get(d.petaca).side;
+      if (!on.length) { hpe.textContent = `Lado ${side} · libre`; hpe.className = 'hint ok'; }
+      else if (!fr.length) { hpe.textContent = `Lado ${side} · completa`; hpe.className = 'hint bad'; }
+      else if (d.tipo === 'tri') { hpe.textContent = `Lado ${side} · tiene monofásicas`; hpe.className = 'hint bad'; }
+      else { hpe.textContent = `Lado ${side} · fases libres: ${fr.map(f => '.' + f).join(' ')}`; hpe.className = 'hint warn'; }
+      $$('input[name="fase"]').forEach(i => { i.disabled = !state.canWrite || (d.estado !== 'finalizada' && !fr.includes(Number(i.value))); });
+    }
+    F('conn-preview').textContent = Number.isInteger(d.petaca) && d.petaca > 0 ? (d.tipo === 'tri' ? `${d.petaca}` : `${d.petaca}.${d.fase ?? '?'}`) : '—';
+    // duración
+    const hd = F('h-dur');
+    if (validDate(d.fechaInicio) && validDate(d.fechaFin) && d.fechaFin >= d.fechaInicio) {
+      const n = diffDays(d.fechaFin, d.fechaInicio);
+      hd.textContent = `${n} días · ${(n * 24).toLocaleString('es-ES')} h`;
+    } else hd.textContent = '—';
+    // nº de serie duplicado
+    const hs = F('h-serie');
+    const dup = d.numSerie && IDX.act.find(b => b.id !== self && String(b.numSerie).trim().toLowerCase() === d.numSerie.toLowerCase());
+    hs.textContent = dup ? `Ya en ensayo en la posición ${dup.posicion}` : ''; hs.className = dup ? 'hint warn' : 'hint';
+  }
+
+  function showMsgs(v) {
+    F('f-msgs').innerHTML = v.errors.map(e => `<div class="msg bad">${esc(e)}</div>`).join('') + v.warnings.map(w => `<div class="msg warn">${esc(w)}</div>`).join('');
+    $$('#form [aria-invalid]').forEach(el => el.removeAttribute('aria-invalid'));
+    v.bad.forEach(id => F(id)?.setAttribute('aria-invalid', 'true'));
+  }
+
+  function writeError(err) {
+    const code = err?.code;
+    if (code === 'forbidden') { state.canWrite = false; renderAll(); return 'Tu usuario de GitHub no tiene permiso para modificar los datos. Pide al responsable que te añada como colaborador.'; }
+    if (code === 'auth') { state.gh.tokenInvalid = true; state.canWrite = false; renderAll(); return 'Tu clave de GitHub no es válida o ha caducado. Vuelve a conectar con GitHub.'; }
+    if (code === 'conflict') return 'Otra persona estaba guardando a la vez. Vuelve a intentarlo.';
+    if (code === 'rate') return 'GitHub ha limitado las peticiones. Espera un minuto y vuelve a intentarlo.';
+    if (code === 'missing') return 'Esta bomba ya no existe; puede que otra persona la haya eliminado.';
+    return 'No se pudo guardar. Comprueba la conexión y vuelve a intentarlo.';
+  }
+  async function guarded(btn, fn, okMsg) {
+    btn.disabled = true;
+    try { await fn(); closeOverlay('ov-form'); toast(okMsg); }
+    catch (err) { F('f-msgs').innerHTML = `<div class="msg bad">${esc(writeError(err))}</div>`; }
+    finally { btn.disabled = false; }
+  }
+
+  F('form').addEventListener('submit', e => {
+    e.preventDefault();
+    if (!state.db || !state.canWrite) return;
+    const d = readForm(), v = validate(d, state.editing);
+    showMsgs(v);
+    if (v.errors.length) return;
+    const now = new Date().toISOString();
+    const { estado, ...fields } = d;
+    const col = state.db.collection('bombas');
+    if (state.editing) {
+      guarded(F('b-save'), () => col.doc(state.editing).update({ ...fields, actualizado: now }), 'Cambios guardados');
+    } else {
+      guarded(F('b-save'), () => col.doc().set({ ...fields, estado: 'activa', fechaRetirada: null, creado: now, actualizado: now }), `Bomba registrada en la posición ${d.posicion}`);
+    }
+  });
+  ['input', 'change'].forEach(ev => F('form').addEventListener(ev, e => {
+    if (e.target.id === 'f-petaca') state.petacaAuto = false;
+    if (e.target.id === 'f-fin') state.finAuto = false;
+    if (e.target.id === 'f-inicio' && state.finAuto && validDate(F('f-inicio').value)) F('f-fin').value = addMonths(F('f-inicio').value, MESES_ENSAYO);
+    if (e.target.id === 'f-posicion' && state.petacaAuto && !state.editing) autoPetaca();
+    if (e.target.name === 'tipo' && e.target.value === 'mono' && F('f-petaca').value && !document.querySelector('input[name="fase"]:checked')) {
+      const fr = freePhases(Number(F('f-petaca').value), state.editing); setRadio('fase', fr[0] ?? '');
+    }
+    if (e.target.id === 'f-petaca' && document.querySelector('input[name="tipo"]:checked')?.value === 'mono') {
+      const fr = freePhases(Number(F('f-petaca').value), state.editing);
+      const cur = Number(document.querySelector('input[name="fase"]:checked')?.value);
+      if (!fr.includes(cur)) setRadio('fase', fr[0] ?? '');
+    }
+    refreshFormHints();
+  }));
+
+  F('b-del').onclick = () => { F('cf-fin').hidden = true; F('cf-del').hidden = false; F('cf-del-no').focus(); };
+  F('cf-del-no').onclick = () => { F('cf-del').hidden = true; };
+  F('cf-del-yes').onclick = () => guarded(F('cf-del-yes'), () => state.db.collection('bombas').doc(state.editing).delete(), 'Bomba eliminada del registro');
+  F('b-fin').onclick = () => { F('cf-del').hidden = true; F('f-retirada').value = todayStr(); F('cf-fin').hidden = false; F('f-retirada').focus(); };
+  F('cf-fin-no').onclick = () => { F('cf-fin').hidden = true; };
+  F('cf-fin-yes').onclick = () => {
+    const fr = F('f-retirada').value;
+    if (!validDate(fr)) { F('f-msgs').innerHTML = '<div class="msg bad">Indica la fecha de retirada.</div>'; return; }
+    const b = state.bombas.find(x => x.id === state.editing);
+    guarded(F('cf-fin-yes'), () => state.db.collection('bombas').doc(state.editing).update({ estado: 'finalizada', fechaRetirada: fr, actualizado: new Date().toISOString() }), `Ensayo finalizado. Posición ${b?.posicion} libre`);
+  };
+  F('b-reopen').onclick = () => {
+    const d = { ...readForm(), estado: 'activa' }, v = validate(d, state.editing);
+    showMsgs(v);
+    if (v.errors.length) return;
+    const { estado, ...fields } = d;
+    guarded(F('b-reopen'), () => state.db.collection('bombas').doc(state.editing).update({ ...fields, estado: 'activa', fechaRetirada: null, actualizado: new Date().toISOString() }), 'Ensayo reactivado');
+  };
+
+  /* ---------- Panel de petaca ---------- */
+  function openPetaca(n) {
+    const p = IDX.byPet.get(n), side = L.pet.get(n)?.side;
+    F('pet-title').textContent = `Petaca ${n}`;
+    const pos = [...L.pos].filter(([, i]) => i.petaca === n).map(([k]) => k).sort((a, b) => a - b);
+    F('pet-sub').textContent = `Lado ${side} · posiciones cercanas ${pos.join(' y ')}`;
+    const who = b => `<div class="who">${esc(b.referencia || '—')} · <span class="mono">${esc(b.numSerie || '—')}</span><small>${esc(b.proyecto)} · posición ${b.posicion} · ${fmtPot(b)}</small></div>`;
+    const btn = (label, attrs) => state.canWrite ? `<button type="button" class="btn" ${attrs}>${label}</button>` : '<span></span>';
+    let h = '';
+    if (p?.tri) {
+      h = `<div class="pet-row"><span class="ph">${n}</span>${who(p.tri)}<button type="button" class="btn" data-open="${esc(p.tri.id)}">Ver</button></div>`;
+    } else {
+      const any = p && p.f.some(Boolean);
+      h = [1, 2, 3].map(f => {
+        const b = p?.f[f];
+        return b ? `<div class="pet-row"><span class="ph">${n}.${f}</span>${who(b)}<button type="button" class="btn" data-open="${esc(b.id)}">Ver</button></div>`
+          : `<div class="pet-row free"><span class="ph">${n}.${f}</span><div class="who">Libre</div>${btn('Conectar', `data-connect="mono" data-petaca="${n}" data-fase="${f}"`)}</div>`;
+      }).join('');
+      if (!any) h += `<div class="pet-row free"><span class="ph">${n}</span><div class="who">Petaca completa libre para una trifásica</div>${btn('Conectar trifásica', `data-connect="tri" data-petaca="${n}"`)}</div>`;
+    }
+    F('pet-list').innerHTML = h;
+    openOverlay('ov-pet');
+  }
+  F('pet-list').addEventListener('click', e => {
+    const o = e.target.closest('[data-open]');
+    if (o) { closeOverlay('ov-pet'); openForm(state.bombas.find(b => b.id === o.dataset.open)); return; }
+    const c = e.target.closest('[data-connect]');
+    if (c) {
+      closeOverlay('ov-pet');
+      const n = Number(c.dataset.petaca);
+      const freePos = [...L.pos].filter(([k, i]) => i.petaca === n && !IDX.byPos.has(k)).map(([k]) => k).sort((a, b) => a - b)[0];
+      openForm(null, { petaca: n, tipo: c.dataset.connect, fase: c.dataset.connect === 'mono' ? Number(c.dataset.fase) : null, posicion: freePos || '' });
+    }
+  });
+
+  /* ---------- Ajustes ---------- */
+  F('btn-cfg').onclick = () => {
+    F('cfg-aviso').value = state.cfg.avisoDias;
+    $$('#cfg-form input').forEach(i => i.disabled = !state.canWrite);
+    F('cfg-save').hidden = !state.canWrite;
+    F('hb-add').hidden = !state.canWrite;
+    renderHbList();
+    openOverlay('ov-cfg');
+  };
+  function renderHbList() {
+    const list = state.hotboxes.slice().sort((a, b) => Math.min(a.desde, a.hasta) - Math.min(b.desde, b.hasta));
+    F('hb-list').innerHTML = list.map(h => {
+      const lo = Math.min(h.desde, h.hasta), hi = Math.max(h.desde, h.hasta), i = L.pos.get(lo);
+      return `<div class="hb-row"><b>${esc(h.nombre)}</b><span class="mono">${lo}–${hi}</span><span class="ro-note">${i ? `Lado ${i.side} · ${i.nivel}` : ''}</span><span class="spacer"></span>${state.canWrite ? `<button type="button" class="btn ghost" data-hbdel="${esc(h.id)}">Quitar</button>` : ''}</div>`;
+    }).join('') || '<span class="ro-note">No hay HotBox definidos.</span>';
+  }
+  async function addHotbox() {
+    const hint = F('hb-hint');
+    const nombre = F('hb-nombre').value.trim(), a = Number(F('hb-desde').value), b = Number(F('hb-hasta').value || F('hb-desde').value);
+    const lo = Math.min(a, b), hi = Math.max(a, b), il = L.pos.get(lo), ih = L.pos.get(hi);
+    const fail = m => { hint.textContent = m; hint.className = 'hint bad'; };
+    if (!nombre) return fail('Ponle un nombre al HotBox.');
+    if (!il || !ih) return fail('Las posiciones deben estar entre 1 y 120.');
+    if (il.side !== ih.side || il.nivel !== ih.nivel) return fail('Las posiciones deben estar en la misma fila (mismo lado y nivel).');
+    for (let p = lo; p <= hi; p++) { const o = IDX.hbByPos.get(p); if (o) return fail(`La posición ${p} ya está en ${o.nombre}.`); }
+    F('hb-btn').disabled = true;
+    try {
+      await state.db.collection('hotboxes').doc().set({ nombre, desde: lo, hasta: hi });
+      F('hb-nombre').value = ''; F('hb-desde').value = ''; F('hb-hasta').value = '';
+      hint.textContent = `${nombre} añadido (posiciones ${lo}–${hi}).`; hint.className = 'hint ok';
+    } catch (err) { fail(writeError(err)); }
+    finally { F('hb-btn').disabled = false; }
+  }
+  F('hb-btn').onclick = addHotbox;
+  ['hb-nombre', 'hb-desde', 'hb-hasta'].forEach(id => F(id).addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); addHotbox(); } }));
+  F('hb-list').addEventListener('click', async e => {
+    const d = e.target.closest('[data-hbdel]'); if (!d) return;
+    d.disabled = true;
+    try { await state.db.collection('hotboxes').doc(d.dataset.hbdel).delete(); }
+    catch (err) { F('hb-hint').textContent = writeError(err); F('hb-hint').className = 'hint bad'; d.disabled = false; }
+  });
+  F('cfg-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    if (!state.db || !state.canWrite) return;
+    const cfg = { avisoDias: Math.max(0, Math.min(90, parseInt(F('cfg-aviso').value, 10) || 0)) };
+    F('cfg-save').disabled = true;
+    try { await state.db.doc('config/piscina').set(cfg); closeOverlay('ov-cfg'); toast('Ajustes guardados'); }
+    catch (err) { toast(writeError(err)); }
+    finally { F('cfg-save').disabled = false; }
+  });
+
+  /* ---------- Exportar ---------- */
+  const EXP_COLS = ['Pos.', 'Petaca', 'Proyecto', 'Potencia (HP)', 'Mono / Tri', 'Fecha inicio', 'Fecha fin', 'Referencia', 'Nº de serie', 'Fabricante motor', 'Zona', 'Estado', 'Fecha retirada', 'Notas'];
+  function exportRows() {
+    const list = [...sortList(IDX.act), ...IDX.hist.slice().sort((a, b) => String(b.fechaRetirada || '').localeCompare(String(a.fechaRetirada || '')))];
+    return list.map(b => [b.posicion || '', b.petaca ? conexion(b).replace('.', ',') : '', b.proyecto,
+      b.potencia === '' ? '' : String(b.potencia).replace('.', ','), tipoLbl(b), fmtDate(b.fechaInicio), fmtDate(b.fechaFin),
+      b.referencia, b.numSerie, b.fabricante || '', L.pos.get(b.posicion)?.nivel || '', ESTADOS[estadoDe(b)],
+      b.fechaRetirada ? fmtDate(b.fechaRetirada) : '', b.notas || '']);
+  }
+  F('btn-copy').onclick = async () => {
+    const clean = v => String(v ?? '').replace(/[\t\r\n]+/g, ' ');
+    const tsv = [EXP_COLS, ...exportRows()].map(r => r.map(clean).join('\t')).join('\n');
+    try { await navigator.clipboard.writeText(tsv); toast(`Copiadas ${IDX.act.length + IDX.hist.length} filas. Pégalas en Excel`); }
+    catch (e) { toast('El navegador no permite copiar aquí. Usa «Exportar CSV».'); }
+  };
+  F('btn-csv').onclick = async () => {
+    const q = v => { const s = String(v ?? ''); return /[;"\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+    const csv = '﻿' + [EXP_COLS, ...exportRows()].map(r => r.map(q).join(';')).join('\r\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    a.download = `piscina-durabilidad-${todayStr()}.csv`;
+    document.body.appendChild(a); a.click();
+    setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1000);
+    toast('CSV descargado');
+  };
+
+  /* ---------- Overlays y toast ---------- */
+  let lastFocus = null;
+  function openOverlay(id, focusEl) {
+    lastFocus = document.activeElement;
+    F(id).hidden = false;
+    (focusEl || F(id).querySelector('.x'))?.focus();
+  }
+  function closeOverlay(id) { F(id).hidden = true; lastFocus?.focus?.(); }
+  $$('.overlay').forEach(ov => {
+    ov.addEventListener('click', e => { if (e.target === ov || e.target.closest('[data-close]')) closeOverlay(ov.id); });
+  });
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { const open = $$('.overlay').find(o => !o.hidden); if (open) closeOverlay(open.id); }
+  });
+  let toastT;
+  function toast(msg) { const t = F('toast'); t.textContent = msg; t.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => t.hidden = true, 3200); }
+
+  /* ---------- Eventos de la página ---------- */
+  $$('.tab').forEach(t => t.addEventListener('click', () => setView(t.dataset.view)));
+  $$('.seg [data-color]').forEach(b => b.addEventListener('click', () => {
+    state.colorBy = b.dataset.color; try { localStorage.setItem('pd-color', state.colorBy); } catch (e) {}
+    renderPool();
+  }));
+  F('btn-new').onclick = () => openForm(null);
+  F('kpis').addEventListener('click', e => {
+    const k = e.target.closest('[data-goto]'); if (!k) return;
+    F('fl-estado').value = k.dataset.goto; F('q').value = ''; F('fl-proyecto').value = ''; F('fl-zona').value = '';
+    setView('listado'); renderListado();
+  });
+  F('pool').addEventListener('click', e => {
+    const s = e.target.closest('.slot');
+    if (s) {
+      if (s.dataset.id) openForm(state.bombas.find(b => b.id === s.dataset.id));
+      else if (state.canWrite) openForm(null, { posicion: Number(s.dataset.pos) });
+      return;
+    }
+    const p = e.target.closest('.pet');
+    if (p) openPetaca(Number(p.dataset.petaca));
+  });
+  function highlight(target, on) {
+    $$('#pool .linked').forEach(el => el.classList.remove('linked'));
+    $$('#pool .dim').forEach(el => el.classList.remove('dim'));
+    if (!on || !target) return;
+    const s = target.closest('.slot.occ');
+    if (s) { $(`#pool .pet[data-petaca="${s.dataset.pet}"]`)?.classList.add('linked'); return; }
+    const p = target.closest('.pet');
+    if (p) {
+      const linked = $$(`#pool .slot.occ[data-pet="${p.dataset.petaca}"]`);
+      if (!linked.length) return;
+      $$('#pool .slot').forEach(el => el.classList.toggle('dim', !linked.includes(el)));
+      linked.forEach(el => el.classList.add('linked'));
+    }
+  }
+  F('pool').addEventListener('mouseover', e => highlight(e.target, true));
+  F('pool').addEventListener('mouseleave', () => highlight(null, false));
+  F('pool').addEventListener('focusin', e => highlight(e.target, true));
+  F('pool').addEventListener('focusout', () => highlight(null, false));
+
+  ['q', 'fl-proyecto', 'fl-estado', 'fl-zona'].forEach(id => F(id).addEventListener('input', renderListado));
+  ['qi', 'fl-inc'].forEach(id => F(id).addEventListener('input', renderIncidencias));
+  F('inc-list').addEventListener('click', e => { const r = e.target.closest('tr[data-bomba]'); if (r) openObs(r.dataset.bomba); });
+  F('inc-list').addEventListener('keydown', e => { const r = e.target.closest('tr[data-bomba]'); if (r && e.key === 'Enter') openObs(r.dataset.bomba); });
+  F('b-obs').onclick = () => { const id = state.editing; closeOverlay('ov-form'); openObs(id); };
+  F('obs-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    if (!state.db || !state.canWrite) return;
+    const b = state.bombas.find(x => x.id === state.obsBomba);
+    if (!b) return;
+    const fecha = F('obs-fecha').value, texto = F('obs-texto').value.trim(), hint = F('obs-hint');
+    if (!validDate(fecha)) { hint.textContent = 'Indica la fecha de la observación.'; hint.className = 'hint bad'; return; }
+    if (!texto) { hint.textContent = 'Escribe la observación.'; hint.className = 'hint bad'; F('obs-texto').focus(); return; }
+    F('obs-save').disabled = true;
+    try {
+      await state.db.collection('observaciones').doc().set({
+        bombaId: b.id, fecha, texto, proyecto: b.proyecto, posicion: b.posicion, conexion: conexion(b),
+        referencia: b.referencia || '', numSerie: b.numSerie || '', creado: new Date().toISOString()
+      });
+      F('obs-texto').value = '';
+      hint.textContent = `Observación registrada con fecha ${fmtDate(fecha)}.`; hint.className = 'hint ok';
+    } catch (err) { hint.textContent = writeError(err); hint.className = 'hint bad'; }
+    finally { F('obs-save').disabled = false; }
+  });
+  F('obs-list').addEventListener('click', async e => {
+    const del = e.target.closest('[data-obsdel]');
+    if (del) { state.obsConfirm = del.dataset.obsdel; renderObsList(); return; }
+    if (e.target.closest('[data-obsno]')) { state.obsConfirm = null; renderObsList(); return; }
+    const yes = e.target.closest('[data-obsdelyes]');
+    if (!yes) return;
+    yes.disabled = true;
+    try { await state.db.collection('observaciones').doc(yes.dataset.obsdelyes).delete(); state.obsConfirm = null; }
+    catch (err) { F('obs-hint').textContent = writeError(err); F('obs-hint').className = 'hint bad'; yes.disabled = false; }
+  });
+  F('qh').addEventListener('input', renderHistorial);
+  [F('tbl-act')].forEach(t => t.addEventListener('click', e => {
+    const s = e.target.closest('[data-sort]');
+    if (s) { const k = s.dataset.sort; state.sort = { key: k, dir: state.sort.key === k ? -state.sort.dir : 1 }; renderListado(); return; }
+  }));
+  ['tbl-act', 'tbl-hist'].forEach(id => {
+    const t = F(id);
+    const open = e => { const r = e.target.closest('tr[data-id]'); if (r) openForm(state.bombas.find(b => b.id === r.dataset.id)); };
+    t.addEventListener('click', e => {
+      const ob = e.target.closest('[data-obs]');
+      if (ob) { openObs(ob.dataset.obs); return; }
+      if (!e.target.closest('[data-sort]')) open(e);
+    });
+    t.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.target.closest('button')) open(e); });
+  });
+
+  setView(state.view);
+  renderAll();
+
+  /* ---------- Conexión con los datos ---------- */
+  const normalize = (id, d) => ({
+    id, ...d,
+    posicion: Number(d.posicion), petaca: Number(d.petaca), fase: d.fase == null || d.fase === '' ? null : Number(d.fase),
+    tipo: d.tipo === 'tri' ? 'tri' : 'mono', fabricante: String(d.fabricante ?? ''), proyecto: String(d.proyecto ?? ''), referencia: String(d.referencia ?? ''), numSerie: String(d.numSerie ?? '')
+  });
+  /* ---------- Datos en GitHub ---------- */
+  // Todo vive en seguimiento-piscina-durabilidad/data/piscina.json del repositorio. Cualquiera puede consultarlo; para guardar
+  // hace falta la clave (token) de un colaborador con permiso de escritura. Cada cambio es un commit.
+  const REPO = { owner: 'daniq-93', repo: 'polinya-lab', branch: 'main', path: 'seguimiento-piscina-durabilidad/data/piscina.json' };
+  const API = `https://api.github.com/repos/${REPO.owner}/${REPO.repo}`;
+  const RAW = `https://raw.githubusercontent.com/${REPO.owner}/${REPO.repo}/${REPO.branch}/${REPO.path}`;
+  const TOKEN_KEY = 'pd-gh-token';
+  let token = '';
+  try { token = localStorage.getItem(TOKEN_KEY) || ''; } catch (e) {}
+  const remote = { data: null, sha: null, etag: null };
+  state.gh = { login: null, push: false, tokenInvalid: false };
+
+  const b64encode = s => {
+    const bytes = new TextEncoder().encode(s);
+    let bin = '';
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode.apply(null, bytes.subarray(i, i + 0x8000));
+    return btoa(bin);
+  };
+  const b64decode = b => new TextDecoder().decode(Uint8Array.from(atob(b.replace(/\s/g, '')), c => c.charCodeAt(0)));
+  const ghFetch = (url, opts = {}) => fetch(url, {
+    cache: 'no-store', ...opts,
+    headers: { Accept: 'application/vnd.github+json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(opts.headers || {}) }
+  });
+  const httpError = res => {
+    const limited = res.status === 429 || (res.status === 403 && res.headers.get('x-ratelimit-remaining') === '0');
+    return { code: res.status === 401 ? 'auth' : limited ? 'rate' : (res.status === 403 || res.status === 404) ? 'forbidden' : 'unavailable', status: res.status };
+  };
+
+  async function fetchApi(useEtag) {
+    const res = await ghFetch(`${API}/contents/${REPO.path}?ref=${REPO.branch}`, useEtag && remote.etag ? { headers: { 'If-None-Match': remote.etag } } : {});
+    if (res.status === 304) return null;
+    if (!res.ok) throw httpError(res);
+    const j = await res.json();
+    let text;
+    if (j.content) text = b64decode(j.content);
+    else {
+      const blob = await ghFetch(`${API}/git/blobs/${j.sha}`);
+      if (!blob.ok) throw httpError(blob);
+      text = b64decode((await blob.json()).content);
+    }
+    return { data: JSON.parse(text), sha: j.sha, etag: res.headers.get('etag') };
+  }
+  async function fetchRaw() {
+    const res = await fetch(`${RAW}?t=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) throw httpError(res);
+    return { data: await res.json(), sha: null, etag: null };
+  }
+
+  function applyData(data) {
+    const ent = o => Object.entries(o || {});
+    state.bombas = ent(data.bombas).map(([id, d]) => normalize(id, d));
+    state.hotboxes = ent(data.hotboxes)
+      .map(([id, x]) => ({ id, nombre: String(x.nombre ?? ''), desde: Number(x.desde), hasta: Number(x.hasta) }))
+      .filter(h => Number.isInteger(h.desde) && Number.isInteger(h.hasta));
+    state.obs = ent(data.observaciones).map(([id, x]) => ({
+      ...x, id, bombaId: String(x.bombaId ?? ''), fecha: String(x.fecha ?? ''), texto: String(x.texto ?? ''),
+      proyecto: String(x.proyecto ?? ''), posicion: Number(x.posicion) || 0
+    }));
+    state.cfg = { ...DEFAULT_CFG, ...(data.config?.piscina || {}) };
+    state.loaded = true; state.dbStatus = 'ok';
+    renderAll();
+    if (!F('ov-obs').hidden) renderObsList();
+    if (!F('ov-cfg').hidden) renderHbList();
+  }
+
+  async function refresh() {
+    try {
+      const r = token && !state.gh.tokenInvalid ? await fetchApi(true) : await fetchRaw();
+      if (r) { Object.assign(remote, r); applyData(r.data); }
+    } catch (err) {
+      if (err.code === 'auth') { state.gh = { login: null, push: false, tokenInvalid: true }; state.canWrite = false; return refresh(); }
+      if (!state.loaded) { state.dbStatus = 'error'; renderAll(); }
+    }
+  }
+
+  // Lee la última versión, aplica el cambio y la guarda. Si otra persona guardó a la vez, reintenta.
+  async function commit(mutate, message) {
+    if (!token || !state.gh.push) throw { code: 'forbidden' };
+    for (let i = 0; i < 4; i++) {
+      const cur = await fetchApi(false);
+      const next = JSON.parse(JSON.stringify(cur.data));
+      mutate(next);
+      const res = await ghFetch(`${API}/contents/${REPO.path}`, {
+        method: 'PUT', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message, branch: REPO.branch, sha: cur.sha, content: b64encode(JSON.stringify(next, null, 1) + '\n') })
+      });
+      if (res.ok) {
+        const j = await res.json();
+        Object.assign(remote, { data: next, sha: j.content.sha, etag: null });
+        applyData(next);
+        return;
+      }
+      if (res.status !== 409 && res.status !== 422) throw httpError(res);
+      await new Promise(r => setTimeout(r, 500 + Math.random() * 800));
+    }
+    throw { code: 'conflict' };
+  }
+
+  function mensaje(op, col, id, obj = {}) {
+    const prev = remote.data?.[col]?.[id] || {}, d = { ...prev, ...obj };
+    if (col === 'bombas') {
+      const what = `pos. ${d.posicion} (${[d.proyecto, d.referencia].filter(Boolean).join(' · ')})`;
+      if (op === 'delete') return `Elimina bomba ${what}`;
+      if (op === 'set') return `Alta bomba ${what}`;
+      if (obj.estado === 'finalizada') return `Finaliza ensayo ${what}`;
+      if (obj.estado === 'activa' && prev.estado === 'finalizada') return `Reactiva ensayo ${what}`;
+      return `Actualiza bomba ${what}`;
+    }
+    if (col === 'observaciones') return op === 'delete' ? `Borra observación pos. ${d.posicion}` : `Observación pos. ${d.posicion}: ${String(d.texto || '').slice(0, 60)}`;
+    if (col === 'hotboxes') return op === 'delete' ? `Quita ${d.nombre}` : `Añade ${d.nombre} (${d.desde}–${d.hasta})`;
+    return 'Actualiza ajustes';
+  }
+  const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  const docRef = (col, id) => ({
+    set: obj => commit(d => { (d[col] ||= {})[id] = obj; }, mensaje('set', col, id, obj)),
+    update: obj => commit(d => {
+      if (!d[col]?.[id]) throw { code: 'missing' };
+      d[col][id] = { ...d[col][id], ...obj };
+    }, mensaje('update', col, id, obj)),
+    delete: () => commit(d => { if (d[col]) delete d[col][id]; }, mensaje('delete', col, id))
+  });
+  state.db = {
+    collection: col => ({ doc: id => docRef(col, id || newId()) }),
+    doc: path => { const [col, id] = path.split('/'); return docRef(col, id); }
+  };
+
+  /* ---------- Conexión con GitHub ---------- */
+  async function connect(t) {
+    const prev = token;
+    token = t;
+    try {
+      const [u, r] = await Promise.all([ghFetch('https://api.github.com/user'), ghFetch(API)]);
+      if (!u.ok) throw httpError(u);
+      const user = await u.json(), repo = r.ok ? await r.json() : {};
+      state.gh = { login: user.login, push: !!repo.permissions?.push, tokenInvalid: false };
+      state.canWrite = state.gh.push;
+      remote.etag = null;
+      return true;
+    } catch (err) { token = prev; throw err; }
+  }
+  function renderGh() {
+    const on = !!state.gh.login;
+    F('btn-gh-label').textContent = on ? `@${state.gh.login}` : 'Conectar con GitHub';
+    F('gh-on').hidden = !on; F('gh-off').hidden = on; F('gh-save').hidden = on;
+    if (on) {
+      F('gh-login').textContent = `@${state.gh.login}`;
+      F('gh-perm').textContent = state.gh.push
+        ? 'Puedes registrar y modificar bombas. Cada cambio queda guardado en el historial del repositorio con tu usuario.'
+        : 'Tu usuario no tiene permiso de escritura en el repositorio. Pide al responsable que te añada como colaborador.';
+    }
+  }
+  F('btn-gh').onclick = () => { renderGh(); F('gh-token').value = ''; F('gh-hint').textContent = ''; openOverlay('ov-gh', state.gh.login ? null : F('gh-token')); };
+  F('gh-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const t = F('gh-token').value.trim(), hint = F('gh-hint');
+    if (!t) { hint.textContent = 'Pega tu clave de GitHub.'; hint.className = 'hint bad'; return; }
+    F('gh-save').disabled = true; hint.textContent = 'Comprobando…'; hint.className = 'hint';
+    try {
+      await connect(t);
+      try { localStorage.setItem(TOKEN_KEY, t); } catch (err) {}
+      renderGh(); renderAll(); refresh();
+      hint.textContent = ''; toast(`Conectado como @${state.gh.login}`);
+      if (state.gh.push) closeOverlay('ov-gh');
+    } catch (err) {
+      hint.textContent = err.code === 'auth' ? 'GitHub no reconoce esa clave. Revisa que la has copiado entera y que no ha caducado.'
+        : err.code === 'rate' ? 'GitHub ha limitado las peticiones. Espera un minuto y vuelve a intentarlo.'
+        : 'No se pudo conectar con GitHub. Comprueba la conexión.';
+      hint.className = 'hint bad';
+    } finally { F('gh-save').disabled = false; }
+  });
+  F('gh-out').onclick = () => {
+    token = ''; try { localStorage.removeItem(TOKEN_KEY); } catch (e) {}
+    state.gh = { login: null, push: false, tokenInvalid: false }; state.canWrite = false;
+    renderGh(); renderAll(); closeOverlay('ov-gh'); toast('Desconectado de GitHub');
+  };
+
+  (async () => {
+    if (token) {
+      try { await connect(token); }
+      catch (err) { if (err.code === 'auth') state.gh.tokenInvalid = true; }
+    }
+    renderGh();
+    await refresh();
+    setInterval(() => { if (!document.hidden) refresh(); }, token ? 30000 : 60000);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
+  })();
+})();
+</script>
+</body>
+</html>
