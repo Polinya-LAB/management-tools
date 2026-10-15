@@ -70,6 +70,8 @@ button, input, select, textarea { font: inherit; color: inherit; }
 .top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 20px; }
 .brand { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .eyebrow { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+.back { text-decoration: none; align-self: flex-start; padding: 2px 0; border-bottom: 1px solid transparent; }
+.back:hover, .back:focus-visible { color: var(--accent); border-bottom-color: currentColor; }
 .brand h1 { font-size: clamp(26px, 4vw, 36px); font-weight: 700; letter-spacing: -.01em; line-height: 1.05; }
 .actions { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .btn {
@@ -323,7 +325,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
 <div class="wrap">
   <header class="top">
     <div class="brand">
-      <span class="eyebrow">Laboratorio · Ensayos de durabilidad</span>
+      <a class="eyebrow back" href="../" title="Volver a la portada del laboratorio">← Laboratorio Polinyà</a>
       <h1>Piscina de durabilidad</h1>
     </div>
     <div class="actions">
