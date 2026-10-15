@@ -888,5 +888,116 @@
    "unidad": "HP"
   }
  },
- "observaciones": {}
+ "observaciones": {
+  "m3pogxqfdr9e50nfeox6": {
+   "bombaId": "xls-037",
+   "conexion": "3.1",
+   "creado": "2026-10-15T14:45:04.229Z",
+   "fecha": "2026-09-25",
+   "numSerie": "1028826060005",
+   "posicion": 61,
+   "proyecto": "25046 SSP TO VSP CONVERSION",
+   "referencia": "78490-0475E VSC100-1.0 V1.1.2",
+   "texto": "25/9/2026 se quitan de hotbox 30/09/2026 se instalan en la playa."
+  },
+  "kfx3njlf1kxdvjtyijg4": {
+   "bombaId": "xls-046",
+   "conexion": "10.1",
+   "creado": "2026-10-15T14:47:12.505Z",
+   "fecha": "2026-09-25",
+   "numSerie": "1528826060012",
+   "posicion": 70,
+   "proyecto": "25046 SSP TO VSP CONVERSION",
+   "referencia": "78491-0475E VSC150-1.0 V1.1.2",
+   "texto": "25/9/2026 se quitan de hotbox 30/09/2026 se instalan en la playa."
+  },
+  "qc23n30t0yeycznuaat5": {
+   "bombaId": "xls-038",
+   "conexion": "3.2",
+   "creado": "2026-10-15T14:47:28.954Z",
+   "fecha": "2026-09-25",
+   "numSerie": "1028826060015",
+   "posicion": 62,
+   "proyecto": "25046 SSP TO VSP CONVERSION",
+   "referencia": "78490-0475E VSC100-1.0 V1.1.2",
+   "texto": "25/9/2026 se quitan de hotbox 30/09/2026 se instalan en la playa."
+  },
+  "jzloc04852g4bnooeh3n": {
+   "bombaId": "xls-039",
+   "conexion": "3.3",
+   "creado": "2026-10-15T14:47:36.839Z",
+   "fecha": "2026-09-25",
+   "numSerie": "1028826060014",
+   "posicion": 63,
+   "proyecto": "25046 SSP TO VSP CONVERSION",
+   "referencia": "78490-0475E VSC100-1.0 V1.1.2",
+   "texto": "25/9/2026 se quitan de hotbox 30/09/2026 se instalan en la playa."
+  },
+  "hqttovyhsu0eukvu6ilb": {
+   "bombaId": "xls-040",
+   "conexion": "7.1",
+   "creado": "2026-10-15T14:48:07.570Z",
+   "fecha": "2026-09-25",
+   "numSerie": "1028826060001",
+   "posicion": 64,
+   "proyecto": "25046 SSP TO VSP CONVERSION",
+   "referencia": "78490-0475E VSC100-1.0 V1.1.2",
+   "texto": "25/9/2026 se quitan de hotbox 30/09/2026 se instalan en la playa."
+  },
+  "7y4a9xl2xxpg0dj871rj": {
+   "bombaId": "xls-041",
+   "conexion": "7.2",
+   "creado": "2026-10-15T14:48:21.441Z",
+   "fecha": "2026-09-25",
+   "numSerie": "1028826060009",
+   "posicion": 65,
+   "proyecto": "25046 SSP TO VSP CONVERSION",
+   "referencia": "78490-0475E VSC100-1.0 V1.1.2",
+   "texto": "25/9/2026 se quitan de hotbox 30/09/2026 se instalan en la playa."
+  },
+  "3ycfgm47vla5fq4adfv3": {
+   "bombaId": "xls-042",
+   "conexion": "7.3",
+   "creado": "2026-10-15T14:48:39.827Z",
+   "fecha": "2026-09-25",
+   "numSerie": "1528826060008",
+   "posicion": 66,
+   "proyecto": "25046 SSP TO VSP CONVERSION",
+   "referencia": "78491-0475E VSC150-1.0 V1.1.2",
+   "texto": "25/9/2026 se quitan de hotbox 30/09/2026 se instalan en la playa."
+  },
+  "pfg9dunmn9i31rq9q7sv": {
+   "bombaId": "xls-043",
+   "conexion": "9.1",
+   "creado": "2026-10-15T14:49:07.323Z",
+   "fecha": "2026-09-25",
+   "numSerie": "1528826060004",
+   "posicion": 67,
+   "proyecto": "25046 SSP TO VSP CONVERSION",
+   "referencia": "78491-0475E VSC150-1.0 V1.1.2",
+   "texto": "25/9/2026 se quitan de hotbox 30/09/2026 se instalan en la playa."
+  },
+  "700nf0dhbhug9b4jvxe2": {
+   "bombaId": "xls-044",
+   "conexion": "9.2",
+   "creado": "2026-10-15T14:49:26.237Z",
+   "fecha": "2026-09-25",
+   "numSerie": "1528826060009",
+   "posicion": 68,
+   "proyecto": "25046 SSP TO VSP CONVERSION",
+   "referencia": "78491-0475E VSC150-1.0 V1.1.2",
+   "texto": "25/9/2026 se quitan de hotbox 30/09/2026 se instalan en la playa."
+  },
+  "vz7t2vnhelxi2i2vxfju": {
+   "bombaId": "xls-045",
+   "conexion": "9.3",
+   "creado": "2026-10-15T14:49:35.568Z",
+   "fecha": "2026-09-25",
+   "numSerie": "1528826060001",
+   "posicion": 69,
+   "proyecto": "25046 SSP TO VSP CONVERSION",
+   "referencia": "78491-0475E VSC150-1.0 V1.1.2",
+   "texto": "25/9/2026 se quitan de hotbox 30/09/2026 se instalan en la playa."
+  }
+ }
 }
