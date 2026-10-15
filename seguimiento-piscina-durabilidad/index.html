@@ -116,6 +116,43 @@ button.kpi:hover { border-color: var(--line-strong); }
   color: var(--muted); border-bottom: 3px solid transparent; margin-bottom: -1px; white-space: nowrap;
 }
 .tab[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.pot { display: flex; flex-direction: column; gap: 16px; }
+.pot-card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 16px 18px; display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.pot-card h3 { font-size: 20px; font-weight: 600; }
+.pot-head { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px 16px; }
+.ph-list { display: flex; flex-direction: column; gap: 10px; }
+.ph-row { display: grid; grid-template-columns: 96px minmax(0, 1fr) 250px; gap: 14px; align-items: center; }
+.ph-name { display: flex; flex-direction: column; line-height: 1.2; }
+.ph-name b { font-family: var(--f-display); font-size: 17px; font-weight: 600; }
+.ph-name small { font-size: 12px; color: var(--muted); }
+.ph-track { position: relative; height: 30px; }
+.ph-bar { display: flex; gap: 2px; height: 100%; }
+.ph-bar i { display: block; height: 100%; min-width: 0; }
+.ph-bar i.m { background: var(--accent); }
+.ph-bar i.t { background: var(--p1); }
+.ph-bar i:first-child { border-radius: 4px 0 0 4px; }
+.ph-bar i:last-child { border-radius: 0 4px 4px 0; }
+.ph-bar i:only-child { border-radius: 4px; }
+.ph-avg { position: absolute; top: -5px; bottom: -5px; border-left: 2px dashed var(--ink); pointer-events: none; }
+.ph-val { font-family: var(--f-mono); font-size: 13px; text-align: right; font-variant-numeric: tabular-nums; }
+.ph-val b { font-size: 15px; font-weight: 500; }
+.ph-val small { display: block; color: var(--muted); font-size: 12px; }
+.ph-row.max .ph-name small { color: var(--warn); font-weight: 600; }
+.ph-row.min .ph-name small { color: var(--ok); font-weight: 600; }
+.pot-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 13px; color: var(--muted); }
+.pot-legend span { display: inline-flex; align-items: center; gap: 6px; }
+.pot-legend .sw { border: 0; }
+.pot-legend .sw.avg { width: 0; height: 14px; border-radius: 0; border-left: 2px dashed var(--ink); }
+.pot-tip { font-size: 14px; padding: 10px 12px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--line); }
+.pot-note { font-size: 13px; color: var(--muted); margin: 0; }
+#tbl-pot td, #tbl-pot th { text-align: right; }
+#tbl-pot td:first-child, #tbl-pot th:first-child { text-align: left; }
+#tbl-pot tbody tr { cursor: default; }
+#tbl-pot tfoot td { font-weight: 600; border-top: 1px solid var(--line-strong); border-bottom: 0; }
+@media (max-width: 720px) {
+  .ph-row { grid-template-columns: 1fr; gap: 6px; }
+  .ph-val { text-align: left; }
+}
 .visually-hidden { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 .tab .count { font-family: var(--f-mono); font-size: 12px; font-weight: 400; color: var(--muted); margin-left: 4px; }
 
@@ -351,6 +388,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
     <button class="tab" role="tab" id="tab-listado" data-view="listado" aria-selected="false">En ensayo<span class="count" id="cnt-act"></span></button>
     <button class="tab" role="tab" id="tab-historial" data-view="historial" aria-selected="false">Historial<span class="count" id="cnt-hist"></span></button>
     <button class="tab" role="tab" id="tab-incidencias" data-view="incidencias" aria-selected="false">Incidencias<span class="count" id="cnt-inc"></span></button>
+    <button class="tab" role="tab" id="tab-potencia" data-view="potencia" aria-selected="false">Potencia</button>
   </nav>
 
   <section id="view-plano" class="pool-card" role="tabpanel" aria-labelledby="tab-plano">
@@ -405,6 +443,23 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
       <span class="ro-note" id="inc-count"></span>
     </div>
     <div id="inc-list"></div>
+  </section>
+
+  <section id="view-potencia" class="pot" role="tabpanel" aria-labelledby="tab-potencia" hidden>
+    <div class="kpis" id="pot-kpis" aria-label="Resumen de potencia"></div>
+    <div class="pot-card">
+      <div class="pot-head"><h3>Reparto por fase</h3>
+        <div class="pot-legend">
+          <span><i class="sw" style="background:var(--accent)"></i>Monofásicas</span>
+          <span><i class="sw" style="background:var(--p1)"></i>Trifásicas (⅓ por fase)</span>
+          <span><i class="sw avg"></i>Media de las tres fases</span>
+        </div>
+      </div>
+      <div class="ph-list" id="ph-list"></div>
+      <div class="pot-tip" id="pot-tip"></div>
+    </div>
+    <div class="table-wrap"><table id="tbl-pot"></table></div>
+    <p class="pot-note" id="pot-note"></p>
   </section>
 
   <footer class="page-foot">
@@ -573,7 +628,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
     editing: null, petacaAuto: true
   };
 
-  try { const v = localStorage.getItem('pd-view'); if (['plano', 'listado', 'historial', 'incidencias'].includes(v)) state.view = v; } catch (e) {}
+  try { const v = localStorage.getItem('pd-view'); if (['plano', 'listado', 'historial', 'incidencias', 'potencia'].includes(v)) state.view = v; } catch (e) {}
   try { const c = localStorage.getItem('pd-color'); if (c === 'estado' || c === 'proyecto') state.colorBy = c; } catch (e) {}
 
   /* ---------- Fechas ---------- */
@@ -869,6 +924,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
     renderListado();
     renderHistorial();
     renderIncidencias();
+    renderPotencia();
     $('#cnt-inc').textContent = state.obs.length || '';
     $('#cnt-act').textContent = state.loaded ? IDX.act.length : '';
     $('#cnt-hist').textContent = state.loaded ? IDX.hist.length : '';
@@ -884,6 +940,78 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
     $('#view-listado').hidden = v !== 'listado';
     $('#view-historial').hidden = v !== 'historial';
     $('#view-incidencias').hidden = v !== 'incidencias';
+    $('#view-potencia').hidden = v !== 'potencia';
+  }
+
+  /* ---------- Potencia por fase ---------- */
+  // Una monofásica carga solo su fase; una trifásica reparte su potencia a partes iguales entre las tres.
+  const HP_KW = 0.7457;
+  const fmtN = (n, d = 2) => n.toLocaleString('es-ES', { minimumFractionDigits: d, maximumFractionDigits: d });
+  function renderPotencia() {
+    const ph = [1, 2, 3].map(f => ({ f, mono: 0, nMono: 0 }));
+    let monoTotal = 0, triTotal = 0, nTri = 0, sinFaseHp = 0;
+    const sinFase = [], sinPot = [];
+    IDX.act.forEach(b => {
+      const p = Number(b.potencia);
+      if (!(p > 0)) { sinPot.push(b); return; }
+      if (b.tipo === 'tri') { triTotal += p; nTri++; }
+      else if ([1, 2, 3].includes(b.fase)) { ph[b.fase - 1].mono += p; ph[b.fase - 1].nMono++; monoTotal += p; }
+      else { sinFase.push(b); sinFaseHp += p; }
+    });
+    ph.forEach(x => { x.tri = triTotal / 3; x.total = x.mono + x.tri; });
+    const repartido = monoTotal + triTotal, total = repartido + sinFaseHp;
+    const avg = repartido / 3;
+    const dev = avg > 0 ? Math.max(...ph.map(x => Math.abs(x.total - avg))) / avg * 100 : 0;
+    const maxF = ph.reduce((a, b) => b.total > a.total ? b : a), minF = ph.reduce((a, b) => b.total < a.total ? b : a);
+    const st = dev <= 10 ? ['curso', 'Equilibrado'] : dev <= 20 ? ['proximo', 'Desequilibrio moderado'] : ['vencido', 'Desequilibrio alto'];
+
+    $('#pot-kpis').innerHTML = `
+      <div class="kpi"><span class="lbl">Potencia instalada</span>
+        <span class="val">${fmtN(total)}<small> HP</small></span>
+        <span class="sub">≈ ${fmtN(total * HP_KW)} kW · ${IDX.act.length - sinPot.length} bombas en ensayo</span></div>
+      <div class="kpi"><span class="lbl">Monofásicas</span>
+        <span class="val">${fmtN(monoTotal + sinFaseHp)}<small> HP</small></span>
+        <span class="sub">${ph.reduce((n, x) => n + x.nMono, 0) + sinFase.length} bombas</span></div>
+      <div class="kpi"><span class="lbl">Trifásicas</span>
+        <span class="val">${fmtN(triTotal)}<small> HP</small></span>
+        <span class="sub">${nTri} bombas · ${fmtN(triTotal / 3)} HP en cada fase</span></div>
+      <div class="kpi"><span class="lbl">Desequilibrio entre fases</span>
+        <span class="val">${fmtN(dev, 1)}<small> %</small></span>
+        <span class="sub"><span class="pill ${st[0]}">${st[1]}</span></span></div>`;
+
+    const scale = Math.max(...ph.map(x => x.total), 0.001) * 1.08;
+    const pct = v => (v / scale * 100).toFixed(2);
+    $('#ph-list').innerHTML = ph.map(x => {
+      const cls = dev > 0.5 && x === maxF ? ' max' : dev > 0.5 && x === minF ? ' min' : '';
+      const tag = cls === ' max' ? 'Más cargada' : cls === ' min' ? 'Menos cargada' : `${x.nMono} monofásicas`;
+      const seg = [];
+      if (x.mono > 0) seg.push(`<i class="m" style="width:${pct(x.mono)}%" title="Fase ${x.f} · monofásicas: ${fmtN(x.mono)} HP (${x.nMono} bombas)"></i>`);
+      if (x.tri > 0) seg.push(`<i class="t" style="width:${pct(x.tri)}%" title="Fase ${x.f} · parte de las trifásicas: ${fmtN(x.tri)} HP"></i>`);
+      return `<div class="ph-row${cls}">
+        <div class="ph-name"><b>Fase ${x.f}</b><small>${tag}</small></div>
+        <div class="ph-track" role="img" aria-label="Fase ${x.f}: ${fmtN(x.total)} HP">
+          <div class="ph-bar">${seg.join('')}</div>
+          ${avg > 0 ? `<span class="ph-avg" style="left:${pct(avg)}%" title="Media: ${fmtN(avg)} HP"></span>` : ''}
+        </div>
+        <div class="ph-val"><b>${fmtN(x.total)} HP</b> · ${fmtN(x.total * HP_KW)} kW
+          <small>${repartido > 0 ? fmtN(x.total / repartido * 100, 1) : '0,0'} % · ${x.total >= avg ? '+' : '−'}${fmtN(Math.abs(x.total - avg))} HP vs. media</small></div>
+      </div>`;
+    }).join('');
+
+    $('#pot-tip').innerHTML = repartido === 0
+      ? 'No hay bombas con potencia en ensayo.'
+      : dev <= 0.5 ? 'Las tres fases están igual de cargadas.'
+      : `La fase <b>${minF.f}</b> es la menos cargada (${fmtN(minF.total)} HP) y la fase <b>${maxF.f}</b> la más cargada (${fmtN(maxF.total)} HP). Conecta la próxima monofásica a la <b>fase ${minF.f}</b> (.${minF.f} de la petaca).`;
+
+    const row = (name, nM, m, t, tot) => `<tr><td>${name}</td><td>${nM}</td><td>${fmtN(m)}</td><td>${fmtN(t)}</td><td><b>${fmtN(tot)}</b></td><td>${fmtN(tot * HP_KW)}</td><td>${repartido > 0 ? fmtN(tot / repartido * 100, 1) : '0,0'} %</td></tr>`;
+    $('#tbl-pot').innerHTML = `<thead><tr><th scope="col">Fase</th><th scope="col">Nº monofásicas</th><th scope="col">Monofásicas (HP)</th><th scope="col">⅓ trifásicas (HP)</th><th scope="col">Total (HP)</th><th scope="col">Total (kW)</th><th scope="col">% del total</th></tr></thead>
+      <tbody>${ph.map(x => row(`Fase ${x.f}`, x.nMono, x.mono, x.tri, x.total)).join('')}</tbody>
+      <tfoot><tr><td>Total</td><td>${ph.reduce((n, x) => n + x.nMono, 0)}</td><td>${fmtN(monoTotal)}</td><td>${fmtN(triTotal)}</td><td>${fmtN(repartido)}</td><td>${fmtN(repartido * HP_KW)}</td><td>100 %</td></tr></tfoot>`;
+
+    const avisos = [];
+    if (sinFase.length) avisos.push(`${sinFase.length} monofásica${sinFase.length > 1 ? 's' : ''} sin fase asignada (pos. ${sinFase.map(b => b.posicion).join(', ')}): cuentan en el total pero no en el reparto.`);
+    if (sinPot.length) avisos.push(`${sinPot.length} bomba${sinPot.length > 1 ? 's' : ''} sin potencia (pos. ${sinPot.map(b => b.posicion).join(', ')}).`);
+    $('#pot-note').textContent = `Se cuentan todas las bombas en ensayo, también las programadas. Una trifásica reparte su potencia a partes iguales entre las tres fases (1 HP → 0,33 HP por fase). 1 HP = 0,746 kW. Desequilibrio: mayor diferencia de una fase respecto a la media; hasta el 10 % se considera equilibrado. ${avisos.join(' ')}`;
   }
 
   /* ---------- Observaciones e incidencias ---------- */
