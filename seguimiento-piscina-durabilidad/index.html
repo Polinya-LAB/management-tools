@@ -145,6 +145,22 @@ button.kpi:hover { border-color: var(--line-strong); }
 .pot-legend .sw.avg { width: 0; height: 14px; border-radius: 0; border-left: 2px dashed var(--ink); }
 .pot-tip { font-size: 14px; padding: 10px 12px; border-radius: 8px; background: var(--surface-2); border: 1px solid var(--line); }
 .pot-note { font-size: 13px; color: var(--muted); margin: 0; }
+.cons-bar { display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: flex-start; }
+.cons-bar .field { min-width: 190px; }
+.cons-bar .spacer { flex: 1; }
+.cons-bar .btn { align-self: flex-end; }
+.cons-bar .hint { max-width: 340px; }
+.pot-card .table-wrap { border-radius: 6px; }
+.tbl-num td.n, .tbl-num th.n { text-align: right; }
+.tbl-num tbody tr { cursor: default; }
+.tbl-num tbody tr[data-mes] { cursor: pointer; }
+.tbl-num tbody tr.sel { background: var(--accent-soft); }
+.tbl-num tfoot td { font-weight: 600; border-top: 1px solid var(--line-strong); border-bottom: 0; }
+.share { display: flex; align-items: center; gap: 8px; min-width: 140px; }
+.share i { display: block; height: 10px; background: var(--accent); border-radius: 0 4px 4px 0; min-width: 2px; }
+.share span { font-family: var(--f-mono); font-size: 12px; color: var(--muted); }
+.share.prev i { background: color-mix(in srgb, var(--accent) 40%, var(--surface)); }
+.tag-curso { font-size: 12px; color: var(--muted); font-weight: 400; }
 #tbl-pot td, #tbl-pot th { text-align: right; }
 #tbl-pot td:first-child, #tbl-pot th:first-child { text-align: left; }
 #tbl-pot tbody tr { cursor: default; }
@@ -389,6 +405,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
     <button class="tab" role="tab" id="tab-historial" data-view="historial" aria-selected="false">Historial<span class="count" id="cnt-hist"></span></button>
     <button class="tab" role="tab" id="tab-incidencias" data-view="incidencias" aria-selected="false">Incidencias<span class="count" id="cnt-inc"></span></button>
     <button class="tab" role="tab" id="tab-potencia" data-view="potencia" aria-selected="false">Potencia</button>
+    <button class="tab" role="tab" id="tab-consumo" data-view="consumo" aria-selected="false">Consumo eléctrico</button>
   </nav>
 
   <section id="view-plano" class="pool-card" role="tabpanel" aria-labelledby="tab-plano">
@@ -460,6 +477,38 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
     </div>
     <div class="table-wrap"><table id="tbl-pot"></table></div>
     <p class="pot-note" id="pot-note"></p>
+  </section>
+
+  <section id="view-consumo" class="pot" role="tabpanel" aria-labelledby="tab-consumo" hidden>
+    <div class="cons-bar">
+      <div class="field"><label for="cons-mes">Mes</label><select id="cons-mes"></select></div>
+      <form class="field" id="cons-precio-form" novalidate autocomplete="off">
+        <label for="cons-precio">Precio del kWh (€)</label>
+        <div class="inline"><input id="cons-precio" type="number" min="0" step="0.0001" inputmode="decimal" placeholder="0,1500"><button type="submit" class="btn" id="cons-save">Guardar</button></div>
+        <span class="hint" id="cons-precio-hint"></span>
+      </form>
+      <span class="spacer"></span>
+      <button type="button" class="btn" id="cons-copy" title="Copia el consumo de todos los meses por proyecto para pegarlo en Excel">Copiar para Excel</button>
+    </div>
+    <div class="kpis" id="cons-kpis" aria-label="Resumen de consumo del mes"></div>
+    <div class="pot-card">
+      <div class="pot-head"><h3 id="cons-proj-title">Consumo por proyecto</h3></div>
+      <div class="table-wrap"><table id="tbl-cons-proj" class="tbl-num"></table></div>
+    </div>
+    <div class="pot-card">
+      <div class="pot-head"><h3>Histórico mes a mes</h3><span class="ro-note">Pulsa un mes para ver su detalle por proyecto</span></div>
+      <div class="table-wrap"><table id="tbl-cons-hist" class="tbl-num"></table></div>
+    </div>
+    <div class="pot-card">
+      <div class="pot-head"><h3>Histórico por proyecto</h3>
+        <div class="seg" role="group" aria-label="Unidad">
+          <button type="button" data-cu="kwh" aria-pressed="true">kWh</button>
+          <button type="button" data-cu="eur" aria-pressed="false">€</button>
+        </div>
+      </div>
+      <div class="table-wrap"><table id="tbl-cons-mat" class="tbl-num"></table></div>
+    </div>
+    <p class="pot-note">Estimación teórica: cada bomba consume su potencia nominal (HP × 0,746 kW) las 24 horas del día, desde su fecha de inicio hasta su retirada, o hasta hoy si sigue en ensayo. El consumo real será menor si las bombas trabajan a carga parcial o se paran. El precio del kWh se guarda por mes y se aplica también a los meses siguientes hasta que se cambie. Las bombas eliminadas no cuentan; usa «Finalizar ensayo» para conservar su consumo en el histórico.</p>
   </section>
 
   <footer class="page-foot">
@@ -628,7 +677,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
     editing: null, petacaAuto: true
   };
 
-  try { const v = localStorage.getItem('pd-view'); if (['plano', 'listado', 'historial', 'incidencias', 'potencia'].includes(v)) state.view = v; } catch (e) {}
+  try { const v = localStorage.getItem('pd-view'); if (['plano', 'listado', 'historial', 'incidencias', 'potencia', 'consumo'].includes(v)) state.view = v; } catch (e) {}
   try { const c = localStorage.getItem('pd-color'); if (c === 'estado' || c === 'proyecto') state.colorBy = c; } catch (e) {}
 
   /* ---------- Fechas ---------- */
@@ -925,6 +974,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
     renderHistorial();
     renderIncidencias();
     renderPotencia();
+    renderConsumo();
     $('#cnt-inc').textContent = state.obs.length || '';
     $('#cnt-act').textContent = state.loaded ? IDX.act.length : '';
     $('#cnt-hist').textContent = state.loaded ? IDX.hist.length : '';
@@ -941,6 +991,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
     $('#view-historial').hidden = v !== 'historial';
     $('#view-incidencias').hidden = v !== 'incidencias';
     $('#view-potencia').hidden = v !== 'potencia';
+    $('#view-consumo').hidden = v !== 'consumo';
   }
 
   /* ---------- Potencia por fase ---------- */
@@ -1013,6 +1064,176 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
     if (sinPot.length) avisos.push(`${sinPot.length} bomba${sinPot.length > 1 ? 's' : ''} sin potencia (pos. ${sinPot.map(b => b.posicion).join(', ')}).`);
     $('#pot-note').textContent = `Se cuentan todas las bombas en ensayo, también las programadas. Una trifásica reparte su potencia a partes iguales entre las tres fases (1 HP → 0,33 HP por fase). 1 HP = 0,746 kW. Desequilibrio: mayor diferencia de una fase respecto a la media; hasta el 10 % se considera equilibrado. ${avisos.join(' ')}`;
   }
+
+  /* ---------- Consumo eléctrico ---------- */
+  // Estimación: cada bomba consume su potencia nominal 24 h al día desde su fecha de inicio
+  // hasta su retirada (o hasta hoy si sigue en ensayo). El precio del kWh se guarda por mes.
+  const MESES_L = ['enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio', 'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'];
+  const mesLbl = k => { const [y, m] = k.split('-').map(Number); return `${MESES_L[m - 1][0].toUpperCase()}${MESES_L[m - 1].slice(1)} ${y}`; };
+  const addDays = (s, n) => { const [y, m, d] = s.split('-').map(Number), t = new Date(Date.UTC(y, m - 1, d + n)); return `${t.getUTCFullYear()}-${pad(t.getUTCMonth() + 1)}-${pad(t.getUTCDate())}`; };
+  const nextMonth = k => addMonths(`${k}-01`, 1).slice(0, 7);
+  const fmtEur = n => n.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' });
+  const fmtKwh = n => n.toLocaleString('es-ES', { maximumFractionDigits: 0 });
+  state.consumoMes = null; state.consumoVista = 'kwh'; state.precioTmp = null;
+
+  function mesesConsumo() {
+    const hoy = todayStr().slice(0, 7);
+    let first = hoy;
+    state.bombas.forEach(b => { if (validDate(b.fechaInicio) && b.fechaInicio.slice(0, 7) < first) first = b.fechaInicio.slice(0, 7); });
+    const out = [];
+    for (let k = first; k <= hoy; k = nextMonth(k)) out.push(k);
+    return out;
+  }
+  function precioDe(mes) {
+    if (state.precioTmp && state.precioTmp.mes === mes) return { valor: state.precioTmp.valor, desde: mes, tmp: true };
+    const p = state.cfg.precios || {};
+    const keys = Object.keys(p).filter(k => k <= mes && Number(p[k]) > 0).sort();
+    return keys.length ? { valor: Number(p[keys[keys.length - 1]]), desde: keys[keys.length - 1] } : null;
+  }
+  function consumoMes(mes) {
+    const ini = `${mes}-01`, fin = `${nextMonth(mes)}-01`, hoyEx = addDays(todayStr(), 1);
+    const enCurso = todayStr().slice(0, 7) === mes;
+    const proj = new Map();
+    let kwh = 0, prev = 0;
+    for (const b of state.bombas) {
+      const kw = Number(b.potencia) * HP_KW;
+      if (!(kw > 0) || !validDate(b.fechaInicio)) continue;
+      const activa = isActive(b);
+      const end = activa ? hoyEx : (validDate(b.fechaRetirada) ? b.fechaRetirada : null);
+      if (!end) continue;
+      const s = b.fechaInicio > ini ? b.fechaInicio : ini;
+      const dias = Math.max(0, diffDays(end < fin ? end : fin, s));
+      const diasPrev = activa && enCurso ? Math.max(0, diffDays(fin, s)) : dias;
+      if (dias <= 0 && diasPrev <= 0) continue;
+      const k = b.proyecto || 'Sin proyecto';
+      const r = proj.get(k) || { proyecto: k, kwh: 0, prev: 0, kw: 0, n: 0 };
+      r.kwh += kw * 24 * dias; r.prev += kw * 24 * diasPrev; r.kw += kw; r.n++;
+      proj.set(k, r);
+      kwh += kw * 24 * dias; prev += kw * 24 * diasPrev;
+    }
+    return { mes, enCurso, kwh, prev, proyectos: [...proj.values()].sort((a, b) => b.prev - a.prev || b.kwh - a.kwh), precio: precioDe(mes) };
+  }
+
+  function renderConsumo() {
+    const meses = mesesConsumo();
+    if (!state.consumoMes || !meses.includes(state.consumoMes)) state.consumoMes = meses[meses.length - 1];
+    $('#cons-mes').innerHTML = meses.slice().reverse().map(k => `<option value="${k}"${k === state.consumoMes ? ' selected' : ''}>${mesLbl(k)}</option>`).join('');
+    const c = consumoMes(state.consumoMes), pr = c.precio;
+    const eur = v => pr ? fmtEur(v * pr.valor) : '—';
+
+    const own = state.cfg.precios?.[c.mes], inp = $('#cons-precio'), hint = $('#cons-precio-hint');
+    if (document.activeElement !== inp) inp.value = state.precioTmp?.mes === c.mes ? state.precioTmp.valor : (own ?? (pr ? pr.valor : ''));
+    $('#cons-save').hidden = !state.canWrite;
+    if (!hint.classList.contains('bad')) {
+      hint.className = 'hint';
+      hint.textContent = pr?.tmp ? (state.canWrite ? 'Sin guardar: pulsa Guardar para fijarlo en este mes.' : 'Solo para este cálculo. Conecta con GitHub para guardarlo.')
+        : own != null ? `Precio fijado para ${mesLbl(c.mes)}.`
+        : pr ? `Se usa el de ${mesLbl(pr.desde)}.`
+        : 'Escribe el precio del kWh para calcular el coste.';
+    }
+
+    const diasMes = diffDays(`${nextMonth(c.mes)}-01`, `${c.mes}-01`);
+    const hoyD = Number(todayStr().slice(8));
+    $('#cons-kpis').innerHTML = `
+      <div class="kpi"><span class="lbl">Consumo ${c.enCurso ? 'hasta hoy' : 'del mes'}</span>
+        <span class="val">${fmtKwh(c.kwh)}<small> kWh</small></span>
+        <span class="sub">${c.enCurso ? `Del 1 al ${hoyD} de ${MESES_L[Number(c.mes.slice(5)) - 1]}` : `${mesLbl(c.mes)} · ${diasMes} días`}</span></div>
+      <div class="kpi"><span class="lbl">Coste ${c.enCurso ? 'hasta hoy' : 'del mes'}</span>
+        <span class="val">${eur(c.kwh)}</span>
+        <span class="sub">${pr ? `${fmtN(pr.valor, 4)} €/kWh` : 'Falta el precio del kWh'}</span></div>
+      <div class="kpi"><span class="lbl">${c.enCurso ? 'Previsión mes completo' : 'Potencia media'}</span>
+        <span class="val">${c.enCurso ? `${fmtKwh(c.prev)}<small> kWh</small>` : `${fmtN(c.kwh / (24 * diasMes))}<small> kW</small>`}</span>
+        <span class="sub">${c.enCurso ? `${eur(c.prev)} si siguen las bombas actuales` : 'Media del mes, 24 h al día'}</span></div>
+      <div class="kpi"><span class="lbl">Proyectos con consumo</span>
+        <span class="val">${c.proyectos.length}</span>
+        <span class="sub">${c.proyectos.reduce((n, p) => n + p.n, 0)} bombas en el mes</span></div>`;
+
+    $('#cons-proj-title').textContent = `Consumo por proyecto · ${mesLbl(c.mes)}`;
+    const base = c.enCurso ? c.prev : c.kwh;
+    const head = `<thead><tr><th scope="col">Proyecto</th><th scope="col" class="n">Bombas</th><th scope="col" class="n">kW</th>
+      <th scope="col" class="n">kWh${c.enCurso ? ' hasta hoy' : ''}</th><th scope="col" class="n">Coste${c.enCurso ? ' hasta hoy' : ''}</th>
+      ${c.enCurso ? '<th scope="col" class="n">Previsión kWh</th><th scope="col" class="n">Previsión coste</th>' : ''}<th scope="col">% del ${c.enCurso ? 'previsto' : 'total'}</th></tr></thead>`;
+    const rows = c.proyectos.map(p => {
+      const v = c.enCurso ? p.prev : p.kwh, share = base > 0 ? v / base * 100 : 0;
+      return `<tr><td><span class="dot" style="background:${projColor(p.proyecto)}"></span>${esc(p.proyecto)}</td><td class="n mono">${p.n}</td><td class="n mono">${fmtN(p.kw)}</td>
+        <td class="n mono">${fmtKwh(p.kwh)}</td><td class="n mono">${eur(p.kwh)}</td>
+        ${c.enCurso ? `<td class="n mono">${fmtKwh(p.prev)}</td><td class="n mono">${eur(p.prev)}</td>` : ''}
+        <td><div class="share"><i style="width:${(share * 1.2).toFixed(1)}px"></i><span>${fmtN(share, 1)} %</span></div></td></tr>`;
+    }).join('');
+    const cols = c.enCurso ? 8 : 6;
+    $('#tbl-cons-proj').innerHTML = head + `<tbody>${rows || `<tr><td class="td-empty" colspan="${cols}">No hay bombas con consumo en ${mesLbl(c.mes)}.</td></tr>`}</tbody>`
+      + (rows ? `<tfoot><tr><td>Total</td><td class="n">${c.proyectos.reduce((n, p) => n + p.n, 0)}</td><td class="n">${fmtN(c.proyectos.reduce((n, p) => n + p.kw, 0))}</td>
+        <td class="n">${fmtKwh(c.kwh)}</td><td class="n">${eur(c.kwh)}</td>${c.enCurso ? `<td class="n">${fmtKwh(c.prev)}</td><td class="n">${eur(c.prev)}</td>` : ''}<td></td></tr></tfoot>` : '');
+
+    // Histórico mes a mes
+    const hist = meses.map(consumoMes);
+    const maxK = Math.max(...hist.map(h => h.kwh), 1);
+    let totK = 0, totE = 0, eurOk = true;
+    const hrows = hist.slice().reverse().map(h => {
+      totK += h.kwh;
+      if (h.precio) totE += h.kwh * h.precio.valor; else if (h.kwh > 0) eurOk = false;
+      return `<tr data-mes="${h.mes}" tabindex="0"${h.mes === c.mes ? ' class="sel"' : ''}><td>${mesLbl(h.mes)}${h.enCurso ? ' <span class="tag-curso">(en curso, hasta hoy)</span>' : ''}</td>
+        <td class="n mono">${fmtKwh(h.kwh)}</td><td class="n mono">${h.precio ? fmtN(h.precio.valor, 4) : '—'}</td><td class="n mono">${h.precio ? fmtEur(h.kwh * h.precio.valor) : '—'}</td>
+        <td><div class="share"><i style="width:${(h.kwh / maxK * 160).toFixed(1)}px"></i></div></td></tr>`;
+    }).join('');
+    $('#tbl-cons-hist').innerHTML = `<thead><tr><th scope="col">Mes</th><th scope="col" class="n">kWh</th><th scope="col" class="n">€/kWh</th><th scope="col" class="n">Coste</th><th scope="col"><span class="visually-hidden">Gráfico</span></th></tr></thead>
+      <tbody>${hrows}</tbody><tfoot><tr><td>Total</td><td class="n">${fmtKwh(totK)}</td><td></td><td class="n">${eurOk ? fmtEur(totE) : `<span title="Solo incluye los meses que tienen precio del kWh">${fmtEur(totE)}*</span>`}</td><td></td></tr></tfoot>`;
+
+    // Histórico por proyecto (proyectos × meses)
+    const unit = state.consumoVista;
+    $$('[data-cu]').forEach(btn => btn.setAttribute('aria-pressed', String(btn.dataset.cu === unit)));
+    const projs = new Map();
+    hist.forEach(h => h.proyectos.forEach(p => { const r = projs.get(p.proyecto) || {}; r[h.mes] = p.kwh; projs.set(p.proyecto, r); }));
+    const val = (h, k) => unit === 'eur' ? (h.precio ? k * h.precio.valor : null) : k;
+    const cell = v => v == null ? '—' : unit === 'eur' ? fmtEur(v) : fmtKwh(v);
+    const sum = arr => arr.some(v => v == null) ? null : arr.reduce((a, b) => a + b, 0);
+    const mrows = [...projs].map(([name, r]) => {
+      const vals = hist.map(h => val(h, r[h.mes] || 0));
+      return { name, vals, tot: sum(vals), kwhTot: hist.reduce((a, h) => a + (r[h.mes] || 0), 0) };
+    }).sort((a, b) => b.kwhTot - a.kwhTot);
+    $('#tbl-cons-mat').innerHTML = `<thead><tr><th scope="col">Proyecto</th>${hist.map(h => `<th scope="col" class="n">${mesLbl(h.mes)}</th>`).join('')}<th scope="col" class="n">Total</th></tr></thead>
+      <tbody>${mrows.map(r => `<tr><td><span class="dot" style="background:${projColor(r.name)}"></span>${esc(r.name)}</td>${r.vals.map(v => `<td class="n mono">${cell(v)}</td>`).join('')}<td class="n mono"><b>${cell(r.tot)}</b></td></tr>`).join('')
+        || `<tr><td class="td-empty" colspan="${hist.length + 2}">Sin consumo registrado.</td></tr>`}</tbody>
+      <tfoot><tr><td>Total</td>${hist.map(h => `<td class="n">${cell(val(h, h.kwh))}</td>`).join('')}<td class="n">${cell(sum(hist.map(h => val(h, h.kwh))))}</td></tr></tfoot>`;
+  }
+
+  $('#cons-mes').addEventListener('change', e => { state.consumoMes = e.target.value; state.precioTmp = null; $('#cons-precio-hint').className = 'hint'; renderConsumo(); });
+  $('#cons-precio').addEventListener('input', () => {
+    const v = Number(String($('#cons-precio').value).replace(',', '.'));
+    state.precioTmp = v > 0 ? { mes: state.consumoMes, valor: v } : null;
+    $('#cons-precio-hint').className = 'hint';
+    renderConsumo();
+  });
+  $('#cons-precio-form').addEventListener('submit', async e => {
+    e.preventDefault();
+    const hint = $('#cons-precio-hint');
+    if (!state.canWrite) { hint.textContent = 'Conecta con GitHub para guardar el precio.'; hint.className = 'hint bad'; return; }
+    const v = Number(String($('#cons-precio').value).replace(',', '.'));
+    if (!(v > 0) || v > 10) { hint.textContent = 'Escribe un precio válido en € por kWh, por ejemplo 0,15.'; hint.className = 'hint bad'; return; }
+    $('#cons-save').disabled = true;
+    try {
+      await state.db.doc('config/piscina').update({ precios: { [state.consumoMes]: Math.round(v * 10000) / 10000 } });
+      state.precioTmp = null; hint.className = 'hint';
+      $('#cons-precio').blur(); renderConsumo();
+      toast(`Precio de ${mesLbl(state.consumoMes)} guardado`);
+    } catch (err) { hint.textContent = writeError(err); hint.className = 'hint bad'; }
+    finally { $('#cons-save').disabled = false; }
+  });
+  $('#tbl-cons-hist').addEventListener('click', e => {
+    const r = e.target.closest('tr[data-mes]'); if (!r) return;
+    state.consumoMes = r.dataset.mes; state.precioTmp = null; renderConsumo();
+    $('#view-consumo').scrollIntoView({ behavior: 'smooth', block: 'start' });
+  });
+  $('#tbl-cons-hist').addEventListener('keydown', e => { if (e.key === 'Enter') e.target.closest('tr[data-mes]')?.click(); });
+  $$('[data-cu]').forEach(btn => btn.addEventListener('click', () => { state.consumoVista = btn.dataset.cu; renderConsumo(); }));
+  $('#cons-copy').onclick = async () => {
+    const rows = [['Mes', 'Proyecto', 'Bombas', 'kWh', '€/kWh', 'Coste €']];
+    mesesConsumo().map(consumoMes).forEach(h => h.proyectos.forEach(p => rows.push([
+      mesLbl(h.mes), p.proyecto, p.n, Math.round(p.kwh), h.precio ? String(h.precio.valor).replace('.', ',') : '',
+      h.precio ? (p.kwh * h.precio.valor).toFixed(2).replace('.', ',') : ''])));
+    try { await navigator.clipboard.writeText(rows.map(r => r.map(v => String(v).replace(/[\t\r\n]+/g, ' ')).join('\t')).join('\n')); toast(`Copiadas ${rows.length - 1} filas. Pégalas en Excel`); }
+    catch (err) { toast('El navegador no permite copiar aquí.'); }
+  };
 
   /* ---------- Observaciones e incidencias ---------- */
   const obsOrden = (a, b) => String(b.fecha || '').localeCompare(String(a.fecha || '')) || String(b.creado || '').localeCompare(String(a.creado || ''));
@@ -1336,7 +1557,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
     if (!state.db || !state.canWrite) return;
     const cfg = { avisoDias: Math.max(0, Math.min(90, parseInt(F('cfg-aviso').value, 10) || 0)) };
     F('cfg-save').disabled = true;
-    try { await state.db.doc('config/piscina').set(cfg); closeOverlay('ov-cfg'); toast('Ajustes guardados'); }
+    try { await state.db.doc('config/piscina').update(cfg); closeOverlay('ov-cfg'); toast('Ajustes guardados'); }
     catch (err) { toast(writeError(err)); }
     finally { F('cfg-save').disabled = false; }
   });
@@ -1594,14 +1815,16 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
     }
     if (col === 'observaciones') return op === 'delete' ? `Borra observación pos. ${d.posicion}` : `Observación pos. ${d.posicion}: ${String(d.texto || '').slice(0, 60)}`;
     if (col === 'hotboxes') return op === 'delete' ? `Quita ${d.nombre}` : `Añade ${d.nombre} (${d.desde}–${d.hasta})`;
+    if (obj.precios) return `Precio del kWh: ${Object.entries(obj.precios).map(([m, v]) => `${m} = ${v} €`).join(', ')}`;
     return 'Actualiza ajustes';
   }
   const newId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const docRef = (col, id) => ({
     set: obj => commit(d => { (d[col] ||= {})[id] = obj; }, mensaje('set', col, id, obj)),
     update: obj => commit(d => {
-      if (!d[col]?.[id]) throw { code: 'missing' };
-      d[col][id] = { ...d[col][id], ...obj };
+      if (!d[col]?.[id]) { if (col !== 'config') throw { code: 'missing' }; (d[col] ||= {})[id] = {}; }
+      const cur = d[col][id], plain = v => v && typeof v === 'object' && !Array.isArray(v);
+      for (const [k, v] of Object.entries(obj)) cur[k] = plain(v) && plain(cur[k]) ? { ...cur[k], ...v } : v;
     }, mensaje('update', col, id, obj)),
     delete: () => commit(d => { if (d[col]) delete d[col][id]; }, mensaje('delete', col, id))
   });
