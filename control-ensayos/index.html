@@ -390,6 +390,7 @@ const QTP_FIELDS=[
   {k:'durUnit',label:'Duration unit',syn:['unit','units','duration unit','duration units']},
   {k:'techHours',label:'Technician hours',type:'num',syn:['technician hours','tech hours','labour hours','labor hours','man hours']},
   {k:'equipmentName',label:'Default equipment',syn:['equipment','bench','testbench']},
+  {k:'durBasis',label:'Duration basis (per test / per sample)',syn:['basis','duration basis','per','time basis']},
   {k:'notes',label:'Notes',syn:['notes','note','remarks']},
 ];
 
@@ -451,11 +452,20 @@ const techSel=t=>{const p=personById(t.techId); if(S.ro) return `<span class="te
 const statusSel=t=>S.ro?estPill(t.status):`<select class="st-sel st-${ST_CLS[t.status]||'cola'}" data-setstatus="${esc(t.id)}" aria-label="Status of ${esc(baseRef(t))}">${STATUSES.map(s=>`<option ${s===t.status?'selected':''}>${s}</option>`).join('')}</select>`;
 
 /* ---------- Duration and end date ---------- */
+/* A QTP can give its duration and technician hours per test or per sample; per sample they are
+   multiplied by the test's number of pieces (counted as 1 when the test has no pieces set). */
+const piecesSet=t=>parseInt(t.pieces)>0;
+const samplesOf=t=>Math.max(1,parseInt(t.pieces)||0);
+const round2=x=>Math.round(x*100)/100;
+const libTech=t=>{const L=libOf(t); if(!L||!(+L.techHours>0)) return 0; return round2(+L.techHours*(L.techBasis==='sample'?samplesOf(t):1));};
 function effDur(t){
   const L=libOf(t);
   const cont=t.continuous==='yes'?true:t.continuous==='no'?false:!(L&&L.continuous===false);
   const cpd=+(t.cyclesPerDay||(L&&L.cyclesPerDay))||0;
   if(+t.durVal>0) return {val:+t.durVal,unit:t.durUnit||'Hours',cont,cpd,src:'this test'};
+  /* Precedence: this test > QTP library per sample > ARAS > QTP library per test */
+  if(L&&+L.durVal>0&&L.durBasis==='sample'){const unit=L.durUnit||'Hours', n=samplesOf(t);
+    return {val:round2(+L.durVal*n),unit,cont,cpd,src:`QTP library · ${L.durVal} ${UNIT_SHORT[unit]||unit} × ${n}${piecesSet(t)?'':' (pieces not set)'}`,perSample:true};}
   if(+t.arasDurVal>0) return {val:+t.arasDurVal,unit:normUnit(t.arasDurUnit)||'Hours',cont,cpd,src:'ARAS'};
   if(L&&+L.durVal>0) return {val:+L.durVal,unit:L.durUnit||'Hours',cont,cpd,src:'QTP library'};
   return null;
@@ -477,7 +487,7 @@ function endInfo(t){
   const dd=durDays(effDur(t)); if(dd) return {end:addSpan(s,dd),kind:'auto'};
   return {end:RUNNING.has(t.status)?Math.max(s,todayMs()):s,kind:'open'};
 }
-const evenTech=t=>+t.techHours||+(libOf(t)?.techHours)||0;
+const evenTech=t=>+t.techHours||libTech(t);
 /* Technician load. "even" spreads the total hours over the working days.
    "endurance" (set per QTP in the library): setup and teardown in blocks of LOAD_DAY h per working day,
    a daily check on the working days in between, and periodic reviews counted from the start. No hours at weekends. */
@@ -516,7 +526,7 @@ function effTech(t){
 }
 const loadSummary=q=>q.profile==='endurance'
   ?`Endurance · setup ${+q.setupH||0} h · daily ${+q.dailyH||0} h${+q.reviewEvery&&+q.reviewH?` · review ${q.reviewH} h every ${q.reviewEvery} ${UNIT_SHORT[q.reviewUnit||'Hours']}`:''} · teardown ${+q.teardownH||0} h`
-  :(+q.techHours?`${q.techHours} h total, spread evenly`:'—');
+  :(+q.techHours?`${q.techHours} h ${q.techBasis==='sample'?'per sample':'total'}, spread evenly`:'—');
 
 /* ---------- Index: siblings, end dates, equipment load ---------- */
 function buildIndex(list){
@@ -846,10 +856,10 @@ function vLibrary(){
   const use=new Map(); for(const t of S.tests) if(counts(t)&&t.qtp){const k=qid(t.qtp); use.set(k,(use.get(k)||0)+1);}
   const noDur=list.filter(q=>!(+q.durVal>0)).length;
   const rows=list.map(q=>{const b=eqById(q.equipmentId);
-    return `<tr class="click ${+q.durVal>0?'':'miss'}" data-act="edit-q" data-id="${esc(q.id)}"><td class="ref nowrap">${esc(q.code||q.id)}</td><td><b>${esc(q.name||'')}</b>${q.notes?`<span class="snip">${esc(q.notes)}</span>`:''}</td><td>${esc(b?eqName(b):'—')}</td><td class="nowrap">${+q.durVal>0?`${esc(q.durVal)} ${esc(UNIT_SHORT[q.durUnit]||q.durUnit||'h')}${q.durUnit==='Cycles'&&q.cyclesPerDay?` <small class="muted">(${esc(q.cyclesPerDay)}/day)</small>`:''}`:'<span class="due warn">not set</span>'}</td><td>${q.continuous===false?'Working hours':'24/7'}</td><td>${esc(loadSummary(q))}</td><td class="num">${use.get(q.id)||0}</td></tr>`}).join('');
+    return `<tr class="click ${+q.durVal>0?'':'miss'}" data-act="edit-q" data-id="${esc(q.id)}"><td class="ref nowrap">${esc(q.code||q.id)}</td><td><b>${esc(q.name||'')}</b>${q.notes?`<span class="snip">${esc(q.notes)}</span>`:''}</td><td>${esc(b?eqName(b):'—')}</td><td class="nowrap">${+q.durVal>0?`${esc(q.durVal)} ${esc(UNIT_SHORT[q.durUnit]||q.durUnit||'h')}${q.durBasis==='sample'?' <small class="muted">per sample</small>':''}${q.durUnit==='Cycles'&&q.cyclesPerDay?` <small class="muted">(${esc(q.cyclesPerDay)}/day)</small>`:''}`:'<span class="due warn">not set</span>'}</td><td>${q.continuous===false?'Working hours':'24/7'}</td><td>${esc(loadSummary(q))}</td><td class="num">${use.get(q.id)||0}</td></tr>`}).join('');
   const I=S.qimp;
   return `<div class="view-h"><h2>QTP library</h2>${S.ro||S.noDb?'':'<button class="btn" data-act="new-q">+ Add QTP</button>'}</div>
-  <p class="muted" style="margin:0;max-width:90ch">Estimated duration and technician hours for each test procedure. They are planning defaults only: every test line uses them unless you set its own duration or hours in the test, and an ARAS duration on the task takes precedence over the library.</p>
+  <p class="muted" style="margin:0;max-width:90ch">Estimated duration and technician hours for each test procedure, per test or per sample. They are planning defaults only: every test line uses them unless you set its own duration or hours in the test. An ARAS duration on the task takes precedence over a per-test library duration; a per-sample library duration is always multiplied by the test's number of pieces.</p>
   ${S.ro||S.noDb?'':`<section class="panel"><div class="panel-h"><h2>Import QTP list from Excel</h2><span class="muted">Columns such as QTP, test name, estimated duration, unit, technician hours, equipment</span></div>
     <label class="drop-zone" data-dz="qtp"><input type="file" id="file-qtp" accept=".xlsx,.xls,.csv"><b>Drop the QTP list here</b><span class="muted">or click to choose a file</span></label>
     ${I?qtpImportPanel(I):''}</section>`}
@@ -1048,6 +1058,7 @@ function qtpPreview(){
   const I=S.qimp, recs=readRecs(I,QTP_FIELDS);
   for(const r of recs){
     if(!r.code){r._st='error'; continue;}
+    r._basis=r.durBasis?(/sampl|muestr|piece|pieza|unit/i.test(r.durBasis)?'sample':'test'):'';
     r._unit=normUnit(r.durUnit)||(I.map.durVal&&/\bd(ays?|ias?)?\b/i.test(I.map.durVal)?'Days':'Hours');
     r._eq=r.equipmentName?(eqMatchByName(r.equipmentName)||eqSuggest(r.equipmentName))?.id||'':'';
     const q=S.qtps.find(x=>x.id===qid(r.code));
@@ -1058,6 +1069,7 @@ function qtpPreview(){
     if(r.techHours!==''&&String(r.techHours)!==String(q.techHours)) patch.techHours=r.techHours;
     if(r._eq&&r._eq!==q.equipmentId) patch.equipmentId=r._eq;
     if(r.notes&&r.notes!==q.notes) patch.notes=r.notes;
+    if(r._basis&&r._basis!==(q.durBasis||'test')) patch.durBasis=r._basis;
     r._patch=patch; r._q=q; r._st=Object.keys(patch).length?'update':'same';
   }
   return recs;
@@ -1069,7 +1081,7 @@ function qtpImportPanel(I){
     ${mappingGrid(I,QTP_FIELDS,'qtp')}
     <div class="imp-sum"><span class="tag-st new">${c('new')} new</span><span class="tag-st update">${c('update')} updated</span><span class="tag-st same">${c('same')} no change</span>${c('error')?`<span class="tag-st error">${c('error')} without QTP code</span>`:''}</div>
     <div class="scroll-x"><table class="tbl"><thead><tr><th>Result</th><th>QTP</th><th>Test name</th><th>Est. duration</th><th class="num">Tech hours</th><th>Equipment</th></tr></thead><tbody>
-    ${recs.slice(0,200).map(r=>`<tr><td><span class="tag-st ${r._st}">${{new:'New',update:'Update',same:'No change',error:'No code'}[r._st]}</span></td><td class="ref">${esc(r.code||'—')}</td><td>${esc(r.name||'')}</td><td class="nowrap">${r.durVal!==''?esc(r.durVal+' '+(UNIT_SHORT[r._unit]||'')):'—'}</td><td class="num">${r.techHours!==''?esc(r.techHours):'—'}</td><td>${esc(r.equipmentName||'')}${r.equipmentName&&!r._eq?' <small class="muted">(not found)</small>':''}</td></tr>`).join('')}
+    ${recs.slice(0,200).map(r=>`<tr><td><span class="tag-st ${r._st}">${{new:'New',update:'Update',same:'No change',error:'No code'}[r._st]}</span></td><td class="ref">${esc(r.code||'—')}</td><td>${esc(r.name||'')}</td><td class="nowrap">${r.durVal!==''?esc(r.durVal+' '+(UNIT_SHORT[r._unit]||''))+(r._basis==='sample'?' <small class="muted">per sample</small>':''):'—'}</td><td class="num">${r.techHours!==''?esc(r.techHours):'—'}</td><td>${esc(r.equipmentName||'')}${r.equipmentName&&!r._eq?' <small class="muted">(not found)</small>':''}</td></tr>`).join('')}
     </tbody></table></div>
     <div class="row"><button class="btn primary" data-act="do-qimport" ${!I.map.code||!(c('new')+c('update'))||S.ro?'disabled':''}>Import ${c('new')} new and update ${c('update')}</button><button class="btn ghost" data-act="cancel-qimport">Discard file</button></div>
   </div>`;
@@ -1077,7 +1089,7 @@ function qtpImportPanel(I){
 async function runQtpImport(){
   const I=S.qimp; if(!I||!db) return; const now=nowIso(), jobs=[];
   for(const r of I.recs||qtpPreview()){
-    if(r._st==='new') jobs.push(()=>db.doc(`${COL.qtps}/${qid(r.code)}`).set({code:r.code.trim(),name:r.name||'',durVal:r.durVal,durUnit:r._unit,continuous:true,techHours:r.techHours,equipmentId:r._eq||'',notes:r.notes||'',actualizado:now}));
+    if(r._st==='new') jobs.push(()=>db.doc(`${COL.qtps}/${qid(r.code)}`).set({code:r.code.trim(),name:r.name||'',durVal:r.durVal,durUnit:r._unit,continuous:true,techHours:r.techHours,durBasis:r._basis||'test',techBasis:'test',equipmentId:r._eq||'',notes:r.notes||'',actualizado:now}));
     else if(r._st==='update') jobs.push(()=>db.doc(`${COL.qtps}/${r._q.id}`).update({...r._patch,actualizado:now}));
   }
   try{const n=jobs.length; jobs.push(()=>db.doc('config/importQtp').set({map:I.map,date:now})); await Promise.all(jobs.map(j=>j())); S.qimp=null; toast(`QTP library updated: ${n} procedure(s).`); render();}catch(e){toast(errMsg(e));}
@@ -1136,7 +1148,7 @@ function openEditor(id){
     ${fld('f-title','Test description',inp('title',t.title),'span2')}
     ${fld('f-project','Project',inp('project',t.project,'text','placeholder="25046 - PROJECT NAME"'))}
     ${fld('f-requester','Request creator',inp('requester',t.requester))}
-    ${fld('f-pieces','Number of pieces',inp('pieces',t.pieces,'number','min="0" step="1"'))}
+    ${fld('f-pieces','Number of pieces (samples)',inp('pieces',t.pieces,'number','min="0" step="1"'),'','<span id="pieces-help"></span>')}
     ${fld('f-sequence','Test sequence',inp('sequence',t.sequence,'number','min="0" step="1"'))}
     ${fld('f-requestedDue','Requested due date',inp('requestedDue',t.requestedDue,'date'))}
     <div class="field"><span class="lbl">Due date flexible?</span><label class="check"><input type="checkbox" id="f-flexible" name="flexible" value="1" ${t.flexible?'checked':''} ${dis()}> Flexible</label></div>
@@ -1179,7 +1191,8 @@ function liveHints(){
   const tdef={...t,durVal:''}, def=effDur(tdef);
   $('#dur-help').textContent=+t.durVal>0?`Overrides ${def?`${durLabel(def)} from ${def.src}`:'the default'}. Clear it to use the default.`:def?`Using ${durLabel(def)} from ${def.src}. Type a value to override it for this test only.`:'No default: set it here or in the QTP library.';
   $('#f-durVal').placeholder=def?String(def.val):'';
-  const lt=+(L&&L.techHours)||0; if(isEndu(t)){const ti=$('#f-techHours'); ti.readOnly=true; ti.value=''; ti.placeholder=fmtH(effTech(t)); $('#tech-help').textContent=`Endurance profile from the QTP library: ${loadSummary(L).replace('Endurance · ','')}.`;} else {$('#f-techHours').readOnly=false; $('#tech-help').textContent=+t.techHours?(lt?`Overrides ${lt} h from the QTP library.`:''):lt?`Using ${lt} h from the QTP library.`:'Used to compute technician load.';
+  const ph=$('#pieces-help'); if(ph){const per=L&&(L.durBasis==='sample'||(L.techBasis==='sample'&&!isEndu(t))); ph.textContent=per?(piecesSet(t)?`The QTP library counts time per sample: × ${samplesOf(t)}.`:'The QTP library counts time per sample: set the pieces (counted as 1 for now).'):'';}
+  const lt=libTech(t), ltNote=L&&L.techBasis==='sample'&&lt?` (${L.techHours} h × ${samplesOf(t)} samples)`:''; if(isEndu(t)){const ti=$('#f-techHours'); ti.readOnly=true; ti.value=''; ti.placeholder=fmtH(effTech(t)); $('#tech-help').textContent=`Endurance profile from the QTP library: ${loadSummary(L).replace('Endurance · ','')}.`;} else {$('#f-techHours').readOnly=false; $('#tech-help').textContent=+t.techHours?(lt?`Overrides ${fmtH(lt)} h from the QTP library${ltNote}.`:''):lt?`Using ${fmtH(lt)} h from the QTP library${ltNote}.`:'Used to compute technician load.';
   $('#f-techHours').placeholder=lt?String(lt):'';}
   const ei=endInfo(t); $('#end-help').textContent=t.end?'Set by hand. Clear it to compute start + duration.':ei.kind==='auto'?`Auto: ${fmtMs(ei.end)} (start + estimated duration)`:t.start?'Unknown: no duration available':'Leave empty to compute it from start + duration';
   const sug=$('#eq-sug'); if(sug){ const lb=L&&eqById(L.equipmentId); sug.innerHTML=!t.equipmentId&&lb?`QTP default: <button type="button" class="link" data-act="use-eq" data-id="${esc(lb.id)}">${esc(eqName(lb))}</button>`:''; }
@@ -1223,12 +1236,12 @@ function openQtp(id){
   const body=`<fieldset><legend>Test procedure</legend>
     ${fld('f-code','QTP code',inp('code',q.code||q.id,'text',id?'readonly':'placeholder="QTP0000"'),'req')}
     ${fld('f-name','Test name',inp('name',q.name),'span2')}
-    <div class="field"><label for="f-durVal">Estimated duration</label><div class="inline">${inp('durVal',q.durVal,'number','min="0" step="any" style="flex:1"')}${sel('durUnit',q.durUnit||'Hours',UNITS,'style="flex:1"')}</div></div>
+    <div class="field span2"><label for="f-durVal">Estimated duration</label><div class="inline">${inp('durVal',q.durVal,'number','min="0" step="any" style="flex:1"')}${sel('durUnit',q.durUnit||'Hours',UNITS,'style="flex:1"')}${sel('durBasis',q.durBasis==='sample'?'sample':'test',[['test','per test'],['sample','per sample']],'style="flex:1.2" aria-label="Duration basis"')}</div><span class="help">Per sample: multiplied by the number of pieces of each test</span></div>
     ${fld('f-continuous','Runs',sel('continuous',q.continuous===false?'no':'yes',[['yes','Continuous 24/7'],['no','Working hours (8 h/day)']]))}
     ${fld('f-cyclesPerDay','Cycles per day',inp('cyclesPerDay',q.cyclesPerDay,'number','min="0" step="any"'),'','Only for durations in cycles')}
     ${fld('f-equipmentId','Default equipment',sel('equipmentId',q.equipmentId||'',eqOpts))}
     ${fld('f-profile','Technician load profile',sel('profile',q.profile==='endurance'?'endurance':'even',[['even','Even: total hours spread over the working days'],['endurance','Endurance: setup + daily check + reviews + teardown']]),'span2')}
-    <div class="field" id="even-fields" ${q.profile==='endurance'?'hidden':''}><label for="f-techHours">Technician hours (total)</label>${inp('techHours',q.techHours,'number','min="0" step="0.5"')}</div>
+    <div class="field span2" id="even-fields" ${q.profile==='endurance'?'hidden':''}><label for="f-techHours">Technician hours</label><div class="inline" style="max-width:420px">${inp('techHours',q.techHours,'number','min="0" step="0.5" style="flex:1"')}${sel('techBasis',q.techBasis==='sample'?'sample':'test',[['test','per test'],['sample','per sample']],'style="flex:1.2" aria-label="Technician hours basis"')}</div><span class="help">Per sample: multiplied by the number of pieces of each test</span></div>
     <div class="span2" id="endu-fields" ${q.profile==='endurance'?'':'hidden'}><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px">
       ${fld('f-setupH','Setup hours',inp('setupH',q.setupH,'number','min="0" step="0.5"'),'',`In blocks of ${LOAD_DAY} h per working day from the start`)}
       ${fld('f-dailyH','Daily check hours',inp('dailyH',q.dailyH,'number','min="0" step="0.25"'),'','Every working day between setup and teardown')}
@@ -1276,7 +1289,7 @@ async function saveDialog(){
     }else if(kind==='qtp'){
       const code=(f.code||'').trim(); if(!code) return formErr('The QTP code is required.');
       if(!id&&S.qtps.some(q=>q.id===qid(code))) return formErr(`${code} is already in the library.`);
-      const data={code:id?(S.qtps.find(q=>q.id===id).code||code):code.toUpperCase(),name:f.name||'',durVal:f.durVal===''?'':+f.durVal,durUnit:f.durUnit||'Hours',continuous:f.continuous!=='no',cyclesPerDay:f.cyclesPerDay===''?'':+f.cyclesPerDay,techHours:f.techHours===''?'':+f.techHours,equipmentId:f.equipmentId||'',notes:f.notes||'',profile:f.profile==='endurance'?'endurance':'even',
+      const data={code:id?(S.qtps.find(q=>q.id===id).code||code):code.toUpperCase(),name:f.name||'',durVal:f.durVal===''?'':+f.durVal,durUnit:f.durUnit||'Hours',continuous:f.continuous!=='no',cyclesPerDay:f.cyclesPerDay===''?'':+f.cyclesPerDay,techHours:f.techHours===''?'':+f.techHours,durBasis:f.durBasis==='sample'?'sample':'test',techBasis:f.techBasis==='sample'?'sample':'test',equipmentId:f.equipmentId||'',notes:f.notes||'',profile:f.profile==='endurance'?'endurance':'even',
         setupH:num(f.setupH),dailyH:num(f.dailyH),reviewEvery:num(f.reviewEvery),reviewUnit:f.reviewUnit||'Hours',reviewH:num(f.reviewH),teardownH:num(f.teardownH),actualizado:now};
       if(id) await db.doc(`${COL.qtps}/${id}`).update(data); else await db.doc(`${COL.qtps}/${qid(code)}`).set(data);
     }
