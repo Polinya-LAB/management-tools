@@ -1072,7 +1072,6 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
   const mesLbl = k => { const [y, m] = k.split('-').map(Number); return `${MESES_L[m - 1][0].toUpperCase()}${MESES_L[m - 1].slice(1)} ${y}`; };
   const addDays = (s, n) => { const [y, m, d] = s.split('-').map(Number), t = new Date(Date.UTC(y, m - 1, d + n)); return `${t.getUTCFullYear()}-${pad(t.getUTCMonth() + 1)}-${pad(t.getUTCDate())}`; };
   const nextMonth = k => addMonths(`${k}-01`, 1).slice(0, 7);
-  const FACTOR_CARGA = 0.8; // las bombas consumen el 80 % de su potencia nominal
   const fmtEur = n => n.toLocaleString('es-ES', { style: 'currency', currency: 'EUR' });
   const fmtKwh = n => n.toLocaleString('es-ES', { maximumFractionDigits: 0 });
   state.consumoMes = null; state.consumoVista = 'kwh'; state.precioTmp = null;
@@ -1097,7 +1096,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
     const proj = new Map();
     let kwh = 0, prev = 0;
     for (const b of state.bombas) {
-      const kwInst = Number(b.potencia) * HP_KW, kw = kwInst * FACTOR_CARGA;
+      const kwInst = Number(b.potencia) * HP_KW, kw = kwInst;
       if (!(kw > 0) || !validDate(b.fechaInicio)) continue;
       const activa = isActive(b);
       const end = activa ? hoyEx : (validDate(b.fechaRetirada) ? b.fechaRetirada : null);
