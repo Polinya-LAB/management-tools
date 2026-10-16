@@ -508,7 +508,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
       </div>
       <div class="table-wrap"><table id="tbl-cons-mat" class="tbl-num"></table></div>
     </div>
-    <p class="pot-note">Estimación: cada bomba consume el 80 % de su potencia nominal (HP × 0,746 kW × 0,8) las 24 horas del día, desde su fecha de inicio hasta su retirada, o hasta hoy si sigue en ensayo. El precio del kWh se guarda por mes y se aplica también a los meses siguientes hasta que se cambie. Las bombas eliminadas no cuentan; usa «Finalizar ensayo» para conservar su consumo en el histórico.</p>
+    <p class="pot-note">Estimación a partir de la potencia instalada de cada bomba (1 HP = 0,746 kW), funcionando las 24 horas del día, desde su fecha de inicio hasta su retirada, o hasta hoy si sigue en ensayo. El precio del kWh se guarda por mes y se aplica también a los meses siguientes hasta que se cambie. Las bombas eliminadas no cuentan; usa «Finalizar ensayo» para conservar su consumo en el histórico.</p>
   </section>
 
   <footer class="page-foot">
@@ -1097,7 +1097,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
     const proj = new Map();
     let kwh = 0, prev = 0;
     for (const b of state.bombas) {
-      const kw = Number(b.potencia) * HP_KW * FACTOR_CARGA;
+      const kwInst = Number(b.potencia) * HP_KW, kw = kwInst * FACTOR_CARGA;
       if (!(kw > 0) || !validDate(b.fechaInicio)) continue;
       const activa = isActive(b);
       const end = activa ? hoyEx : (validDate(b.fechaRetirada) ? b.fechaRetirada : null);
@@ -1108,7 +1108,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
       if (dias <= 0 && diasPrev <= 0) continue;
       const k = b.proyecto || 'Sin proyecto';
       const r = proj.get(k) || { proyecto: k, kwh: 0, prev: 0, kw: 0, n: 0 };
-      r.kwh += kw * 24 * dias; r.prev += kw * 24 * diasPrev; r.kw += kw; r.n++;
+      r.kwh += kw * 24 * dias; r.prev += kw * 24 * diasPrev; r.kw += kwInst; r.n++;
       proj.set(k, r);
       kwh += kw * 24 * dias; prev += kw * 24 * diasPrev;
     }
@@ -1142,16 +1142,16 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
       <div class="kpi"><span class="lbl">Coste ${c.enCurso ? 'hasta hoy' : 'del mes'}</span>
         <span class="val">${eur(c.kwh)}</span>
         <span class="sub">${pr ? `${fmtN(pr.valor, 4)} €/kWh` : 'Falta el precio del kWh'}</span></div>
-      <div class="kpi"><span class="lbl">${c.enCurso ? 'Previsión mes completo' : 'Potencia media'}</span>
-        <span class="val">${c.enCurso ? `${fmtKwh(c.prev)}<small> kWh</small>` : `${fmtN(c.kwh / (24 * diasMes))}<small> kW</small>`}</span>
-        <span class="sub">${c.enCurso ? `${eur(c.prev)} si siguen las bombas actuales` : 'Media del mes, 24 h al día al 80 % de la nominal'}</span></div>
+      <div class="kpi"><span class="lbl">${c.enCurso ? 'Previsión mes completo' : 'Potencia instalada'}</span>
+        <span class="val">${c.enCurso ? `${fmtKwh(c.prev)}<small> kWh</small>` : `${fmtN(c.proyectos.reduce((n, p) => n + p.kw, 0))}<small> kW</small>`}</span>
+        <span class="sub">${c.enCurso ? `${eur(c.prev)} si siguen las bombas actuales` : 'kW instalados de las bombas del mes'}</span></div>
       <div class="kpi"><span class="lbl">Proyectos con consumo</span>
         <span class="val">${c.proyectos.length}</span>
         <span class="sub">${c.proyectos.reduce((n, p) => n + p.n, 0)} bombas en el mes</span></div>`;
 
     $('#cons-proj-title').textContent = `Consumo por proyecto · ${mesLbl(c.mes)}`;
     const base = c.enCurso ? c.prev : c.kwh;
-    const head = `<thead><tr><th scope="col">Proyecto</th><th scope="col" class="n">Bombas</th><th scope="col" class="n">kW (80 %)</th>
+    const head = `<thead><tr><th scope="col">Proyecto</th><th scope="col" class="n">Bombas</th><th scope="col" class="n">kW instalados</th>
       <th scope="col" class="n">kWh${c.enCurso ? ' hasta hoy' : ''}</th><th scope="col" class="n">Coste${c.enCurso ? ' hasta hoy' : ''}</th>
       ${c.enCurso ? '<th scope="col" class="n">Previsión kWh</th><th scope="col" class="n">Previsión coste</th>' : ''}<th scope="col">% del ${c.enCurso ? 'previsto' : 'total'}</th></tr></thead>`;
     const rows = c.proyectos.map(p => {
