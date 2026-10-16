@@ -4,6 +4,27 @@ Aplicaciones del laboratorio. Portada: https://polinya-lab.github.io/management-
 
 Repositorio de la organización [Polinya-LAB](https://github.com/Polinya-LAB) en GitHub.
 
+## Dónde están los datos y quién puede modificarlos
+
+El código y los datos están en repositorios distintos. Así cada persona solo puede modificar lo que le corresponde.
+
+| Repositorio | Contenido | Visibilidad | Quién tiene acceso |
+|---|---|---|---|
+| [management-tools](https://github.com/Polinya-LAB/management-tools) (este) | Código de las apps y la web | Público | Solo administradores |
+| [endurance-data](https://github.com/Polinya-LAB/endurance-data) | Datos de la piscina de durabilidad | Público | **Write** para quien registra bombas |
+| [test-data](https://github.com/Polinya-LAB/test-data) | Datos de Control de ensayos | Privado | **Read** para consultar, **Write** para modificar |
+
+Para dar acceso a una persona: en el repositorio de datos que corresponda, **Settings → Collaborators and teams → Add people**,
+elige el rol y la persona acepta la invitación que le llega por correo. Para quitárselo, elimínala de la misma lista.
+
+**Clave de acceso (una por persona y navegador).** Se crea en
+[github.com/settings/tokens/new](https://github.com/settings/tokens/new?scopes=repo&description=Laboratorio%20Polinya)
+y se pega en la app con **Conectar con GitHub** / **Connect GitHub**. Es la misma para las dos apps.
+- Si solo usa la piscina basta el permiso `public_repo`.
+- Para Control de ensayos hace falta `repo`, porque sus datos son privados (el enlace anterior ya lo marca).
+
+La clave se guarda solo en ese navegador; con **Desconectar** se borra. Si caduca, la app lo avisa y basta con crear otra.
+
 ## Control de ensayos
 
 Aplicación para gestionar los ensayos del laboratorio: cola, tablero por estado, planificación y ocupación diaria
@@ -13,12 +34,12 @@ de las solicitudes exportadas de ARAS. La interfaz está en inglés.
 **Abrir la aplicación:** https://polinya-lab.github.io/management-tools/control-ensayos/
 
 - Es una única página ([`control-ensayos/index.html`](control-ensayos/index.html)) que funciona igual que la del seguimiento de la piscina.
-- Los datos están en [`control-ensayos/data/ensayos.json`](control-ensayos/data/ensayos.json): ensayos (`tests`), personas (`personas`),
+- Los datos están en [`ensayos.json`](https://github.com/Polinya-LAB/test-data/blob/main/ensayos.json) del repositorio privado `test-data`: ensayos (`tests`), personas (`personas`),
   equipos (`bancos`), procedimientos (`qtps`) y ajustes de importación (`config`).
-- Cualquiera con el enlace puede consultarla. Para modificar hay que **Connect GitHub** con la clave de un colaborador del repositorio;
-  es la misma clave que la de la piscina, así que si ya está conectada en ese navegador sirve para las dos.
+- Como los datos son privados, para consultarla hay que **Connect GitHub** con una cuenta con acceso de lectura a `test-data`,
+  y para modificar, con acceso de escritura.
 - Los cambios hechos en poco tiempo (por ejemplo una importación de ARAS) se guardan juntos en un solo commit. El
-  [historial](https://github.com/Polinya-LAB/management-tools/commits/main/control-ensayos/data/ensayos.json) muestra quién cambió qué y cuándo.
+  [historial](https://github.com/Polinya-LAB/test-data/commits/main/ensayos.json) muestra quién cambió qué y cuándo.
 - Para importar de ARAS: exporta la búsqueda `a_Lab_Dashboard` a Excel y cárgala en la pestaña **Import ARAS**.
 
 ## Seguimiento piscina durabilidad
@@ -32,30 +53,12 @@ las fechas de cada ensayo y un registro de observaciones por proyecto.
 ### Cómo funciona
 
 - Es una única página ([`seguimiento-piscina-durabilidad/index.html`](seguimiento-piscina-durabilidad/index.html)) publicada con GitHub Pages. No hay servidor.
-- Todos los datos están en [`seguimiento-piscina-durabilidad/data/piscina.json`](seguimiento-piscina-durabilidad/data/piscina.json): bombas, HotBox, observaciones y ajustes.
+- Todos los datos están en [`piscina.json`](https://github.com/Polinya-LAB/endurance-data/blob/main/piscina.json) del repositorio `endurance-data`: bombas, HotBox, observaciones y ajustes.
 - Cualquiera con el enlace puede **consultar** la aplicación.
-- Para **registrar o modificar** hay que conectar la aplicación con una cuenta de GitHub que sea
-  colaboradora del repositorio. Cada cambio se guarda como un commit, así que el
-  [historial de cambios](https://github.com/Polinya-LAB/management-tools/commits/main/seguimiento-piscina-durabilidad/data/piscina.json)
+- Para **registrar o modificar** hay que conectar la aplicación con una cuenta de GitHub con rol **Write**
+  en `endurance-data`. Cada cambio se guarda como un commit, así que el
+  [historial de cambios](https://github.com/Polinya-LAB/endurance-data/commits/main/piscina.json)
   muestra quién cambió qué y cuándo, y cualquier cambio se puede deshacer.
-
-### Dar permiso de edición a una persona
-
-1. En GitHub, abre **Settings → Collaborators and teams** de este repositorio y pulsa **Add people**.
-2. Escribe su usuario o correo de GitHub y envía la invitación.
-3. Elige el rol **Write** y la persona acepta la invitación que le llega por correo.
-
-Para quitarle el permiso, elimínala de la misma lista.
-
-### Conectar la aplicación (cada colaborador, una vez por navegador)
-
-1. Crea una clave de acceso en
-   [github.com/settings/tokens/new](https://github.com/settings/tokens/new?scopes=public_repo&description=Piscina%20de%20durabilidad)
-   con el permiso `public_repo` (ya viene marcado con ese enlace). Elige la caducidad que quieras.
-2. En la aplicación, pulsa **Conectar con GitHub** y pega la clave.
-
-La clave se guarda solo en ese navegador. Con **Desconectar** se borra.
-Si caduca, la aplicación lo avisa y basta con crear otra.
 
 ### Numeración de la piscina
 

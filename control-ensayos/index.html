@@ -610,7 +610,11 @@ function render(){
   $('#tabs').innerHTML=VIEWS.map(([k,l])=>`<button data-view="${k}" ${S.view===k?'aria-current="page"':''}>${l}${k==='overview'&&A.global.length?`<span class="n ${crit?'crit':''}">${A.global.length}</span>`:''}${k==='queue'&&nq?`<span class="n">${nq}</span>`:''}${k==='history'&&nh?`<span class="n">${nh}</span>`:''}</button>`).join('');
   $('#btn-new').hidden=S.ro||S.noDb;
   let banner='';
-  if(S.noDb) banner=`<div class="banner crit"><b>Could not load the lab data from GitHub.</b> Check your connection and reload the page.</div>`;
+  if(S.noDb) banner=S.privateData
+    ? (GH.login
+      ? `<div class="banner crit"><b>Your account ${esc(GH.login)} cannot see the lab data.</b> Ask the owner to add you to the private repository <span class="mono">${REPO.owner}/${REPO.repo}</span>.</div>`
+      : `<div class="banner crit"><b>The lab data is private.</b> Press Connect GitHub with an account that has access to see it.</div>`)
+    : `<div class="banner crit"><b>Could not load the lab data from GitHub.</b> Check your connection and reload the page.</div>`;
   else if(GH.invalid) banner=`<div class="banner crit">Your GitHub key is no longer valid or has expired. <button class="link" data-act="gh">Connect GitHub</button> and paste a new one.</div>`;
   else if(GH.login&&!GH.push) banner=`<div class="banner">Your GitHub account <b>${esc(GH.login)}</b> cannot edit this repository. Ask to be added as a collaborator with the Write role.</div>`;
   else if(S.ro) banner=`<div class="banner">Read-only. To create or change tests, <button class="link" data-act="gh">connect GitHub</button> with an account that has write access to the repository.</div>`;
@@ -1392,10 +1396,10 @@ document.addEventListener('drop',async ev=>{
 document.addEventListener('dragend',()=>{dragId=null; document.querySelectorAll('.drop').forEach(x=>x.classList.remove('drop'));});
 window.addEventListener('hashchange',()=>{const h=location.hash.slice(1); if(VIEWS.some(x=>x[0]===h)) setView(h);});
 
-/* ---------- Storage: one JSON file in the GitHub repository ----------
-   Anyone can read control-ensayos/data/ensayos.json. Saving needs the key (token) of a collaborator with write access;
+/* ---------- Storage: one JSON file in the private data repository Polinya-LAB/test-data ----------
+   Reading ensayos.json needs the key (token) of an account with read access; saving needs write access;
    every save is a commit. The key is shared with the durability pool app (same site, same browser storage). */
-const REPO={owner:'Polinya-LAB',repo:'management-tools',branch:'main',path:'control-ensayos/data/ensayos.json'};
+const REPO={owner:'Polinya-LAB',repo:'test-data',branch:'main',path:'ensayos.json'};
 const API=`https://api.github.com/repos/${REPO.owner}/${REPO.repo}`;
 const RAW=`https://raw.githubusercontent.com/${REPO.owner}/${REPO.repo}/${REPO.branch}/${REPO.path}`;
 const TOKEN_KEY='pd-gh-token', DATA_COLS=['tests','personas','bancos','qtps','config'];
@@ -1416,7 +1420,7 @@ const normData=x=>{const o=emptyData(); for(const c of DATA_COLS) if(x&&x[c]&&ty
 async function fetchApi(useEtag){
   const res=await ghFetch(`${API}/contents/${REPO.path}?ref=${REPO.branch}`,useEtag&&remote.etag?{headers:{'If-None-Match':remote.etag}}:{});
   if(res.status===304) return null;
-  if(res.status===404) return {data:emptyData(),sha:null,etag:null};
+  if(res.status===404) throw {code:'private',status:404};
   if(!res.ok) throw httpError(res);
   const j=await res.json(); let text;
   if(j.content) text=b64decode(j.content);
@@ -1425,7 +1429,7 @@ async function fetchApi(useEtag){
 }
 async function fetchRaw(){
   const res=await fetch(`${RAW}?t=${Date.now()}`,{cache:'no-store'});
-  if(res.status===404) return {data:emptyData(),sha:null,etag:null};
+  if(res.status===404) throw {code:'private',status:404};
   if(!res.ok) throw httpError(res);
   return {data:normData(await res.json()),sha:null,etag:null};
 }
@@ -1493,10 +1497,10 @@ async function refresh(){
   try{
     const r=GH.token&&!GH.invalid?await fetchApi(true):await fetchRaw();
     if(r){Object.assign(remote,r); recompute();}
-    S.noDb=false;
+    S.noDb=false; S.privateData=false;
   }catch(err){
     if(err.code==='auth'){GH.invalid=true; GH.push=false; S.ro=true; return refresh();}
-    if(!local){S.noDb=true; render();}
+    if(!local){S.noDb=true; S.privateData=err.code==='private'; render();}
   }
 }
 async function connectGh(t){
@@ -1519,11 +1523,11 @@ function openGh(){
   dlg.dataset.kind='gh'; dlg.dataset.id='';
   const body=`${GH.login?`<p class="note">Connected as <b>${esc(GH.login)}</b>${GH.push?' with write access.':', but this account cannot edit the repository.'}</p>`:''}
   <ol class="steps-plain">
-    <li>Create an access key in GitHub: <a href="https://github.com/settings/tokens/new?scopes=public_repo&amp;description=Laboratorio%20Polinya" target="_blank" rel="noopener">open the form</a>. The <span class="mono">public_repo</span> permission is already ticked; choose an expiry and press <i>Generate token</i>.</li>
+    <li>Create an access key in GitHub: <a href="https://github.com/settings/tokens/new?scopes=repo&amp;description=Laboratorio%20Polinya" target="_blank" rel="noopener">open the form</a>. The <span class="mono">repo</span> permission is already ticked (needed because the lab data is private); choose an expiry and press <i>Generate token</i>.</li>
     <li>Copy the key and paste it here.</li>
   </ol>
   <div class="field"><label for="gh-token">Access key (token)</label><input id="gh-token" type="password" placeholder="ghp_…" autocomplete="off" spellcheck="false"></div>
-  <p class="note">The key is kept only in this browser and is shared with the durability pool app. Your GitHub account must be a collaborator of <span class="mono">${REPO.owner}/${REPO.repo}</span> with the Write role. Every change is saved as a commit, so the history shows who changed what.</p>`;
+  <p class="note">The key is kept only in this browser and is shared with the durability pool app. Your GitHub account must have access to the data repository <span class="mono">${REPO.owner}/${REPO.repo}</span>: Read to view, Write to edit. Every change is saved as a commit, so the history shows who changed what.</p>`;
   dlg.innerHTML=`<form class="dlg-form" id="dlg-form" novalidate><header class="dlg-h"><div><p class="eyebrow">Editing access</p><h2>Connect GitHub</h2></div><button type="button" class="icon-btn" data-act="close" aria-label="Close">×</button></header>
   <div class="dlg-body">${body}<div id="f-err" class="form-err" hidden></div></div>
   <footer class="dlg-f">${GH.token?'<button type="button" class="btn ghost danger" data-act="gh-off">Disconnect</button>':''}<span class="sp"></span><button type="button" class="btn ghost" data-act="close">Cancel</button><button class="btn primary" type="submit">Connect</button></footer></form>`;
