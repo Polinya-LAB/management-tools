@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Lab Occupancy · Laboratorio Polinyà</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../control-ensayos/app.css?v=20261017">
+</head>
+<!-- Control de ensayos and Ocupación share app.js and app.css; <body data-app> picks the app. -->
+<body data-app="occupancy">
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand"><a class="home" href="../">← Laboratorio Polinyà</a><div class="row1"><h1>Lab Occupancy</h1><span class="tag">EQUIPMENT &amp; TEAM</span></div></div>
+    <button type="button" class="gh" id="btn-gh" data-act="gh"><i></i><span>Connect GitHub</span></button>
+    <button class="btn primary" id="btn-new" data-act="new">+ New test</button>
+    <nav class="tabs" id="tabs" aria-label="Views"></nav>
+  </div>
+</header>
+<main id="view"><div class="empty"><h3>Loading lab data…</h3></div></main>
+<dialog id="dlg"></dialog>
+<datalist id="qtp-list"></datalist>
+<div id="toast" hidden></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="../control-ensayos/app.js?v=20261017"></script>
+</body>
+</html>

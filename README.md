@@ -27,13 +27,14 @@ La clave se guarda solo en ese navegador; con **Desconectar** se borra. Si caduc
 
 ## Control de ensayos
 
-Aplicación para gestionar los ensayos del laboratorio: cola, tablero por estado, planificación y ocupación diaria
-de técnicos y equipos, historial, biblioteca de procedimientos QTP con duraciones y perfiles de carga, e importación
-de las solicitudes exportadas de ARAS. La interfaz está en inglés.
+Aplicación para gestionar los ensayos del laboratorio: cola, tablero por estado, historial, biblioteca de
+procedimientos QTP con duraciones y perfiles de carga, e importación de las solicitudes exportadas de ARAS.
+La ocupación de técnicos y equipos está en su propia aplicación, [Ocupación](#ocupación-de-equipos-y-técnicos).
+La interfaz está en inglés.
 
 **Abrir la aplicación:** https://polinya-lab.github.io/management-tools/control-ensayos/
 
-- Es una única página ([`control-ensayos/index.html`](control-ensayos/index.html)) que funciona igual que la del seguimiento de la piscina.
+- Es una página ([`control-ensayos/index.html`](control-ensayos/index.html)) con su código en `app.js` y `app.css`, que comparte con Ocupación.
 - Los datos están en [`ensayos/ensayos.json`](https://github.com/Polinya-LAB/lab-data/blob/main/ensayos/ensayos.json) del repositorio privado `lab-data`: ensayos (`tests`), personas (`personas`),
   equipos (`bancos`), procedimientos (`qtps`) y ajustes de importación (`config`).
 - Como los datos son privados, para consultarla hay que **Connect GitHub** con una cuenta con acceso de lectura a `lab-data`,
@@ -41,6 +42,21 @@ de las solicitudes exportadas de ARAS. La interfaz está en inglés.
 - Los cambios hechos en poco tiempo (por ejemplo una importación de ARAS) se guardan juntos en un solo commit. El
   [historial](https://github.com/Polinya-LAB/lab-data/commits/main/ensayos/ensayos.json) muestra quién cambió qué y cuándo.
 - Para importar de ARAS: exporta la búsqueda `a_Lab_Dashboard` a Excel y cárgala en la pestaña **Import ARAS**.
+
+## Ocupación de equipos y técnicos
+
+Carga de técnicos y equipos a partir de los ensayos de Control de ensayos: resumen con la carga semanal de las
+próximas 8 semanas, planificación por recurso, ocupación diaria y alertas de equipos por encima de su capacidad
+o técnicos sobrecargados. La interfaz está en inglés.
+
+**Abrir la aplicación:** https://polinya-lab.github.io/management-tools/ocupacion/
+
+- Usa los mismos datos que Control de ensayos (`ensayos/ensayos.json` en `lab-data`) y el mismo código
+  ([`control-ensayos/app.js`](control-ensayos/app.js)); [`ocupacion/index.html`](ocupacion/index.html) solo elige qué vistas mostrar.
+- Los ensayos se crean e importan en Control de ensayos. Aquí se pueden abrir y cambiar (técnico, equipo, fechas),
+  y cada cambio se guarda como commit con el prefijo «Ocupación».
+- Como los datos son privados, hace falta **Connect GitHub** con una cuenta con acceso a `lab-data`. GitHub da acceso
+  al repositorio entero, así que quien pueda abrir Control de ensayos también puede abrir esta aplicación.
 
 ## Plan de calibraciones
 
