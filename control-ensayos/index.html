@@ -463,11 +463,11 @@ function effDur(t){
   const cont=t.continuous==='yes'?true:t.continuous==='no'?false:!(L&&L.continuous===false);
   const cpd=+(t.cyclesPerDay||(L&&L.cyclesPerDay))||0;
   if(+t.durVal>0) return {val:+t.durVal,unit:t.durUnit||'Hours',cont,cpd,src:'this test'};
-  /* Precedence: this test > QTP library per sample > ARAS > QTP library per test */
+  /* Precedence: this test > QTP library per sample > QTP library per test > ARAS */
   if(L&&+L.durVal>0&&L.durBasis==='sample'){const unit=L.durUnit||'Hours', n=samplesOf(t);
     return {val:round2(+L.durVal*n),unit,cont,cpd,src:`QTP library · ${L.durVal} ${UNIT_SHORT[unit]||unit} × ${n}${piecesSet(t)?'':' (pieces not set)'}`,perSample:true};}
-  if(+t.arasDurVal>0) return {val:+t.arasDurVal,unit:normUnit(t.arasDurUnit)||'Hours',cont,cpd,src:'ARAS'};
   if(L&&+L.durVal>0) return {val:+L.durVal,unit:L.durUnit||'Hours',cont,cpd,src:'QTP library'};
+  if(+t.arasDurVal>0) return {val:+t.arasDurVal,unit:normUnit(t.arasDurUnit)||'Hours',cont,cpd,src:'ARAS'};
   return null;
 }
 const durLabel=x=>x?`${x.val} ${UNIT_SHORT[x.unit]||x.unit}`:'—';
@@ -859,7 +859,7 @@ function vLibrary(){
     return `<tr class="click ${+q.durVal>0?'':'miss'}" data-act="edit-q" data-id="${esc(q.id)}"><td class="ref nowrap">${esc(q.code||q.id)}</td><td><b>${esc(q.name||'')}</b>${q.notes?`<span class="snip">${esc(q.notes)}</span>`:''}</td><td>${esc(b?eqName(b):'—')}</td><td class="nowrap">${+q.durVal>0?`${esc(q.durVal)} ${esc(UNIT_SHORT[q.durUnit]||q.durUnit||'h')}${q.durBasis==='sample'?' <small class="muted">per sample</small>':''}${q.durUnit==='Cycles'&&q.cyclesPerDay?` <small class="muted">(${esc(q.cyclesPerDay)}/day)</small>`:''}`:'<span class="due warn">not set</span>'}</td><td>${q.continuous===false?'Working hours':'24/7'}</td><td>${esc(loadSummary(q))}</td><td class="num">${use.get(q.id)||0}</td></tr>`}).join('');
   const I=S.qimp;
   return `<div class="view-h"><h2>QTP library</h2>${S.ro||S.noDb?'':'<button class="btn" data-act="new-q">+ Add QTP</button>'}</div>
-  <p class="muted" style="margin:0;max-width:90ch">Estimated duration and technician hours for each test procedure, per test or per sample. They are planning defaults only: every test line uses them unless you set its own duration or hours in the test. An ARAS duration on the task takes precedence over a per-test library duration; a per-sample library duration is always multiplied by the test's number of pieces.</p>
+  <p class="muted" style="margin:0;max-width:90ch">Estimated duration and technician hours for each test procedure, per test or per sample. They are planning defaults only: every test line uses them unless you set its own duration or hours in the test. A library duration takes precedence over the duration that comes from ARAS, which is only used when the QTP has none; a per-sample library duration is always multiplied by the test's number of pieces.</p>
   ${S.ro||S.noDb?'':`<section class="panel"><div class="panel-h"><h2>Import QTP list from Excel</h2><span class="muted">Columns such as QTP, test name, estimated duration, unit, technician hours, equipment</span></div>
     <label class="drop-zone" data-dz="qtp"><input type="file" id="file-qtp" accept=".xlsx,.xls,.csv"><b>Drop the QTP list here</b><span class="muted">or click to choose a file</span></label>
     ${I?qtpImportPanel(I):''}</section>`}
