@@ -12,16 +12,16 @@ El código y los datos están en repositorios distintos. Así cada persona solo 
 |---|---|---|---|
 | [management-tools](https://github.com/Polinya-LAB/management-tools) (este) | Código de las apps y la web | Público | Solo administradores |
 | [endurance-data](https://github.com/Polinya-LAB/endurance-data) | Datos de la piscina de durabilidad | Público | **Write** para quien registra bombas |
-| [lab-data](https://github.com/Polinya-LAB/lab-data) | Datos privados del laboratorio: `ensayos/` (Control de ensayos) y `calibraciones/` | Privado | **Read** para consultar, **Write** para modificar |
+| [lab-data](https://github.com/Polinya-LAB/lab-data) | Datos privados del laboratorio: `ensayos/` (Control de ensayos) y `calibraciones/` (Plan de calibraciones) | Privado | **Read** para consultar, **Write** para modificar |
 
 Para dar acceso a una persona: en el repositorio de datos que corresponda, **Settings → Collaborators and teams → Add people**,
 elige el rol y la persona acepta la invitación que le llega por correo. Para quitárselo, elimínala de la misma lista.
 
 **Clave de acceso (una por persona y navegador).** Se crea en
 [github.com/settings/tokens/new](https://github.com/settings/tokens/new?scopes=repo&description=Laboratorio%20Polinya)
-y se pega en la app con **Conectar con GitHub** / **Connect GitHub**. Es la misma para las dos apps.
+y se pega en la app con **Conectar con GitHub** / **Connect GitHub**. Es la misma para todas las apps.
 - Si solo usa la piscina basta el permiso `public_repo`.
-- Para Control de ensayos hace falta `repo`, porque sus datos son privados (el enlace anterior ya lo marca).
+- Para Control de ensayos y el Plan de calibraciones hace falta `repo`, porque sus datos son privados (el enlace anterior ya lo marca).
 
 La clave se guarda solo en ese navegador; con **Desconectar** se borra. Si caduca, la app lo avisa y basta con crear otra.
 
@@ -41,6 +41,21 @@ de las solicitudes exportadas de ARAS. La interfaz está en inglés.
 - Los cambios hechos en poco tiempo (por ejemplo una importación de ARAS) se guardan juntos en un solo commit. El
   [historial](https://github.com/Polinya-LAB/lab-data/commits/main/ensayos/ensayos.json) muestra quién cambió qué y cuándo.
 - Para importar de ARAS: exporta la búsqueda `a_Lab_Dashboard` a Excel y cárgala en la pestaña **Import ARAS**.
+
+## Plan de calibraciones
+
+Plan de calibración de los equipos del laboratorio (formulario F-IM-FM-001): equipos con sus puntos y tolerancias,
+plan anual, registro y cierre de calibraciones, evaluación de la tolerancia de uso (|e| + U ≤ TU), mantenimiento,
+revisión de datos e importación del Excel del plan. La interfaz está en inglés.
+
+**Abrir la aplicación:** https://polinya-lab.github.io/management-tools/calibraciones/
+
+- Es una única página ([`calibraciones/index.html`](calibraciones/index.html)) que guarda igual que Control de ensayos.
+- Los datos están en [`calibraciones/calibraciones.json`](https://github.com/Polinya-LAB/lab-data/blob/main/calibraciones/calibraciones.json) del repositorio privado `lab-data`:
+  equipos (`equipment`), calibraciones (`calibrations`), evaluaciones TU (`evaluations`), mantenimiento (`maintenance`) y ajustes (`config`).
+- Para consultarla hay que **Connect GitHub** con una cuenta con acceso de lectura a `lab-data`, y para modificar, con acceso de escritura.
+  La clave es la misma que la de las otras apps.
+- Cada cambio es un commit; el [historial](https://github.com/Polinya-LAB/lab-data/commits/main/calibraciones/calibraciones.json) muestra quién cambió qué y cuándo.
 
 ## Seguimiento piscina durabilidad
 
