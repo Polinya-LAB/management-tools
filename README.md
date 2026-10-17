@@ -12,7 +12,7 @@ El código y los datos están en repositorios distintos. Así cada persona solo 
 |---|---|---|---|
 | [management-tools](https://github.com/Polinya-LAB/management-tools) (este) | Código de las apps y la web | Público | Solo administradores |
 | [endurance-data](https://github.com/Polinya-LAB/endurance-data) | Datos de la piscina de durabilidad | Público | **Write** para quien registra bombas |
-| [test-data](https://github.com/Polinya-LAB/test-data) | Datos de Control de ensayos | Privado | **Read** para consultar, **Write** para modificar |
+| [lab-data](https://github.com/Polinya-LAB/lab-data) | Datos privados del laboratorio: `ensayos/` (Control de ensayos) y `calibraciones/` | Privado | **Read** para consultar, **Write** para modificar |
 
 Para dar acceso a una persona: en el repositorio de datos que corresponda, **Settings → Collaborators and teams → Add people**,
 elige el rol y la persona acepta la invitación que le llega por correo. Para quitárselo, elimínala de la misma lista.
@@ -34,12 +34,12 @@ de las solicitudes exportadas de ARAS. La interfaz está en inglés.
 **Abrir la aplicación:** https://polinya-lab.github.io/management-tools/control-ensayos/
 
 - Es una única página ([`control-ensayos/index.html`](control-ensayos/index.html)) que funciona igual que la del seguimiento de la piscina.
-- Los datos están en [`ensayos.json`](https://github.com/Polinya-LAB/test-data/blob/main/ensayos.json) del repositorio privado `test-data`: ensayos (`tests`), personas (`personas`),
+- Los datos están en [`ensayos/ensayos.json`](https://github.com/Polinya-LAB/lab-data/blob/main/ensayos/ensayos.json) del repositorio privado `lab-data`: ensayos (`tests`), personas (`personas`),
   equipos (`bancos`), procedimientos (`qtps`) y ajustes de importación (`config`).
-- Como los datos son privados, para consultarla hay que **Connect GitHub** con una cuenta con acceso de lectura a `test-data`,
+- Como los datos son privados, para consultarla hay que **Connect GitHub** con una cuenta con acceso de lectura a `lab-data`,
   y para modificar, con acceso de escritura.
 - Los cambios hechos en poco tiempo (por ejemplo una importación de ARAS) se guardan juntos en un solo commit. El
-  [historial](https://github.com/Polinya-LAB/test-data/commits/main/ensayos.json) muestra quién cambió qué y cuándo.
+  [historial](https://github.com/Polinya-LAB/lab-data/commits/main/ensayos/ensayos.json) muestra quién cambió qué y cuándo.
 - Para importar de ARAS: exporta la búsqueda `a_Lab_Dashboard` a Excel y cárgala en la pestaña **Import ARAS**.
 
 ## Seguimiento piscina durabilidad

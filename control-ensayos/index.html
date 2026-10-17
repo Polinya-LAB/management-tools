@@ -1409,10 +1409,10 @@ document.addEventListener('drop',async ev=>{
 document.addEventListener('dragend',()=>{dragId=null; document.querySelectorAll('.drop').forEach(x=>x.classList.remove('drop'));});
 window.addEventListener('hashchange',()=>{const h=location.hash.slice(1); if(VIEWS.some(x=>x[0]===h)) setView(h);});
 
-/* ---------- Storage: one JSON file in the private data repository Polinya-LAB/test-data ----------
+/* ---------- Storage: one JSON file in the private data repository Polinya-LAB/lab-data (folder ensayos/) ----------
    Reading ensayos.json needs the key (token) of an account with read access; saving needs write access;
    every save is a commit. The key is shared with the durability pool app (same site, same browser storage). */
-const REPO={owner:'Polinya-LAB',repo:'test-data',branch:'main',path:'ensayos.json'};
+const REPO={owner:'Polinya-LAB',repo:'lab-data',branch:'main',path:'ensayos/ensayos.json'};
 const API=`https://api.github.com/repos/${REPO.owner}/${REPO.repo}`;
 const RAW=`https://raw.githubusercontent.com/${REPO.owner}/${REPO.repo}/${REPO.branch}/${REPO.path}`;
 const TOKEN_KEY='pd-gh-token', DATA_COLS=['tests','personas','bancos','qtps','config'];
