@@ -27,9 +27,9 @@ La clave se guarda solo en ese navegador; con **Desconectar** se borra. Si caduc
 
 ## Control de ensayos
 
-Aplicación para gestionar los ensayos del laboratorio: cola, tablero por estado, historial, biblioteca de
-procedimientos QTP con duraciones y perfiles de carga, e importación de las solicitudes exportadas de ARAS.
-La ocupación de técnicos y equipos está en su propia aplicación, [Ocupación](#ocupación-de-equipos-y-técnicos).
+Aplicación para gestionar los ensayos del laboratorio: cola, tablero por estado, planificación por recurso
+(con opción de ocultar los equipos sin ensayos en el periodo), historial, biblioteca de procedimientos QTP con duraciones y perfiles de carga, e importación de las solicitudes exportadas de ARAS.
+La carga y ocupación diaria de técnicos y equipos están en su propia aplicación, [Ocupación](#ocupación-de-equipos-y-técnicos).
 La interfaz está en inglés.
 
 **Abrir la aplicación:** https://polinya-lab.github.io/management-tools/control-ensayos/

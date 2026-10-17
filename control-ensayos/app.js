@@ -22,7 +22,7 @@ const ARAS_STATUS={'in queue':'Queued','queued':'Queued','in progress':'In progr
 const APP=document.body.dataset.app==='occupancy'?'occupancy':'tests';
 const VIEWS=APP==='occupancy'
   ?[['overview','Overview'],['planning','Planning'],['occupancy','Occupancy'],['resources','Equipment & team']]
-  :[['overview','Overview'],['board','Board'],['queue','Queue'],['history','History'],['resources','Equipment & team'],['library','QTP library'],['import','Import ARAS']];
+  :[['overview','Overview'],['board','Board'],['queue','Queue'],['planning','Planning'],['history','History'],['resources','Equipment & team'],['library','QTP library'],['import','Import ARAS']];
 const VIEW_KEY=APP==='occupancy'?'occ.view':'tl.view';
 const DAY=86400000, WEEKS_HEAT=8;
 /* Firestore-style collections. People and equipment keep the collections created in the first version. */
@@ -63,7 +63,7 @@ const QTP_FIELDS=[
 /* ---------- State ---------- */
 const S={tests:[],people:[],equipment:[],qtps:[],cfg:{},loaded:new Set(),view:'overview',q:'',imp:null,qimp:null,ro:false,noDb:false,dayW:18,hist:{st:'',res:''},incClosed:true,sort:{queue:{k:'',dir:1},hist:{k:'',dir:1}},qst:['Not approved','Queued','Planned','In progress','Endurance running','On hold'],occ:{start:null,weeks:4,sel:null}};
 let db=null, dl=null, IX=null;
-try{const v=localStorage.getItem(VIEW_KEY); if(VIEWS.some(x=>x[0]===v)) S.view=v; const z=+localStorage.getItem('tl.dayW'); if(z) S.dayW=z===30?32:z; const qs=JSON.parse(localStorage.getItem('tl.qst')||'null'); if(Array.isArray(qs)&&qs.length) S.qst=qs.filter(x=>ACTIVE.includes(x)); if(!localStorage.getItem('tl.qstv')){ if(!S.qst.includes('Not approved')) S.qst.unshift('Not approved'); localStorage.setItem('tl.qstv','2'); } if(localStorage.getItem('tl.qstv')==='2'){ if(!S.qst.includes('Endurance running')) S.qst.push('Endurance running'); localStorage.setItem('tl.qstv','3'); } localStorage.setItem('tl.qst',JSON.stringify(S.qst)); const ow=+localStorage.getItem('tl.occw'); if([2,4,6,8].includes(ow)) S.occ.weeks=ow;}catch(e){}
+try{const v=localStorage.getItem(VIEW_KEY); if(VIEWS.some(x=>x[0]===v)) S.view=v; S.hideIdle=localStorage.getItem('tl.hideIdle')==='1'; const z=+localStorage.getItem('tl.dayW'); if(z) S.dayW=z===30?32:z; const qs=JSON.parse(localStorage.getItem('tl.qst')||'null'); if(Array.isArray(qs)&&qs.length) S.qst=qs.filter(x=>ACTIVE.includes(x)); if(!localStorage.getItem('tl.qstv')){ if(!S.qst.includes('Not approved')) S.qst.unshift('Not approved'); localStorage.setItem('tl.qstv','2'); } if(localStorage.getItem('tl.qstv')==='2'){ if(!S.qst.includes('Endurance running')) S.qst.push('Endurance running'); localStorage.setItem('tl.qstv','3'); } localStorage.setItem('tl.qst',JSON.stringify(S.qst)); const ow=+localStorage.getItem('tl.occw'); if([2,4,6,8].includes(ow)) S.occ.weeks=ow;}catch(e){}
 if(location.hash&&VIEWS.some(x=>'#'+x[0]===location.hash)) S.view=location.hash.slice(1);
 
 /* ---------- Utilities ---------- */
@@ -438,15 +438,19 @@ function vPlanning(){
     return `<div class="g-lab ${conf?'conf':''}" style="height:${h}px"><b title="${esc(label)}">${esc(label)}</b><small>${sub}</small></div><div class="g-track" style="height:${h}px">${weekend}${todayL}${L.out.map(o=>bar(o,lightFn&&lightFn(o.t))).join('')}</div>`};
   const head=`<div class="g-lab" style="height:30px"><small>${dayMode?'Week':'Week of'}</small></div><div class="g-head">${[...Array(nW)].map((_,i)=>{const w=start+i*7*DAY; return `<div style="width:${7*W}px" class="${w===mondayOf(T)?'now':''}">${dayMode?`W${isoWeek(w)} · ${new Date(w).toLocaleDateString('en-GB',{month:'short',year:'numeric',timeZone:'UTC'})}`:fmtMs(w).slice(0,5)}</div>`}).join('')}</div>`
     +(dayMode?`<div class="g-lab" style="height:34px"><small>Day</small></div><div class="g-days">${[...Array(days)].map((_,i)=>{const t=start+i*DAY, dt=new Date(t); return `<div style="width:${W}px" class="${t===T?'now':''} ${isWork(t)?'':'we'} ${dt.getUTCDay()===1?'mon':''}"><small>${WD[dt.getUTCDay()]}</small>${dt.getUTCDate()}</div>`}).join('')}</div>`:'');
-  const bRows=[...S.equipment].sort(byName).map(b=>row(eqName(b),`<span class="bstate ${eqStateCls(eqStatus(b))}">${esc(eqStatus(b))}</span> · capacity ${eqCap(b)}`,S.tests.filter(t=>t.equipmentId===b.id&&EQ_STATES.has(t.status)).map(item),IX.over.has(b.id))).join('');
-  const pRows=[...S.people].sort(byName).map(p=>{const h=personHours(IX,p.id,mondayOf(T)), cap=+p.horasSemana||0; return row(p.nombre,`${esc(p.rol||'')}${cap?` · this week ${Math.round(h)}/${cap} h`:''}`,S.tests.filter(t=>t.techId===p.id&&TECH_STATES.has(t.status)).map(item),false,t=>t.status==='Report')}).join('');
+  /* "Hide idle equipment" leaves out equipment with no test bar inside the visible period. */
+  const eqItems=[...S.equipment].sort(byName).map(b=>({b,items:S.tests.filter(t=>t.equipmentId===b.id&&EQ_STATES.has(t.status)).map(item).filter(Boolean)}));
+  const shownEq=S.hideIdle?eqItems.filter(x=>x.items.length):eqItems, hiddenEq=eqItems.length-shownEq.length;
+  const bRows=shownEq.map(({b,items})=>row(eqName(b),`<span class="bstate ${eqStateCls(eqStatus(b))}">${esc(eqStatus(b))}</span> · capacity ${eqCap(b)}`,items,IX.over.has(b.id))).join('');
+  const pRows=[...S.people].sort(byName).map(p=>{const h=personHours(IX,p.id,mondayOf(T)), cap=+p.horasSemana||0; return row(p.nombre,`${esc(p.rol||'')}${APP==='occupancy'&&cap?` · this week ${Math.round(h)}/${cap} h`:''}`,S.tests.filter(t=>t.techId===p.id&&TECH_STATES.has(t.status)).map(item),false,t=>t.status==='Report')}).join('');
   const missing=S.tests.filter(t=>EQ_STATES.has(t.status)&&(!t.start)).length;
   return `<div class="view-h"><h2>Planning by resource</h2>
-    <div class="zoom" role="group" aria-label="Zoom">${[[10,'Quarter'],[18,'Weeks'],[32,'Days']].map(([z,l])=>`<button data-act="zoom" data-z="${z}" aria-pressed="${S.dayW===z}">${l}</button>`).join('')}</div></div>
+    <div class="zoom" role="group" aria-label="Zoom">${[[10,'Quarter'],[18,'Weeks'],[32,'Days']].map(([z,l])=>`<button data-act="zoom" data-z="${z}" aria-pressed="${S.dayW===z}">${l}</button>`).join('')}</div>
+    <label class="check"><input type="checkbox" id="hide-idle" ${S.hideIdle?'checked':''}> Hide equipment with no tests in this period</label></div>
   <p class="muted" style="margin:0">Equipment rows show one lane per test running in parallel; a red edge means more tests than the equipment's capacity. End dates marked ~ are start + estimated duration (Hours and Days run 24/7 unless the QTP says working hours). Faded bars have no known end.${missing?` <b>${missing} planned or running test(s) have no start date and are not shown.</b>`:''}</p>
   <div class="gantt" style="--wk:${7*W}px;--day:${W}px"><div class="g-grid ${dayMode?'days':''}" style="grid-template-columns:${labW}px ${days*W}px">
     ${head}
-    <div class="g-sec"><span>Equipment</span></div>${bRows||'<div class="g-sec" style="text-transform:none;font-weight:400"><span>No equipment yet</span></div>'}
+    <div class="g-sec"><span>Equipment${hiddenEq?` <small style="text-transform:none;font-weight:400">· ${hiddenEq} without tests hidden</small>`:''}</span></div>${bRows||`<div class="g-sec" style="text-transform:none;font-weight:400"><span>${eqItems.length?'No equipment has tests in this period':'No equipment yet'}</span></div>`}
     <div class="g-sec"><span>Team</span></div>${pRows||'<div class="g-sec" style="text-transform:none;font-weight:400"><span>No team members yet</span></div>'}
   </div></div>
   <div class="legend">${['Planned','In progress','Endurance running','On hold','Report'].map(s=>`<span><i style="background:var(--st-${ST_CLS[s]})"></i>${s}</span>`).join('')}<span><i style="background:var(--crit);width:2px"></i>Today</span></div>`;
@@ -1070,6 +1074,7 @@ document.addEventListener('change',ev=>{
   else if(el.dataset.map){const I=el.dataset.kind==='qtp'?S.qimp:S.imp; if(el.value) I.map[el.dataset.map]=el.value; else delete I.map[el.dataset.map]; render();}
   else if(el.dataset.eqmap!=null){S.imp.eqMap[el.dataset.eqmap]=el.value; render();}
   else if(el.id==='inc-closed'){S.incClosed=el.checked; render();}
+  else if(el.id==='hide-idle'){S.hideIdle=el.checked; try{localStorage.setItem('tl.hideIdle',S.hideIdle?'1':'0')}catch(e){} render();}
   else if(el.id==='hist-st'){S.hist.st=el.value; render();}
   else if(el.id==='hist-res'){S.hist.res=el.value; render();}
   else if(el.dataset.setstatus){setStatus(el.dataset.setstatus,el.value);}
