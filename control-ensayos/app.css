@@ -116,6 +116,13 @@ main{max-width:1500px;margin:0 auto;padding-block:20px 60px;padding-left:max(16p
 .chips{display:flex;flex-wrap:wrap;gap:4px;align-items:center}
 .chip{font-size:11px;padding:1px 6px;border-radius:3px;background:var(--surface-2);font-family:var(--f-mono);white-space:nowrap}
 .chip.proj{background:var(--accent-soft);color:var(--accent);font-weight:500}
+.chip.fle.ok{color:var(--ok)} .chip.fle.warn{color:var(--warn);font-weight:600} .chip.fle.crit{color:var(--crit);font-weight:600} .chip.fle.off{color:var(--muted);text-decoration:line-through}
+.fle-list{max-height:280px;overflow:auto;border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+.fle-list h4{margin:0;padding:6px 10px 2px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--muted);position:sticky;top:0;background:var(--surface)}
+.field .fle-list label{display:grid;grid-template-columns:auto 64px 1fr auto;gap:8px;align-items:center;padding:3px 10px;font-size:13px;font-weight:400;color:var(--fg)}
+.fle-list [hidden]{display:none}
+.fle-list label:hover{background:var(--surface-2)}
+.fle-list .due{font-size:12px;white-space:nowrap}
 .flex{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);border:1px solid var(--line);border-radius:3px;padding:0 4px;margin-left:4px}
 
 /* Board */

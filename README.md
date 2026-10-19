@@ -42,6 +42,9 @@ La interfaz está en inglés.
 - Los cambios hechos en poco tiempo (por ejemplo una importación de ARAS) se guardan juntos en un solo commit. El
   [historial](https://github.com/Polinya-LAB/lab-data/commits/main/ensayos/ensayos.json) muestra quién cambió qué y cuándo.
 - Para importar de ARAS: exporta la búsqueda `a_Lab_Dashboard` a Excel y cárgala en la pestaña **Import ARAS**.
+- Cada equipo puede tener asignados los instrumentos (FLE) del Plan de calibraciones que se usan habitualmente en él
+  (pestaña **Equipment & team**, al editar el equipo). Se guardan en `bancos/<id>.instrumentos` como lista de ids de
+  `calibraciones/calibraciones.json` → `equipment` (por ejemplo `eq-FLE-014`); se usan ids y no códigos porque hay códigos FLE repetidos.
 
 ## Ocupación de equipos y técnicos
 

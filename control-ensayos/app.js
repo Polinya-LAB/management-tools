@@ -88,6 +88,28 @@ const personById=id=>id?S.people.find(p=>p.id===id):null;
 const libOf=t=>t&&t.qtp?S.qtps.find(q=>q.id===qid(t.qtp)):null;
 const eqName=b=>b?(b.nombre||'(unnamed)'):'(deleted equipment)';
 const eqStatus=b=>EQ_LEGACY[b?.estado]||b?.estado||'Operational';
+/* Instruments (FLE) come from the calibration plan (lab-data/calibraciones/calibraciones.json, read-only here).
+   Each equipment keeps the ids of the instruments usually used on it in `instrumentos`. */
+const CAL={eq:null,err:null};
+const calMonth=(ym,add=0)=>{const m=/^(\d{4})-(\d{2})/.exec(ym||''); return m?+m[1]*12+(+m[2]-1)+add:null};
+function fleDue(e){
+  if(e.calMode==='Expiry date') return e.nextOverride||'';
+  if(e.calMode!=='Periodic') return '';
+  const i=calMonth(e.lastCal,+e.periodMonths||0); return e.nextOverride||(i==null?'':`${Math.floor(i/12)}-${String(i%12+1).padStart(2,'0')}`);
+}
+function fleState(e){
+  if(!e) return {cls:'off',text:'not in the calibration plan'};
+  if(e.state&&e.state!=='In use') return {cls:'off',text:e.state};
+  if(e.calMode==='Not required') return {cls:'',text:'no calibration required'};
+  if(e.calMode==='Before use') return {cls:'',text:'checked before use'};
+  const due=fleDue(e), di=calMonth(due), n=new Date(), now=n.getFullYear()*12+n.getMonth();
+  if(di==null) return {cls:'warn',text:'calibration dates missing'};
+  const m=`${due.slice(5,7)}/${due.slice(2,4)}`;
+  return di<now?{cls:'crit',text:`calibration overdue since ${m}`}:di-now<=1?{cls:'warn',text:`calibration due ${m}`}:{cls:'ok',text:`calibrated until ${m}`};
+}
+const fleById=id=>CAL.eq&&CAL.eq[id];
+const fleLabel=e=>[e.description||'(no description)',[e.brand,e.model].filter(Boolean).join(' ')].filter(Boolean).join(' · ');
+const fleChip=id=>{const e=fleById(id), s=CAL.eq?fleState(e):{cls:'',text:'calibration plan not loaded'}; return `<span class="chip fle ${s.cls}" title="${esc(`${e?fleLabel(e):id} · ${s.text}`)}">${esc(e?e.code:String(id).replace(/^eq-/,''))}</span>`;};
 const eqCap=b=>Math.max(1,parseInt(b?.capacidad)||1);
 const eqStateCls=s=>s==='Operational'?'ok':s==='Out of service'?'off':'no';
 const byName=(a,b)=>String(a.nombre||a.name||a.id||'').localeCompare(String(b.nombre||b.name||b.id||''),'en');
@@ -538,12 +560,12 @@ function vOccupancy(){
 function vResources(){
   const T=todayMs(), M=mondayOf(T), load=APP==='occupancy', opt=(on,html)=>on?html:'';
   const bRows=[...S.equipment].sort(byName).map(b=>{const cap=eqCap(b), now=eqCount(IX,b.id,T), fr=freeFrom(IX,b.id), c=b.proximaCalibracion?daysTo(b.proximaCalibracion):null;
-    return `<tr class="click" data-act="edit-b" data-id="${esc(b.id)}"><td><b>${esc(eqName(b))}</b><br><small class="muted">${esc(b.descripcion||'')}${b.nombreAras&&norm(b.nombreAras)!==norm(b.nombre)?` · ARAS: ${esc(b.nombreAras)}`:''}</small></td><td><span class="bstate ${eqStateCls(eqStatus(b))}">${esc(eqStatus(b))}</span></td><td class="num">${cap}</td>${opt(load,`<td class="num"><span class="due ${now>cap?'crit':''}">${now} / ${cap}</span></td><td class="nowrap">${fr==null?'—':fr===T?'today':fmtMs(fr)}</td>`)}<td class="nowrap"><span class="due ${c!=null&&c<0?'crit':c!=null&&c<=30?'warn':''}">${fmt(b.proximaCalibracion)}</span></td></tr>`}).join('');
+    return `<tr class="click" data-act="edit-b" data-id="${esc(b.id)}"><td><b>${esc(eqName(b))}</b><br><small class="muted">${esc(b.descripcion||'')}${b.nombreAras&&norm(b.nombreAras)!==norm(b.nombre)?` · ARAS: ${esc(b.nombreAras)}`:''}</small></td><td><span class="bstate ${eqStateCls(eqStatus(b))}">${esc(eqStatus(b))}</span></td><td class="num">${cap}</td>${opt(load,`<td class="num"><span class="due ${now>cap?'crit':''}">${now} / ${cap}</span></td><td class="nowrap">${fr==null?'—':fr===T?'today':fmtMs(fr)}</td>`)}<td><div class="chips">${(b.instrumentos||[]).map(fleChip).join('')||'<span class="muted">—</span>'}</div></td><td class="nowrap"><span class="due ${c!=null&&c<0?'crit':c!=null&&c<=30?'warn':''}">${fmt(b.proximaCalibracion)}</span></td></tr>`}).join('');
   const pRows=[...S.people].sort(byName).map(p=>{const cap=+p.horasSemana||0, h=personHours(IX,p.id,M), n=S.tests.filter(t=>t.techId===p.id&&TECH_STATES.has(t.status)).length, pc=cap?Math.round(h/cap*100):0;
     return `<tr class="click" data-act="edit-p" data-id="${esc(p.id)}"><td><b>${esc(p.nombre)}</b><br><small class="muted">${esc(p.rol||'')}</small></td>${opt(load,`<td class="num">${cap||'—'} h</td><td class="num"><span class="due ${pc>100?'crit':pc>85?'warn':''}">${pc}%</span></td>`)}<td class="num">${n}</td><td><div class="chips">${(p.habilitaciones||[]).map(eqById).filter(Boolean).map(b=>`<span class="chip">${esc(eqName(b))}</span>`).join('')||'<span class="muted">not set</span>'}</div></td></tr>`}).join('');
   return `<div class="view-h"><h2>Equipment & team</h2></div>
   <section class="panel"><div class="panel-h"><h2>Equipment</h2><span class="muted">Capacity = number of tests the equipment can run at the same time</span>${S.ro||S.noDb?'':'<button class="btn sm" data-act="new-b">+ Add equipment</button>'}</div>
-    ${bRows?`<div class="scroll-x"><table class="tbl"><thead><tr><th>Equipment</th><th>Status</th><th class="num">Capacity</th>${opt(load,'<th class="num">In use today</th><th>Slot free from</th>')}<th>Next calibration</th></tr></thead><tbody>${bRows}</tbody></table></div>`:'<div class="empty-ok">No equipment yet. Add it here, or let the ARAS import create it from the Equipment column.</div>'}
+    ${bRows?`<div class="scroll-x"><table class="tbl"><thead><tr><th>Equipment</th><th>Status</th><th class="num">Capacity</th>${opt(load,'<th class="num">In use today</th><th>Slot free from</th>')}<th>Instruments (FLE)</th><th>Next calibration</th></tr></thead><tbody>${bRows}</tbody></table></div>`:'<div class="empty-ok">No equipment yet. Add it here, or let the ARAS import create it from the Equipment column.</div>'}
   </section>
   <section class="panel"><div class="panel-h"><h2>Team</h2>${S.ro||S.noDb?'':'<button class="btn sm" data-act="new-p">+ Add person</button>'}</div>
     ${pRows?`<div class="scroll-x"><table class="tbl"><thead><tr><th>Person</th>${opt(load,'<th class="num">Hours/week</th><th class="num">Load this week</th>')}<th class="num">Active tests</th><th>Qualified on</th></tr></thead><tbody>${pRows}</tbody></table></div>`:'<div class="empty-ok">No team members yet. The ARAS import creates them from the Lab Resource column.</div>'}
@@ -926,10 +948,25 @@ function openEquipment(id){
     ${fld('f-estado','Status',sel('estado',eqStatus(b),EQ_STATUS))}
     ${fld('f-proximaCalibracion','Next calibration',inp('proximaCalibracion',b.proximaCalibracion,'date'))}
     ${fld('f-descripcion','Lab / description',inp('descripcion',b.descripcion),'span2')}
-  </fieldset>`;
+  </fieldset>
+  <fieldset><legend>Instruments (FLE)</legend>${flePicker(b.instrumentos||[])}</fieldset>`;
   dlg.innerHTML=dlgShell(id?'Edit equipment':'New equipment',id?eqName(b):'New equipment',body,id?'<button type="button" class="btn ghost danger" data-act="del">Delete</button>':'');
   dlg.showModal();
 }
+function flePicker(ids){
+  const picked=new Set(ids);
+  if(!CAL.eq) return `<p class="note span2">${CAL.err?'The calibration plan could not be read':'The calibration plan is loading'}. Connect GitHub with an account that can read <span class="mono">${REPO.owner}/${REPO.repo}</span> to assign instruments.${ids.length?' Assigned now:':''}</p>${ids.length?`<div class="chips span2">${ids.map(fleChip).join('')}</div>`:''}`;
+  const all=Object.entries(CAL.eq).map(([id,e])=>({...e,id})).filter(e=>picked.has(e.id)||!['Reserved','Retired'].includes(e.state));
+  ids.filter(id=>!CAL.eq[id]).forEach(id=>all.push({id,code:String(id).replace(/^eq-/,''),group:'',missing:true}));
+  const grp=e=>e.group==='Test equipment'?0:e.group==='Auxiliary equipment'?1:2;
+  all.sort((a,b)=>grp(a)-grp(b)||String(a.code).localeCompare(String(b.code),'en',{numeric:true})||a.id.localeCompare(b.id));
+  let last=null; const rows=all.map(e=>{const s=fleState(e.missing?null:e), g=grp(e), h=g!==last?`<h4>${['Test equipment','Auxiliary equipment','Other'][g]}</h4>`:''; last=g;
+    return `${h}<label data-s="${esc(norm([e.code,e.description,e.brand,e.model,e.serial].join(' ')))}"><input type="checkbox" name="fle" value="${esc(e.id)}" ${picked.has(e.id)?'checked':''} ${dis()}><span class="mono">${esc(e.code)}</span><span>${esc(e.missing?'(deleted from the calibration plan)':fleLabel(e))}</span><span class="due ${s.cls==='off'?'':s.cls}">${esc(s.text)}</span></label>`}).join('');
+  return `<p class="note span2">Instruments from the calibration plan that are usually used on this equipment.</p>
+    <div class="field span2"><input id="fle-q" type="search" placeholder="Filter by code, description, brand or model" autocomplete="off" aria-label="Filter instruments">
+    <div class="fle-list" id="fle-list">${rows}</div><div class="chips" id="fle-sel">${fleSel(ids)}</div></div>`;
+}
+const fleSel=ids=>ids.length?`<span class="muted">${ids.length} assigned:</span> ${ids.map(fleChip).join('')}`:'<span class="muted">None assigned.</span>';
 function openQtp(id){
   const q=id?S.qtps.find(x=>x.id===id):{code:'',name:'',durVal:'',durUnit:'Hours',continuous:true,cyclesPerDay:'',techHours:'',equipmentId:'',notes:''}; if(!q) return;
   dlg.dataset.kind='qtp'; dlg.dataset.id=id||'';
@@ -988,6 +1025,7 @@ async function saveDialog(){
     }else if(kind==='equipment'){
       if(!f.nombre) return formErr('The name is required.');
       const data={nombre:f.nombre,nombreAras:f.nombreAras||'',descripcion:f.descripcion||'',estado:f.estado||'Operational',capacidad:Math.max(1,parseInt(f.capacidad)||1),proximaCalibracion:f.proximaCalibracion||'',actualizado:now};
+      if(CAL.eq) data.instrumentos=[...dlg.querySelectorAll('input[name="fle"]:checked')].map(x=>x.value); else if(!id) data.instrumentos=[];
       if(id) await db.doc(`${COL.equipment}/${id}`).update(data); else await db.collection(COL.equipment).add(data);
     }else if(kind==='qtp'){
       const code=(f.code||'').trim(); if(!code) return formErr('The QTP code is required.');
@@ -1071,6 +1109,7 @@ document.addEventListener('click',ev=>{
 document.addEventListener('keydown',ev=>{ if(ev.key==='Enter'&&ev.target.matches('.card[data-act="edit"]')) openEditor(ev.target.dataset.id); });
 document.addEventListener('input',ev=>{
   if(ev.target.id==='q'){S.q=ev.target.value; const pos=ev.target.selectionStart; render(); const q=$('#q'); if(q){q.focus(); try{q.setSelectionRange(pos,pos)}catch(e){}}}
+  else if(ev.target.id==='fle-q'){const q=norm(ev.target.value); let h=null, any=false; for(const el of $('#fle-list').children){ if(el.tagName==='H4'){ if(h) h.hidden=!any; h=el; any=false; } else { el.hidden=!!q&&!el.dataset.s.includes(q); any=any||!el.hidden; } } if(h) h.hidden=!any;}
   else if(dlg.open&&dlg.contains(ev.target)) liveHints();
 });
 document.addEventListener('change',ev=>{
@@ -1080,6 +1119,7 @@ document.addEventListener('change',ev=>{
   else if(el.dataset.map){const I=el.dataset.kind==='qtp'?S.qimp:S.imp; if(el.value) I.map[el.dataset.map]=el.value; else delete I.map[el.dataset.map]; render();}
   else if(el.dataset.eqmap!=null){S.imp.eqMap[el.dataset.eqmap]=el.value; render();}
   else if(el.id==='inc-closed'){S.incClosed=el.checked; render();}
+  else if(el.name==='fle'&&dlg.open) $('#fle-sel').innerHTML=fleSel([...dlg.querySelectorAll('input[name="fle"]:checked')].map(x=>x.value));
   else if(el.id==='hide-idle'){S.hideIdle=el.checked; try{localStorage.setItem('tl.hideIdle',S.hideIdle?'1':'0')}catch(e){} render();}
   else if(el.id==='hist-st'){S.hist.st=el.value; render();}
   else if(el.id==='hist-res'){S.hist.res=el.value; render();}
@@ -1118,6 +1158,7 @@ window.addEventListener('hashchange',()=>{const h=location.hash.slice(1); if(VIE
    every save is a commit. The key is shared with the durability pool app (same site, same browser storage). */
 const APP_NAME=APP==='occupancy'?'Ocupación':'Control de ensayos';
 const REPO={owner:'Polinya-LAB',repo:'lab-data',branch:'main',path:'ensayos/ensayos.json'};
+const CAL_PATH='calibraciones/calibraciones.json';
 const API=`https://api.github.com/repos/${REPO.owner}/${REPO.repo}`;
 const RAW=`https://raw.githubusercontent.com/${REPO.owner}/${REPO.repo}/${REPO.branch}/${REPO.path}`;
 const TOKEN_KEY='pd-gh-token', DATA_COLS=['tests','personas','bancos','qtps','config'];
@@ -1144,6 +1185,17 @@ async function fetchApi(useEtag){
   if(j.content) text=b64decode(j.content);
   else{const blob=await ghFetch(`${API}/git/blobs/${j.sha}`); if(!blob.ok) throw httpError(blob); text=b64decode((await blob.json()).content);}
   return {data:normData(JSON.parse(text)),sha:j.sha,etag:res.headers.get('etag')};
+}
+async function loadCal(){
+  if(!GH.token||GH.invalid){CAL.err='auth'; return;}
+  try{
+    const res=await ghFetch(`${API}/contents/${CAL_PATH}?ref=${REPO.branch}`); if(!res.ok) throw httpError(res);
+    const j=await res.json(); let text;
+    if(j.content) text=b64decode(j.content);
+    else{const blob=await ghFetch(`${API}/git/blobs/${j.sha}`); if(!blob.ok) throw httpError(blob); text=b64decode((await blob.json()).content);}
+    CAL.eq=JSON.parse(text).equipment||{}; CAL.err=null;
+  }catch(err){CAL.err=err.code||'unavailable';}
+  render();
 }
 async function fetchRaw(){
   const res=await fetch(`${RAW}?t=${Date.now()}`,{cache:'no-store'});
@@ -1256,7 +1308,7 @@ async function saveGh(){
   const btn=dlg.querySelector('button[type="submit"]'); btn.disabled=true; btn.textContent='Checking…';
   try{
     await connectGh(t); try{localStorage.setItem(TOKEN_KEY,t);}catch(e){}
-    remote.etag=null; await refresh(); dlg.close(); render();
+    remote.etag=null; await refresh(); dlg.close(); render(); loadCal();
     toast(GH.push?`Connected as ${GH.login}. You can now edit.`:`Connected as ${GH.login}, but this account cannot edit the repository.`);
   }catch(err){ btn.disabled=false; btn.textContent='Connect'; formErr(err.code==='auth'?'That key is not valid or has expired.':err.code==='forbidden'?'That key cannot see the repository.':'Could not reach GitHub. Check your connection.'); }
 }
@@ -1272,6 +1324,6 @@ render();
   sub(COL.tests,'tests'); sub(COL.people,'people'); sub(COL.equipment,'equipment'); sub(COL.qtps,'qtps');
   db.collection('config').onSnapshot(snap=>{S.cfg={}; snap.docs.forEach(x=>S.cfg[x.id]=x.data()); S.loaded.add('cfg'); later();});
   if(GH.token){ try{await connectGh(GH.token);}catch(err){ if(err.code==='auth') GH.invalid=true; } }
-  await refresh(); render();
-  setInterval(()=>{ if(!document.hidden) refresh(); }, GH.token?30000:60000);
+  await refresh(); render(); loadCal();
+  let tick=0; setInterval(()=>{ if(document.hidden) return; refresh(); if(++tick%10===0&&GH.token) loadCal(); }, GH.token?30000:60000);
 })();
