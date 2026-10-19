@@ -61,8 +61,9 @@ o técnicos sobrecargados. La interfaz está en inglés.
 ## Plan de calibraciones
 
 Plan de calibración de los equipos del laboratorio (formulario F-IM-FM-001): equipos con sus puntos y tolerancias,
-plan anual, registro y cierre de calibraciones, evaluación de la tolerancia de uso (|e| + U ≤ TU), mantenimiento,
-revisión de datos e importación del Excel del plan. La interfaz está en inglés.
+plan anual, registro y cierre de calibraciones, evaluación de la tolerancia de uso (|e| + U ≤ TU), hojas de validación
+por cámara frente a las normas de ensayo (ISO 9227, IEC 60068), imprimibles en PDF, mantenimiento, revisión de datos e
+importación del Excel del plan. La interfaz está en inglés.
 
 **Abrir la aplicación:** https://polinya-lab.github.io/management-tools/calibraciones/
 
