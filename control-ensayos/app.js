@@ -50,13 +50,15 @@ const ARAS_FIELDS=[
   {k:'requestNote',label:'Request status note',syn:['request status']},
 ];
 const QTP_FIELDS=[
-  {k:'code',label:'QTP code',req:true,syn:['qtp','qtp code','code','task item','procedure']},
+  {k:'code',label:'QTP code',req:true,syn:['qtp','qtp code','code','task item','procedure','document number']},
   {k:'name',label:'Test name',syn:['description','name','test name','title','test']},
   {k:'durVal',label:'Estimated duration',type:'num',syn:['duration','estimated duration','est duration','duration h','duration hours']},
   {k:'durUnit',label:'Duration unit',syn:['unit','units','duration unit','duration units']},
   {k:'techHours',label:'Technician hours',type:'num',syn:['technician hours','tech hours','labour hours','labor hours','man hours']},
   {k:'equipmentName',label:'Default equipment',syn:['equipment','bench','testbench']},
   {k:'durBasis',label:'Duration basis (per test / per sample)',syn:['basis','duration basis','per','time basis']},
+  {k:'testType',label:'Test type',syn:['lab test type','test type','type of test']},
+  {k:'standard',label:'Standard',syn:['lab agency standard','standard','norma','agency standard']},
   {k:'notes',label:'Notes',syn:['notes','note','remarks']},
 ];
 
@@ -553,7 +555,7 @@ function vLibrary(){
   const use=new Map(); for(const t of S.tests) if(counts(t)&&t.qtp){const k=qid(t.qtp); use.set(k,(use.get(k)||0)+1);}
   const noDur=list.filter(q=>!(+q.durVal>0)).length;
   const rows=list.map(q=>{const b=eqById(q.equipmentId);
-    return `<tr class="click ${+q.durVal>0?'':'miss'}" data-act="edit-q" data-id="${esc(q.id)}"><td class="ref nowrap">${esc(q.code||q.id)}</td><td><b>${esc(q.name||'')}</b>${q.notes?`<span class="snip">${esc(q.notes)}</span>`:''}</td><td>${esc(b?eqName(b):'—')}</td><td class="nowrap">${+q.durVal>0?`${esc(q.durVal)} ${esc(UNIT_SHORT[q.durUnit]||q.durUnit||'h')}${q.durBasis==='sample'?' <small class="muted">per sample</small>':''}${q.durUnit==='Cycles'&&q.cyclesPerDay?` <small class="muted">(${esc(q.cyclesPerDay)}/day)</small>`:''}`:'<span class="due warn">not set</span>'}</td><td>${q.continuous===false?'Working hours':'24/7'}</td><td>${esc(loadSummary(q))}</td><td class="num">${use.get(q.id)||0}</td></tr>`}).join('');
+    return `<tr class="click ${+q.durVal>0?'':'miss'}" data-act="edit-q" data-id="${esc(q.id)}"><td class="ref nowrap">${esc(q.code||q.id)}</td><td><b>${esc(q.name||'')}</b>${q.testType||q.standard?`<span class="snip">${esc([q.testType,q.standard].filter(Boolean).join(' · '))}</span>`:''}${q.notes?`<span class="snip">${esc(q.notes)}</span>`:''}</td><td>${esc(b?eqName(b):'—')}</td><td class="nowrap">${+q.durVal>0?`${esc(q.durVal)} ${esc(UNIT_SHORT[q.durUnit]||q.durUnit||'h')}${q.durBasis==='sample'?' <small class="muted">per sample</small>':''}${q.durUnit==='Cycles'&&q.cyclesPerDay?` <small class="muted">(${esc(q.cyclesPerDay)}/day)</small>`:''}`:'<span class="due warn">not set</span>'}</td><td>${q.continuous===false?'Working hours':'24/7'}</td><td>${esc(loadSummary(q))}</td><td class="num">${use.get(q.id)||0}</td></tr>`}).join('');
   const I=S.qimp;
   return `<div class="view-h"><h2>QTP library</h2>${S.ro||S.noDb?'':'<button class="btn" data-act="new-q">+ Add QTP</button>'}</div>
   <p class="muted" style="margin:0;max-width:90ch">Estimated duration and technician hours for each test procedure, per test or per sample. They are planning defaults only: every test line uses them unless you set its own duration or hours in the test. A library duration takes precedence over the duration that comes from ARAS, which is only used when the QTP has none; a per-sample library duration is always multiplied by the test's number of pieces.</p>
@@ -766,6 +768,8 @@ function qtpPreview(){
     if(r.techHours!==''&&String(r.techHours)!==String(q.techHours)) patch.techHours=r.techHours;
     if(r._eq&&r._eq!==q.equipmentId) patch.equipmentId=r._eq;
     if(r.notes&&r.notes!==q.notes) patch.notes=r.notes;
+    if(r.testType&&r.testType!==(q.testType||'')) patch.testType=r.testType;
+    if(r.standard&&r.standard!==(q.standard||'')) patch.standard=r.standard;
     if(r._basis&&r._basis!==(q.durBasis||'test')) patch.durBasis=r._basis;
     r._patch=patch; r._q=q; r._st=Object.keys(patch).length?'update':'same';
   }
@@ -786,7 +790,7 @@ function qtpImportPanel(I){
 async function runQtpImport(){
   const I=S.qimp; if(!I||!db) return; const now=nowIso(), jobs=[];
   for(const r of I.recs||qtpPreview()){
-    if(r._st==='new') jobs.push(()=>db.doc(`${COL.qtps}/${qid(r.code)}`).set({code:r.code.trim(),name:r.name||'',durVal:r.durVal,durUnit:r._unit,continuous:true,techHours:r.techHours,durBasis:r._basis||'test',techBasis:'test',equipmentId:r._eq||'',notes:r.notes||'',actualizado:now}));
+    if(r._st==='new') jobs.push(()=>db.doc(`${COL.qtps}/${qid(r.code)}`).set({code:r.code.trim(),name:r.name||'',durVal:r.durVal,durUnit:r._unit,continuous:true,techHours:r.techHours,durBasis:r._basis||'test',techBasis:'test',equipmentId:r._eq||'',testType:r.testType||'',standard:r.standard||'',notes:r.notes||'',actualizado:now}));
     else if(r._st==='update') jobs.push(()=>db.doc(`${COL.qtps}/${r._q.id}`).update({...r._patch,actualizado:now}));
   }
   try{const n=jobs.length; jobs.push(()=>db.doc('config/importQtp').set({map:I.map,date:now})); await Promise.all(jobs.map(j=>j())); S.qimp=null; toast(`QTP library updated: ${n} procedure(s).`); render();}catch(e){toast(errMsg(e));}
@@ -933,6 +937,8 @@ function openQtp(id){
   const body=`<fieldset><legend>Test procedure</legend>
     ${fld('f-code','QTP code',inp('code',q.code||q.id,'text',id?'readonly':'placeholder="QTP0000"'),'req')}
     ${fld('f-name','Test name',inp('name',q.name),'span2')}
+    ${fld('f-testType','Test type',inp('testType',q.testType))}
+    ${fld('f-standard','Standard',inp('standard',q.standard,'text','placeholder="e.g. IEC 60068"'))}
     <div class="field span2"><label for="f-durVal">Estimated duration</label><div class="inline">${inp('durVal',q.durVal,'number','min="0" step="any" style="flex:1"')}${sel('durUnit',q.durUnit||'Hours',UNITS,'style="flex:1"')}${sel('durBasis',q.durBasis==='sample'?'sample':'test',[['test','per test'],['sample','per sample']],'style="flex:1.2" aria-label="Duration basis"')}</div><span class="help">Per sample: multiplied by the number of pieces of each test</span></div>
     ${fld('f-continuous','Runs',sel('continuous',q.continuous===false?'no':'yes',[['yes','Continuous 24/7'],['no','Working hours (8 h/day)']]))}
     ${fld('f-cyclesPerDay','Cycles per day',inp('cyclesPerDay',q.cyclesPerDay,'number','min="0" step="any"'),'','Only for durations in cycles')}
@@ -986,7 +992,7 @@ async function saveDialog(){
     }else if(kind==='qtp'){
       const code=(f.code||'').trim(); if(!code) return formErr('The QTP code is required.');
       if(!id&&S.qtps.some(q=>q.id===qid(code))) return formErr(`${code} is already in the library.`);
-      const data={code:id?(S.qtps.find(q=>q.id===id).code||code):code.toUpperCase(),name:f.name||'',durVal:f.durVal===''?'':+f.durVal,durUnit:f.durUnit||'Hours',continuous:f.continuous!=='no',cyclesPerDay:f.cyclesPerDay===''?'':+f.cyclesPerDay,techHours:f.techHours===''?'':+f.techHours,durBasis:f.durBasis==='sample'?'sample':'test',techBasis:f.techBasis==='sample'?'sample':'test',equipmentId:f.equipmentId||'',notes:f.notes||'',profile:f.profile==='endurance'?'endurance':'even',
+      const data={code:id?(S.qtps.find(q=>q.id===id).code||code):code.toUpperCase(),name:f.name||'',durVal:f.durVal===''?'':+f.durVal,durUnit:f.durUnit||'Hours',continuous:f.continuous!=='no',cyclesPerDay:f.cyclesPerDay===''?'':+f.cyclesPerDay,techHours:f.techHours===''?'':+f.techHours,durBasis:f.durBasis==='sample'?'sample':'test',techBasis:f.techBasis==='sample'?'sample':'test',equipmentId:f.equipmentId||'',testType:f.testType||'',standard:f.standard||'',notes:f.notes||'',profile:f.profile==='endurance'?'endurance':'even',
         setupH:num(f.setupH),dailyH:num(f.dailyH),reviewEvery:num(f.reviewEvery),reviewUnit:f.reviewUnit||'Hours',reviewH:num(f.reviewH),teardownH:num(f.teardownH),actualizado:now};
       if(id) await db.doc(`${COL.qtps}/${id}`).update(data); else await db.doc(`${COL.qtps}/${qid(code)}`).set(data);
     }
