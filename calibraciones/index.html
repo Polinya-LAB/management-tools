@@ -514,6 +514,7 @@ function linkCerts(){
     const done=(IX.recs.get(ct.equipmentId)||[]).filter(c=>c.status==='Done'&&!IX.certByRec.has(c.id)), cm=mIdx(String(ct.calDate||'').slice(0,7));
     let rec=ct.certRef?done.find(c=>c.certRef&&c.certRef.trim()===ct.certRef):null;
     if(!rec&&cm!=null){let best=null; for(const c of done){const d=Math.abs(mIdx(c.month)-cm); if(d<=3&&(!best||d<best.d)) best={c,d};} rec=best&&best.c;}
+    if(!rec){const sib=IX.certs.get(ct.equipmentId).find(o=>o!==ct&&o.recId&&mIdx(String(o.calDate||'').slice(0,7))===cm); if(sib){ct.recId=sib.recId; continue;}}
     if(!rec){(IX.certFree.get(ct.equipmentId)||IX.certFree.set(ct.equipmentId,[]).get(ct.equipmentId)).push(ct); continue;}
     IX.certByRec.set(rec.id,ct); ct.recId=rec.id;
     const pts=(ct.points||[]).filter(p=>SP_Q.has(p.q));
