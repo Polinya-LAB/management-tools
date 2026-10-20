@@ -577,7 +577,7 @@ function vLibrary(){
   const use=new Map(); for(const t of S.tests) if(counts(t)&&t.qtp){const k=qid(t.qtp); use.set(k,(use.get(k)||0)+1);}
   const noDur=list.filter(q=>!(+q.durVal>0)).length;
   const rows=list.map(q=>{const b=eqById(q.equipmentId);
-    return `<tr class="click ${+q.durVal>0?'':'miss'}" data-act="edit-q" data-id="${esc(q.id)}"><td class="ref nowrap">${esc(q.code||q.id)}</td><td><b>${esc(q.name||'')}</b>${q.testType||q.standard?`<span class="snip">${esc([q.testType,q.standard].filter(Boolean).join(' · '))}</span>`:''}${q.notes?`<span class="snip">${esc(q.notes)}</span>`:''}</td><td>${esc(b?eqName(b):'—')}</td><td class="nowrap">${+q.durVal>0?`${esc(q.durVal)} ${esc(UNIT_SHORT[q.durUnit]||q.durUnit||'h')}${q.durBasis==='sample'?' <small class="muted">per sample</small>':''}${q.durUnit==='Cycles'&&q.cyclesPerDay?` <small class="muted">(${esc(q.cyclesPerDay)}/day)</small>`:''}`:'<span class="due warn">not set</span>'}</td><td>${q.continuous===false?'Working hours':'24/7'}</td><td>${esc(loadSummary(q))}</td><td class="num">${use.get(q.id)||0}</td></tr>`}).join('');
+    return `<tr class="click ${+q.durVal>0?'':'miss'}" data-act="edit-q" data-id="${esc(q.id)}"><td class="ref nowrap">${esc(q.code||q.id)}</td><td><b>${esc(q.name||'')}</b>${q.testType||q.standard?`<span class="snip">${esc([q.testType,q.standard].filter(Boolean).join(' · '))}</span>`:''}${q.notes?`<span class="snip">${esc(q.notes)}</span>`:''}</td><td>${esc(b?eqName(b):'—')}</td><td><div class="chips">${(q.instrumentos||[]).map(fleChip).join('')||'<span class="muted">—</span>'}</div></td><td class="nowrap">${+q.durVal>0?`${esc(q.durVal)} ${esc(UNIT_SHORT[q.durUnit]||q.durUnit||'h')}${q.durBasis==='sample'?' <small class="muted">per sample</small>':''}${q.durUnit==='Cycles'&&q.cyclesPerDay?` <small class="muted">(${esc(q.cyclesPerDay)}/day)</small>`:''}`:'<span class="due warn">not set</span>'}</td><td>${q.continuous===false?'Working hours':'24/7'}</td><td>${esc(loadSummary(q))}</td><td class="num">${use.get(q.id)||0}</td></tr>`}).join('');
   const I=S.qimp;
   return `<div class="view-h"><h2>QTP library</h2>${S.ro||S.noDb?'':'<button class="btn" data-act="new-q">+ Add QTP</button>'}</div>
   <p class="muted" style="margin:0;max-width:90ch">Estimated duration and technician hours for each test procedure, per test or per sample. They are planning defaults only: every test line uses them unless you set its own duration or hours in the test. A library duration takes precedence over the duration that comes from ARAS, which is only used when the QTP has none; a per-sample library duration is always multiplied by the test's number of pieces.</p>
@@ -585,7 +585,7 @@ function vLibrary(){
     <label class="drop-zone" data-dz="qtp"><input type="file" id="file-qtp" accept=".xlsx,.xls,.csv"><b>Drop the QTP list here</b><span class="muted">or click to choose a file</span></label>
     ${I?qtpImportPanel(I):''}</section>`}
   <section class="panel"><div class="panel-h"><h2>Procedures</h2><span class="muted">${list.length} QTPs${noDur?` · <b class="due warn">${noDur} without estimated duration</b>`:''}</span></div>
-    ${list.length?`<div class="scroll-x"><table class="tbl"><thead><tr><th>QTP</th><th>Test name</th><th>Default equipment</th><th>Est. duration</th><th>Runs</th><th>Technician load</th><th class="num">Active tests</th></tr></thead><tbody>${rows}</tbody></table></div>`:'<div class="empty-ok">The library is empty. Import your QTP list above; the ARAS import also adds every QTP it finds.</div>'}
+    ${list.length?`<div class="scroll-x"><table class="tbl"><thead><tr><th>QTP</th><th>Test name</th><th>Default equipment</th><th>Instruments (FLE)</th><th>Est. duration</th><th>Runs</th><th>Technician load</th><th class="num">Active tests</th></tr></thead><tbody>${rows}</tbody></table></div>`:'<div class="empty-ok">The library is empty. Import your QTP list above; the ARAS import also adds every QTP it finds.</div>'}
   </section>`;
 }
 
@@ -992,7 +992,7 @@ function openEquipment(id){
   dlg.innerHTML=dlgShell(id?'Edit equipment':'New equipment',id?eqName(b):'New equipment',body,id?'<button type="button" class="btn ghost danger" data-act="del">Delete</button>':'');
   dlg.showModal();
 }
-function flePicker(ids){
+function flePicker(ids,what='this equipment'){
   const picked=new Set(ids);
   if(!CAL.eq) return `<p class="note span2">${CAL.err?'The calibration plan could not be read':'The calibration plan is loading'}. Connect GitHub with an account that can read <span class="mono">${REPO.owner}/${REPO.repo}</span> to assign instruments.${ids.length?' Assigned now:':''}</p>${ids.length?`<div class="chips span2">${ids.map(fleChip).join('')}</div>`:''}`;
   const all=Object.entries(CAL.eq).map(([id,e])=>({...e,id})).filter(e=>picked.has(e.id)||!['Reserved','Retired'].includes(e.state));
@@ -1001,7 +1001,7 @@ function flePicker(ids){
   all.sort((a,b)=>grp(a)-grp(b)||String(a.code).localeCompare(String(b.code),'en',{numeric:true})||a.id.localeCompare(b.id));
   let last=null; const rows=all.map(e=>{const s=fleState(e.missing?null:e), g=grp(e), h=g!==last?`<h4>${['Test equipment','Auxiliary equipment','Other'][g]}</h4>`:''; last=g;
     return `${h}<label data-s="${esc(norm([e.code,e.description,e.brand,e.model,e.serial].join(' ')))}"><input type="checkbox" name="fle" value="${esc(e.id)}" ${picked.has(e.id)?'checked':''} ${dis()}><span class="mono">${esc(e.code)}</span><span>${esc(e.missing?'(deleted from the calibration plan)':fleLabel(e))}</span><span class="due ${s.cls==='off'?'':s.cls}">${esc(s.text)}</span></label>`}).join('');
-  return `<p class="note span2">Instruments from the calibration plan that are usually used on this equipment.</p>
+  return `<p class="note span2">Instruments from the calibration plan that are usually used on ${what}.</p>
     <div class="field span2"><input id="fle-q" type="search" placeholder="Filter by code, description, brand or model" autocomplete="off" aria-label="Filter instruments">
     <div class="fle-list" id="fle-list">${rows}</div><div class="chips" id="fle-sel">${fleSel(ids)}</div></div>`;
 }
@@ -1030,7 +1030,8 @@ function openQtp(id){
     </div></div>
     ${fld('f-notes','Notes',`<textarea id="f-notes" name="notes" ${dis()}>${esc(q.notes||'')}</textarea>`,'span2')}
     <p class="note span2">These values are planning defaults. Each test can override duration and running mode; with the even profile it can also override the total technician hours. Weekends never carry technician hours.</p>
-  </fieldset>`;
+  </fieldset>
+  <fieldset><legend>Instruments (FLE)</legend>${flePicker(q.instrumentos||[],'this test procedure')}</fieldset>`;
   dlg.innerHTML=dlgShell(id?'Edit QTP':'New QTP',id?`${q.code||q.id} · ${q.name||''}`:'New QTP',body,id?'<button type="button" class="btn ghost danger" data-act="del">Delete</button>':'');
   dlg.showModal();
 }
@@ -1071,6 +1072,7 @@ async function saveDialog(){
       if(!id&&S.qtps.some(q=>q.id===qid(code))) return formErr(`${code} is already in the library.`);
       const data={code:id?(S.qtps.find(q=>q.id===id).code||code):code.toUpperCase(),name:f.name||'',durVal:f.durVal===''?'':+f.durVal,durUnit:f.durUnit||'Hours',continuous:f.continuous!=='no',cyclesPerDay:f.cyclesPerDay===''?'':+f.cyclesPerDay,techHours:f.techHours===''?'':+f.techHours,durBasis:f.durBasis==='sample'?'sample':'test',techBasis:f.techBasis==='sample'?'sample':'test',equipmentId:f.equipmentId||'',testType:f.testType||'',standard:f.standard||'',notes:f.notes||'',profile:f.profile==='endurance'?'endurance':'even',
         setupH:num(f.setupH),dailyH:num(f.dailyH),reviewEvery:num(f.reviewEvery),reviewUnit:f.reviewUnit||'Hours',reviewH:num(f.reviewH),teardownH:num(f.teardownH),actualizado:now};
+      if(CAL.eq) data.instrumentos=[...dlg.querySelectorAll('input[name="fle"]:checked')].map(x=>x.value); else if(!id) data.instrumentos=[];
       if(id) await db.doc(`${COL.qtps}/${id}`).update(data); else await db.doc(`${COL.qtps}/${qid(code)}`).set(data);
     }
     dlg.close(); toast('Saved.');

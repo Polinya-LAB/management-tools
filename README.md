@@ -46,8 +46,8 @@ La interfaz está en inglés.
   Si un ensayo ya existente tiene otro estado en ARAS, la app pregunta cuál quedarse; si se mantiene el de la app, no vuelve a
   preguntar hasta que ARAS cambie (`tests/<id>.arasStatusKept`). Planned cuenta como In Queue, y Endurance running, On hold y
   Report como In Progress. En el nombre ARAS de un equipo se pueden poner varios nombres separados por `;`.
-- Cada equipo puede tener asignados los instrumentos (FLE) del Plan de calibraciones que se usan habitualmente en él
-  (pestaña **Equipment & team**, al editar el equipo). Se guardan en `bancos/<id>.instrumentos` como lista de ids de
+- Cada equipo y cada QTP pueden tener asignados los instrumentos (FLE) del Plan de calibraciones que se usan habitualmente
+  (pestañas **Equipment & team** y **QTP library**, al editar). Se guardan en `bancos/<id>.instrumentos` y `qtps/<id>.instrumentos` como lista de ids de
   `calibraciones/calibraciones.json` → `equipment` (por ejemplo `eq-FLE-014`); se usan ids y no códigos porque hay códigos FLE repetidos.
 
 ## Ocupación de equipos y técnicos
