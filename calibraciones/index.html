@@ -365,7 +365,7 @@ if(location.protocol==='file:'||/[?&]local\b/.test(location.search)) document.wr
 const GROUPS=['Test equipment','Auxiliary equipment'];
 const MODES=['Periodic','Expiry date','Before use','Not required'];
 const STATES=['In use','Out of service','Retired','Reserved'];
-const VIEWS=[['overview','Overview'],['equipment','Equipment'],['plan','Annual plan'],['calibrations','Calibrations'],['evaluation','TU evaluation'],['sheets','Validation sheets'],['maintenance','Maintenance'],['review','Data review'],['data','Import & data']];
+const VIEWS=[['overview','Overview'],['equipment','Equipment'],['plan','Annual plan'],['calibrations','Calibrations'],['evaluation','TU evaluation'],['sheets','Validation sheets'],['review','Data review'],['data','Import & data']];
 /* Test standards a chamber can be validated for: tolerance per quantity and the test conditions (severities) the calibration must cover.
    T:'cold' = any point ≤ 0 ºC, 'heat' = any point > 30 ºC, 'ends' = lowest and highest point; ramp = rate of change, not verifiable at fixed points. */
 const STANDARDS={
@@ -460,15 +460,6 @@ function calInfo(e){
 }
 const calLabel=(e,i)=>e.calMode==='Expiry date'&&i.key==='overdue'?'Expired':e.calMode==='Expiry date'&&i.key==='soon'?'Expires soon':i.key==='soon'&&i.months===0?'Due this month':CAL_LABEL[i.key];
 const sevOf=k=>['overdue','nok'].includes(k)?'crit':k==='pending'?'inf':['soon','nodata'].includes(k)?'warn':'';
-function maintInfo(e){
-  const m=e.maint||{};
-  if(!m.required||['Reserved','Retired'].includes(e.state)) return {key:'none'};
-  const due=m.last&&+m.periodMonths?addM(m.last,+m.periodMonths):'', di=mIdx(due), n=nowIdx();
-  if(di==null) return {key:'nodata',due};
-  if(n>di) return {key:'overdue',due,months:di-n};
-  if(di-n<=(+S.cfg.warnMonths||0)) return {key:'soon',due,months:di-n};
-  return {key:'valid',due,months:di-n};
-}
 function evalCalc(v){
   const sp=num(v.setpoint), ob=num(v.obtained), U=num(v.uncertainty), tu=num(v.tu);
   const e=sp!=null&&ob!=null?ob-sp:num(v.error);
@@ -543,9 +534,9 @@ function buildIndex(){
   for(const [id,v] of Object.entries(DATA.evaluations)) push(evals,v.equipmentId,{id,...v});
   for(const [id,v] of Object.entries(DATA.maintenance)) push(logs,v.equipmentId,{id,...v});
   for(const e of eqs){ const k=norm(e.code); if(k) push(code,k,e); const s=normSerial(e.serial); if(s) push(serial,s,e); }
-  IX={eqs,byId:new Map(eqs.map(e=>[e.id,e])),recs,evals,logs,code,serial,info:new Map(),maint:new Map(),issues:new Map()};
+  IX={eqs,byId:new Map(eqs.map(e=>[e.id,e])),recs,evals,logs,code,serial,info:new Map(),issues:new Map()};
   linkCerts();
-  for(const e of eqs){IX.info.set(e.id,calInfo(e)); IX.maint.set(e.id,maintInfo(e));}
+  for(const e of eqs) IX.info.set(e.id,calInfo(e));
   for(const e of eqs) IX.issues.set(e.id,issuesOf(e));
   IX.labs=[...new Set(eqs.map(e=>e.lab).filter(Boolean))].sort();
 }
@@ -571,9 +562,8 @@ function render(){
   $('#lab-list').innerHTML=IX.labs.map(l=>`<option value="${esc(l)}">`).join('');
   const act=IX.eqs.filter(e=>ACTION_KEYS.includes(IX.info.get(e.id).key)), crit=act.some(e=>['overdue','nok'].includes(IX.info.get(e.id).key));
   const nIss=IX.eqs.reduce((n,e)=>n+IX.issues.get(e.id).filter(i=>i.sev==='warn').length,0);
-  const mDue=IX.eqs.filter(e=>['overdue','soon'].includes(IX.maint.get(e.id).key)).length;
-  $('#tabs').innerHTML=VIEWS.map(([k,l])=>`<button data-view="${k}" ${S.view===k?'aria-current="page"':''}>${l}${k==='overview'&&act.length?`<span class="n ${crit?'crit':'warn'}">${act.length}</span>`:''}${k==='review'&&nIss?`<span class="n warn">${nIss}</span>`:''}${k==='maintenance'&&mDue?`<span class="n warn">${mDue}</span>`:''}</button>`).join('');
-  const fn={overview:vOverview,equipment:vEquipment,plan:vPlan,calibrations:vCalibrations,evaluation:vEvaluation,sheets:vSheets,maintenance:vMaintenance,review:vReview,data:vData}[S.view]||vOverview;
+  $('#tabs').innerHTML=VIEWS.map(([k,l])=>`<button data-view="${k}" ${S.view===k?'aria-current="page"':''}>${l}${k==='overview'&&act.length?`<span class="n ${crit?'crit':'warn'}">${act.length}</span>`:''}${k==='review'&&nIss?`<span class="n warn">${nIss}</span>`:''}</button>`).join('');
+  const fn={overview:vOverview,equipment:vEquipment,plan:vPlan,calibrations:vCalibrations,evaluation:vEvaluation,sheets:vSheets,review:vReview,data:vData}[S.view]||vOverview;
   $('#view').innerHTML=banner+fn();
 }
 function emptyState(){
@@ -625,7 +615,6 @@ function vOverview(){
   if(!IX.eqs.length) return emptyState();
   const n=nowIdx(), cnt=k=>IX.eqs.filter(e=>IX.info.get(e.id).key===k).length;
   const calib=IX.eqs.filter(e=>!OFF_KEYS.includes(IX.info.get(e.id).key)).length;
-  const mDue=IX.eqs.filter(e=>['overdue','soon'].includes(IX.maint.get(e.id).key)).length, mCfg=IX.eqs.filter(e=>IX.maint.get(e.id).key!=='none').length;
   const nIss=IX.eqs.filter(e=>IX.issues.get(e.id).some(i=>i.sev==='warn')).length;
   const act=IX.eqs.filter(e=>ACTION_KEYS.includes(IX.info.get(e.id).key)).map(e=>({e,i:IX.info.get(e.id)})).sort((a,b)=>KEY_RANK[a.i.key]-KEY_RANK[b.i.key]||(mIdx(a.i.due)??0)-(mIdx(b.i.due)??0)||byCode(a.e,b.e));
   const kpi=(k,label,val,sub,cls)=>`<button class="kpi ${cls}" data-act="kpi" data-k="${k}"><span class="eyebrow">${label}</span><b>${val}</b><span class="muted">${sub}</span></button>`;
@@ -642,7 +631,6 @@ function vOverview(){
     ${kpi('pending','Pending closure',cnt('pending'),'certificate, tolerance or label',cnt('pending')?'inf':'')}
     ${kpi('nok','Out of tolerance',cnt('nok'),'last result not OK',cnt('nok')?'crit':'')}
     ${kpi('valid','Valid',cnt('valid'),`of ${calib} with calibration`,'ok')}
-    ${kpi('maint','Maintenance due',mDue,mCfg?`${mCfg} with a maintenance plan`:'no maintenance plans yet',mDue?'warn':'')}
     ${kpi('review','Data to review',nIss,'equipment with data issues',nIss?'warn':'')}
   </section>
   <div class="grid2">
@@ -947,27 +935,6 @@ function sheetHtml(e){
   return `<article class="sheet" id="sheet"><table class="doc"><thead><tr><td>${head}</td></tr></thead><tfoot><tr><td>${foot}</td></tr></tfoot><tbody><tr><td><div class="db">${body}</div></td></tr></tbody></table></article>`;
 }
 
-function vMaintenance(){
-  if(!IX.eqs.length) return emptyState();
-  const planned=IX.eqs.filter(e=>IX.maint.get(e.id).key!=='none'&&matchEq(e)), cnt=k=>planned.filter(e=>IX.maint.get(e.id).key===k).length;
-  const notCfg=IX.eqs.filter(e=>IX.maint.get(e.id).key==='none'&&!['Reserved','Retired'].includes(e.state)).length;
-  const logs=Object.entries(DATA.maintenance).map(([id,v])=>({id,...v})).filter(v=>{const e=eqById(v.equipmentId); return matchQ(e&&e.code,e&&e.description,v.by,v.notes,v.type);}).sort((a,b)=>String(b.date).localeCompare(String(a.date)));
-  const rows=planned.sort((a,b)=>KEY_RANK[IX.maint.get(a.id).key]-KEY_RANK[IX.maint.get(b.id).key]||byCode(a,b)).map(e=>{const m=IX.maint.get(e.id), x=e.maint||{};
-    return `<tr class="click" data-act="eq" data-id="${esc(e.id)}"><td><span class="code">${esc(e.code)}</span></td><td>${esc(e.description)}</td><td>${perLabel(+x.periodMonths)}</td><td>${fmtM(x.last)}</td><td>${fmtM(m.due)}</td><td><span class="pill k-${m.key}">${m.key==='nodata'?'Dates missing':CAL_LABEL[m.key]}</span></td><td>${esc(x.provider||'—')}</td></tr>`}).join('');
-  return `<div class="view-h"><h2>Maintenance</h2><button class="btn primary" data-act="mt-new">+ Log maintenance</button></div>
-  <section class="kpis">
-    <div class="kpi ${cnt('overdue')?'crit':''}"><span class="eyebrow">Overdue</span><b>${cnt('overdue')}</b></div>
-    <div class="kpi ${cnt('soon')?'warn':''}"><span class="eyebrow">Due ≤ ${S.cfg.warnMonths} months</span><b>${cnt('soon')}</b></div>
-    <div class="kpi ok"><span class="eyebrow">Up to date</span><b>${cnt('valid')}</b></div>
-    <div class="kpi"><span class="eyebrow">Without a plan</span><b>${notCfg}</b><span class="muted">set it in each equipment</span></div>
-  </section>
-  <div class="filters">${searchBox()}</div>
-  <p class="note">The <i>New equipment Guide</i> asks for maintenance information and frequency for every machine. Open an equipment, tick <b>Maintenance required</b> and set the period; each logged maintenance moves the next date.</p>
-  <section class="panel scroll-x"><div class="panel-h"><h2>Maintenance plan</h2><span class="muted">${planned.length} equipment</span></div>
-    ${rows?`<table class="tbl"><thead><tr><th>Code</th><th>Equipment</th><th>Period</th><th>Last</th><th>Next</th><th>Status</th><th>Provider</th></tr></thead><tbody>${rows}</tbody></table>`:'<div class="empty-ok">No maintenance plans yet.</div>'}</section>
-  <section class="panel scroll-x"><div class="panel-h"><h2>Maintenance log</h2><span class="muted">${logs.length} entries</span></div>
-    ${logs.length?`<table class="tbl"><thead><tr><th>Date</th><th>Equipment</th><th>Type</th><th>By</th><th>Notes</th></tr></thead><tbody>${logs.map(v=>{const e=eqById(v.equipmentId); return `<tr class="click" data-act="mt-edit" data-id="${esc(v.id)}"><td class="nowrap">${fmtD(v.date)}</td><td><span class="code">${esc(e?e.code:'?')}</span><span class="sub">${esc(e?e.description:'')}</span></td><td>${esc(v.type||'—')}</td><td>${esc(v.by||'—')}</td><td>${esc(v.notes||'')}</td></tr>`}).join('')}</tbody></table>`:'<div class="empty-ok">Nothing logged yet.</div>'}</section>`;
-}
 
 function vReview(){
   if(!IX.eqs.length) return emptyState();
@@ -983,14 +950,14 @@ function vReview(){
 }
 
 function vData(){
-  const nEq=Object.keys(DATA.equipment).length, nCal=Object.keys(DATA.calibrations).length, nEv=Object.keys(DATA.evaluations).length, nMt=Object.keys(DATA.maintenance).length;
+  const nEq=Object.keys(DATA.equipment).length, nCal=Object.keys(DATA.calibrations).length, nEv=Object.keys(DATA.evaluations).length;
   return `<div class="view-h"><h2>Import &amp; data</h2><button class="btn" data-act="settings">Settings</button></div>
   ${S.imp?importPanel():''}
   <section class="panel"><div class="panel-h"><h2>Import the Excel calibration plan</h2></div>
     <ol class="steps"><li>Download <b>Calibration Plan 2026_hipervinculos.xlsx</b> from SharePoint (File → Save as → Download a copy).</li><li>Drop it here. The sheets <i>Equipos</i>, <i>Equipos AUX</i> and <i>EVALUACION (TU)</i> are read, including the colours of the annual plan.</li><li>Check the preview and confirm. Equipment is matched by inventory code; calibrations and evaluations already imported are not duplicated.</li></ol>
     <label class="drop-zone" data-dz="xlsx" style="margin-top:12px"><input type="file" id="file-xlsx" accept=".xlsx,.xlsm,.xls"><b>Drop the calibration plan Excel here</b><span class="muted">or click to choose the file</span></label>
   </section>
-  <section class="panel"><div class="panel-h"><h2>Data file</h2><span class="muted">${nEq} equipment · ${nCal} calibrations · ${nEv} evaluations · ${nMt} maintenance entries</span></div>
+  <section class="panel"><div class="panel-h"><h2>Data file</h2><span class="muted">${nEq} equipment · ${nCal} calibrations · ${nEv} evaluations</span></div>
     <p class="note" style="margin-bottom:10px">The data is kept in <a href="https://github.com/${REPO.owner}/${REPO.repo}/blob/${REPO.branch}/${REPO.path}" target="_blank" rel="noopener"><span class="mono">${REPO.path}</span></a> of the private repository <span class="mono">${REPO.owner}/${REPO.repo}</span>. Every change is saved as a commit: the <a href="https://github.com/${REPO.owner}/${REPO.repo}/commits/${REPO.branch}/${REPO.path}" target="_blank" rel="noopener">history</a> shows who changed what and when.</p>
     <div class="row"><button class="btn" data-act="download">Download a copy (JSON)</button><button class="btn" data-act="export-xlsx">Export plan to Excel</button></div>
   </section>`;
@@ -1181,9 +1148,8 @@ function exportXlsx(){
     return row;});
   const cals=Object.values(DATA.calibrations).map(c=>{const e=eqById(c.equipmentId)||{}; return {'Month':fmtM(c.month),'Inventory Code':e.code,'Description':e.description,'Status':c.status,'Lab':c.lab,'Certificate received':c.certificate?'Yes':'No','In tolerance':c.inTolerance||'','Label placed':c.label?'Yes':'No','Closed':isClosed(c)?'Yes':'No','Cost':c.cost,'Certificate ref.':c.certRef,'Notes':c.notes,'Source':c.source}}).sort((a,b)=>String(a['Inventory Code']).localeCompare(String(b['Inventory Code']),'en',{numeric:true}));
   const evs=Object.values(DATA.evaluations).map(v=>{const e=eqById(v.equipmentId)||{}, c=evalCalc(v); return {'Inventory Code':e.code,'Equipment Description':e.description,'Evaluated Setpoint':v.setpoint,'Unit':v.unit,'Obtained Value':v.obtained,'Related Test':v.relatedTest,'Tolerance of Use (TU)':v.tu,'Indication Error |e|':c.e,'Expanded Uncertainty (k=2)':v.uncertainty,'|e|+U':c.eu,'Decision Rule Applied':v.rule,'Conformity':c.res,'Evaluated by':v.by,'Evaluation Date':fmtD(v.date)}});
-  const mts=IX.eqs.filter(e=>(e.maint||{}).required).map(e=>{const m=IX.maint.get(e.id); return {'Inventory Code':e.code,'Description':e.description,'Period':perLabel(+e.maint.periodMonths),'Last':fmtM(e.maint.last),'Next':fmtM(m.due),'Provider':e.maint.provider}});
   const wb=XLSX.utils.book_new(), add=(rows,name)=>XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows.length?rows:[{'':'No data'}]),name);
-  add(plan,'Calibration plan'); add(cals,'Calibrations'); add(evs,'EVALUACION (TU)'); add(mts,'Maintenance');
+  add(plan,'Calibration plan'); add(cals,'Calibrations'); add(evs,'EVALUACION (TU)');
   XLSX.writeFile(wb,`Calibration_Plan_${todayIso()}.xlsx`);
 }
 
@@ -1211,7 +1177,7 @@ function openEq(id){
   if(!e) return;
   dlg.dataset.kind='eq'; dlg.dataset.id=id||'';
   const m=e.maint||{}, val=e.validation||{}, recs=isNew?[]:(IX.recs.get(id)||[]).slice().reverse(), evs=isNew?[]:(IX.evals.get(id)||[]), logs=isNew?[]:(IX.logs.get(id)||[]), iss=isNew?[]:IX.issues.get(id), info=isNew?null:IX.info.get(id);
-  const guide=isNew?`<div class="hint"><b>New equipment guide (F-IM-FM-001):</b><ol class="guide"><li>Assign the inventory code (next free: ${esc(nextCode())}).</li><li>Enter the complete information in the plan.</li><li>Set the calibration period and tolerances.</li><li>Enter the maintenance information and its period.</li><li>Upload the equipment documentation to SharePoint (certificates folder ${esc(S.cfg.certPath.replace('{code}','<code>').replace(/%20/g,' '))}).</li></ol></div>`:'';
+  const guide=isNew?`<div class="hint"><b>New equipment guide (F-IM-FM-001):</b><ol class="guide"><li>Assign the inventory code (next free: ${esc(nextCode())}).</li><li>Enter the complete information in the plan.</li><li>Set the calibration period and tolerances.</li><li>Enter the maintenance information and its period in the <a href="../mantenimiento/">Maintenance Plan</a> (Excel in SharePoint).</li><li>Upload the equipment documentation to SharePoint (certificates folder ${esc(S.cfg.certPath.replace('{code}','<code>').replace(/%20/g,' '))}).</li></ol></div>`:'';
   const body=`${guide}${!isNew?`<div class="row">${pill(e,info)} ${info.due?`<span class="muted">Next: <b>${fmtML(info.due)}</b></span>`:''} <span class="sp"></span><a class="btn sm" href="${esc(certLink(e))}" target="_blank" rel="noopener">📁 Certificates folder</a></div>`:''}
   <fieldset><legend>Identification</legend>
     ${fld('f-code','Inventory code',inp('code',e.code,'text','autocomplete="off"'),'req')}
@@ -1246,13 +1212,6 @@ function openEq(id){
     ${fld('f-vFeed','Feed-throughs',inp('vFeed',val.feedthroughs))}
     ${isNew?'':`<div class="span2"><button type="button" class="btn sm" data-act="sheet" data-id="${esc(id)}">Open validation sheet</button></div>`}
   </fieldset>
-  <fieldset><legend>Maintenance</legend>
-    <label class="check span2"><input type="checkbox" name="mReq" id="f-mReq" ${m.required?'checked':''}> Maintenance required</label>
-    ${fld('f-mPeriod','Period (months)',inp('mPeriod',m.periodMonths,'number','min="1" step="1"'))}
-    ${fld('f-mLast','Last maintenance',inp('mLast',m.last,'month'))}
-    ${fld('f-mProvider','Provider',inp('mProvider',m.provider))}
-    ${fld('f-mNotes','What to do',`<textarea id="f-mNotes" name="mNotes" rows="2">${esc(m.notes||'')}</textarea>`,'span2')}
-  </fieldset>
   <fieldset><legend>Documentation &amp; notes</legend>
     ${fld('f-certUrl','Certificates link',inp('certUrl',e.certUrl,'url',`placeholder="${esc(certLink({...e,certUrl:''}))}"`),'span2','Leave empty to use the standard SharePoint folder for this code.')}
     ${fld('f-notes','Notes',`<textarea id="f-notes" name="notes" rows="2">${esc(e.notes||'')}</textarea>`,'span2')}
@@ -1265,8 +1224,6 @@ function openEq(id){
       ${recs.length?`<table class="tbl mini"><thead><tr><th>Month</th><th>Status</th><th>Lab</th><th>Closure</th><th class="num">Cost</th><th>Source</th></tr></thead><tbody>${recs.map(c=>`<tr class="click" data-act="cal-edit" data-id="${esc(c.id)}"><td>${fmtM(c.month)}</td><td>${esc(c.status)}</td><td>${esc(c.lab||'—')}</td><td>${c.status==='Done'?(isClosed(c)?'<span class="tick">Closed</span>':esc(missingClosure(c).join(', '))):''}</td><td class="num">${c.cost!==''&&c.cost!=null?money(c.cost):'—'}</td><td>${certA(IX.certByRec.get(c.id))}<span class="sub">${esc(c.source||'')}</span></td></tr>`).join('')}</tbody></table>`:'<p class="note">No calibrations recorded.</p>'}</section>
     <section class="panel"><div class="panel-h"><h3>TU evaluations</h3><button type="button" class="btn sm" data-act="ev-new" data-id="${esc(id)}">+ Evaluation</button></div>
       ${evs.length?`<table class="tbl mini"><thead><tr><th>Date</th><th class="num">Setpoint</th><th class="num">|e|+U</th><th class="num">TU</th><th>Result</th></tr></thead><tbody>${evs.map(v=>{const c=evalCalc(v); return `<tr class="click" data-act="ev-edit" data-id="${esc(v.id)}"><td>${fmtD(v.date)}</td><td class="num">${fmtNum(num(v.setpoint))} ${esc(v.unit||'')}</td><td class="num">${c.eu==null?'—':fmtNum(Math.round(c.eu*1000)/1000)}</td><td class="num">${fmtNum(c.tu)}</td><td>${c.res?`<span class="res ${c.res}">${c.res}</span>`:'—'}</td></tr>`}).join('')}</tbody></table>`:'<p class="note">No TU evaluations.</p>'}</section>
-    <section class="panel"><div class="panel-h"><h3>Maintenance log</h3><button type="button" class="btn sm" data-act="mt-new" data-id="${esc(id)}">+ Log maintenance</button></div>
-      ${logs.length?`<table class="tbl mini"><tbody>${logs.map(v=>`<tr class="click" data-act="mt-edit" data-id="${esc(v.id)}"><td>${fmtD(v.date)}</td><td>${esc(v.type||'')}</td><td>${esc(v.by||'')}</td><td>${esc(v.notes||'')}</td></tr>`).join('')}</tbody></table>`:'<p class="note">Nothing logged.</p>'}</section>
     <p class="note">Source: ${esc(e.src||'manual')}${e.updated?` · last change ${new Date(e.updated).toLocaleString('en-GB')}`:''}</p></div>`}`;
   const nRel=recs.length+evs.length+logs.length;
   dlgShell(isNew?'New equipment':`${esc(e.group)}`,isNew?'New equipment':`${e.code} · ${e.description||''}`,body,isNew?'':`<button type="button" class="btn ghost danger" data-act="del">Delete${nRel?` (and ${nRel} records)`:''}</button>`);
@@ -1279,7 +1236,6 @@ function eqHints(){
   h.textContent=mode==='Expiry date'?'Expiry date':'Next calibration (only if different)';
   let help=$('#f-nextOverride-help'); if(!help){help=document.createElement('span'); help.className='help'; help.id='f-nextOverride-help'; $('#f-nextOverride').after(help);}
   help.textContent=mode==='Periodic'?(calc?`Leave empty to use last + period = ${fmtM(calc)}.`:'Calculated from last calibration + period.'):mode==='Expiry date'?'Required: when the reference expires.':'Not used.';
-  $('#f-mPeriod').disabled=$('#f-mLast').disabled=!$('#f-mReq').checked;
 }
 function saveEq(f){
   const id=dlg.dataset.id, code=String(f.code||'').toUpperCase(), prev=id?DATA.equipment[id]:null;
@@ -1290,13 +1246,12 @@ function saveEq(f){
   const mode=f.calMode, per=num(f.periodMonths);
   if(mode==='Periodic'&&f.state!=='Reserved'&&!(per>0)) return formErr('Enter the calibration period in months (12 = 1 year).');
   if(mode==='Expiry date'&&!f.nextOverride) return formErr('Enter the expiry date.');
-  if(f.mReq&&!(num(f.mPeriod)>0)) return formErr('Enter the maintenance period in months.');
   const calc=mode==='Periodic'?addM(f.lastCal,per):'';
   const points=[...dlg.querySelectorAll('.pt-row')].map(r=>({range:r.querySelector('[name=pt-range]').value.trim(),points:r.querySelector('[name=pt-points]').value.trim(),tolerance:r.querySelector('[name=pt-tol]').value.trim(),detail:r.querySelector('[name=pt-detail]').value.trim()})).filter(p=>p.range||p.points||p.tolerance||p.detail);
   const data={code,group:f.group,state:f.state,description:f.description,brand:f.brand||'',model:f.model||'',serial:f.serial||'',calMode:mode,
     periodMonths:mode==='Periodic'?per:'',lastCal:['Periodic','Expiry date'].includes(mode)?f.lastCal||'':'',nextOverride:['Periodic','Expiry date'].includes(mode)&&f.nextOverride&&f.nextOverride!==calc?f.nextOverride:'',
     actionType:f.actionType||'',location:f.location||'',duration:f.duration||'',lab:f.lab||'',enac:f.enac||'',price:num(f.price)??'',points,
-    maint:{required:!!f.mReq,periodMonths:num(f.mPeriod)??'',last:f.mLast||'',provider:f.mProvider||'',notes:f.mNotes||''},
+    maint:(prev&&prev.maint)||{},
     validation:{...((prev||{}).validation||{}),standards:[...dlg.querySelectorAll('[name=vstd]:checked')].map(i=>i.value),range:f.vRange||'',usefulZone:f.vZone||'',volume:f.vVolume||'',feedthroughs:f.vFeed||''},certUrl:f.certUrl||'',notes:f.notes||'',updated:nowIso()};
   if(id) return save([{op:'update',col:'equipment',id,data}],`${code} saved.`);
   let nid='eq-'+slug(code); if(DATA.equipment[nid]) nid='eq-'+rid();
@@ -1413,26 +1368,6 @@ function saveEv(f){
   return save([{op:'set',col:'evaluations',id:id||'ev-'+rid(),data}],'Evaluation saved.');
 }
 
-function openMt(id,preset={}){
-  const prev=id?DATA.maintenance[id]:null, v={date:todayIso(),type:'Preventive',...(prev||{}),...preset};
-  dlg.dataset.kind='mt'; dlg.dataset.id=id||'';
-  const body=`<fieldset><legend>Maintenance</legend>
-    ${fld('f-equipmentId','Equipment',sel('equipmentId',v.equipmentId||'',[['','— choose —'],...eqOptions()]),'req span2')}
-    ${fld('f-date','Date',inp('date',v.date,'date'),'req')}
-    ${fld('f-type','Type',sel('type',v.type,MT_TYPES))}
-    ${fld('f-by','Done by',inp('by',v.by))}
-    ${fld('f-notes','What was done',`<textarea id="f-notes" name="notes" rows="3">${esc(v.notes||'')}</textarea>`,'span2')}
-  </fieldset>`;
-  dlgShell('Maintenance log',prev?`Maintenance ${fmtD(prev.date)}`:'Log maintenance',body,prev?'<button type="button" class="btn ghost danger" data-act="del">Delete</button>':'',true);
-}
-function saveMt(f){
-  const id=dlg.dataset.id, e=DATA.equipment[f.equipmentId];
-  if(!e) return formErr('Choose the equipment.'); if(!f.date) return formErr('Enter the date.');
-  const ops=[{op:'set',col:'maintenance',id:id||'mt-'+rid(),data:{equipmentId:f.equipmentId,date:f.date,type:f.type,by:f.by||'',notes:f.notes||'',updated:nowIso()}}];
-  const m=f.date.slice(0,7), cur=e.maint||{};
-  if(f.type==='Preventive'&&(!cur.last||m>cur.last)) ops.push({op:'update',col:'equipment',id:f.equipmentId,data:{maint:{...cur,last:m},updated:nowIso()}});
-  return save(ops,`${e.code}: maintenance logged.`);
-}
 
 function openSettings(){
   dlg.dataset.kind='cfg'; dlg.dataset.id='';
@@ -1446,7 +1381,7 @@ function saveCfg(f){
 }
 function saveDialog(){
   const f=readForm(), k=dlg.dataset.kind;
-  const r=k==='eq'?saveEq(f):k==='cal'?saveCal(f):k==='ev'?saveEv(f):k==='mt'?saveMt(f):k==='cfg'?saveCfg(f):null;
+  const r=k==='eq'?saveEq(f):k==='cal'?saveCal(f):k==='ev'?saveEv(f):k==='cfg'?saveCfg(f):null;
   if(r) dlg.close();
 }
 function deleteFromDialog(btn){
@@ -1646,15 +1581,13 @@ document.addEventListener('click',async ev=>{
   else if(a==='cal-edit') openCal(id);
   else if(a==='ev-new') openEv(null,{equipmentId:id||''});
   else if(a==='ev-edit') openEv(id);
-  else if(a==='mt-new') openMt(null,{equipmentId:id||''});
-  else if(a==='mt-edit') openMt(id);
   else if(a==='close') dlg.close();
   else if(a==='del') deleteFromDialog(t);
   else if(a==='pt-add'){$('#pt-list').insertAdjacentHTML('beforeend',ptRow({})); $('#pt-list').lastElementChild.querySelector('input').focus();}
   else if(a==='pt-del'){const r=t.closest('.pt-row'); if($('#pt-list').children.length>1) r.remove(); else r.querySelectorAll('input').forEach(i=>i.value='');}
   else if(a==='note-done'){const e=DATA.equipment[id]; const notes=clone(e.importNotes||[]); if(notes[+t.dataset.n]) notes[+t.dataset.n].done=true; save([{op:'update',col:'equipment',id,data:{importNotes:notes}}],'Marked as reviewed.'); if(dlg.open&&dlg.dataset.kind==='eq') openEq(id);}
   else if(a==='sort'){const st=S.sort.eq; if(st.k===t.dataset.k) st.dir=-st.dir; else {st.k=t.dataset.k; st.dir=1;} render();}
-  else if(a==='kpi'){const k=t.dataset.k; if(k==='maint') return setView('maintenance'); if(k==='review') return setView('review'); S.f={group:[],lab:[],status:[k]}; S.q=''; setView('equipment');}
+  else if(a==='kpi'){const k=t.dataset.k; if(k==='review') return setView('review'); S.f={group:[],lab:[],status:[k]}; S.q=''; setView('equipment');}
   else if(a==='clear-f'){S.f={group:[],status:[],lab:[]}; S.q=''; render();}
   else if(a==='clear-calf'){S.calf={status:[],year:[]}; S.q=''; render();}
   else if(a==='fchip'){const arr=S[t.dataset.scope][t.dataset.k], v=t.dataset.v, i=arr.indexOf(v); if(i<0) arr.push(v); else arr.splice(i,1); render();}

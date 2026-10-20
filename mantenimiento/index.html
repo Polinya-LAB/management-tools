@@ -1,0 +1,886 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Maintenance Plan · Laboratorio Polinyà</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* Same tokens and components as the Calibration Plan. The plan comes from the Excel in SharePoint (read-only here); the app adds programmed and done maintenance. */
+:root{
+  --bg:#EEF3F4; --surface:#FFFFFF; --surface-2:#E4ECEE; --fg:#12242B; --muted:#566C74; --line:#CFDCE0;
+  --accent:#0A6C7C; --accent-ink:#FFFFFF; --accent-soft:#D3EAEE;
+  --ok:#2D7F55; --ok-soft:#D8EEE1; --warn:#A8690A; --warn-soft:#F7E8CC; --crit:#B8322B; --crit-soft:#F6D9D6;
+  --st-plan:#3866AE; --st-inf:#80539F; --st-canc:#98A6AC; --st-noap:#9A5A1E;
+  --f-display:"Barlow Semi Condensed","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,"SFMono-Regular",Menlo,Consolas,monospace;
+  --r:6px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0D161A; --surface:#142026; --surface-2:#1B2A31; --fg:#E1EBEE; --muted:#90A4AC; --line:#293B43;
+  --accent:#43B4C4; --accent-ink:#04232A; --accent-soft:#123840;
+  --ok:#55C28D; --ok-soft:#163626; --warn:#E3A43A; --warn-soft:#3A2D14; --crit:#EF6A60; --crit-soft:#41201E;
+  --st-plan:#6C9BE0; --st-inf:#B48AD6; --st-canc:#5E6E75; --st-noap:#D99A5B; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0D161A; --surface:#142026; --surface-2:#1B2A31; --fg:#E1EBEE; --muted:#90A4AC; --line:#293B43;
+  --accent:#43B4C4; --accent-ink:#04232A; --accent-soft:#123840;
+  --ok:#55C28D; --ok-soft:#163626; --warn:#E3A43A; --warn-soft:#3A2D14; --crit:#EF6A60; --crit-soft:#41201E;
+  --st-plan:#6C9BE0; --st-inf:#B48AD6; --st-canc:#5E6E75; --st-noap:#D99A5B; color-scheme:dark}
+
+*{box-sizing:border-box}
+:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.45}
+button,input,select,textarea{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+[hidden]{display:none!important}
+h1,h2,h3,h4{font-family:var(--f-display);margin:0;text-wrap:balance;line-height:1.15}
+a{color:var(--accent)}
+.mono,.ref{font-family:var(--f-mono);font-size:12px;font-variant-numeric:tabular-nums}
+.eyebrow{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0;font-weight:600}
+.muted{color:var(--muted)}
+
+/* Header */
+.top{position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line)}
+.top-in{display:flex;flex-wrap:wrap;align-items:center;gap:8px 16px;padding-block:10px 0;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));max-width:1500px;margin:0 auto}
+.brand{display:flex;flex-direction:column;align-items:flex-start;margin-right:auto}
+.brand .row1{display:flex;align-items:baseline;gap:10px}
+.brand h1{font-size:22px;font-weight:700;letter-spacing:.01em}
+.brand .tag{font-family:var(--f-mono);font-size:11px;color:var(--accent);border:1px solid var(--accent);border-radius:3px;padding:1px 5px}
+.home{font-family:var(--f-mono);font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);text-decoration:none;display:block;margin-bottom:2px}
+.home:hover{color:var(--accent)}
+.tabs{display:flex;gap:2px;overflow-x:auto;width:100%;scrollbar-width:none}
+.tabs button{background:none;border:0;border-bottom:3px solid transparent;padding:8px 12px 9px;font-weight:600;color:var(--muted);cursor:pointer;white-space:nowrap}
+.tabs button[aria-current="page"]{color:var(--fg);border-bottom-color:var(--accent)}
+.tabs button:hover{color:var(--fg)}
+.tabs .n{font-family:var(--f-mono);font-size:11px;background:var(--surface-2);border-radius:8px;padding:0 6px;margin-left:4px;color:var(--muted)}
+.tabs .n.crit{background:var(--crit-soft);color:var(--crit)} .tabs .n.warn{background:var(--warn-soft);color:var(--warn)}
+.gh{display:inline-flex;align-items:center;gap:8px;border:1px solid var(--line);background:var(--surface);border-radius:var(--r);padding:6px 12px;font-weight:600;font-size:13px;cursor:pointer;color:var(--muted)}
+.gh:hover{border-color:var(--accent)}
+.gh i{width:8px;height:8px;border-radius:50%;background:var(--st-canc)}
+.gh.on i{background:var(--ok)} .gh.bad i{background:var(--crit)} .gh.busy i{background:var(--warn)}
+.gh.on{color:var(--fg)}
+/* Read-only (not connected, or no write access): editing controls are hidden. */
+body.ro :is([data-act="rec-plan"],[data-act="rec-done"],[data-act="settings"],[data-act="del"]){display:none!important}
+body.ro .dlg-f button[type="submit"]:not(.gh-ok){display:none}
+body.ro :is([data-act="rec-plan"],[data-act="rec-done"],[data-act="settings"],[data-act="del"]){display:none!important}
+
+main{max-width:1500px;margin:0 auto;padding-block:20px 60px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:grid;gap:20px}
+.banner{border:1px solid var(--line);background:var(--surface);border-left:4px solid var(--warn);border-radius:var(--r);padding:10px 14px}
+.banner.crit{border-left-color:var(--crit)}
+
+.btn{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:var(--surface);border-radius:var(--r);padding:7px 14px;font-weight:600;cursor:pointer;text-decoration:none;color:inherit}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.ghost{background:transparent}
+.btn.danger{color:var(--crit)}
+.btn.danger.armed{background:var(--crit);color:#fff;border-color:var(--crit)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.sm{padding:4px 10px;font-size:13px}
+.icon-btn{border:0;background:none;font-size:24px;line-height:1;cursor:pointer;color:var(--muted);padding:4px 8px}
+.link{border:0;background:none;color:var(--accent);font-weight:600;cursor:pointer;padding:0;text-decoration:underline}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:16px;min-width:0}
+.panel-h{display:flex;flex-wrap:wrap;align-items:baseline;gap:8px 16px;margin-bottom:12px}
+.panel-h h2{font-size:19px;margin-right:auto}
+.panel-h h3{font-size:16px;margin-right:auto}
+.view-h{display:flex;flex-wrap:wrap;align-items:center;gap:10px 16px}
+.view-h h2{font-size:26px;margin-right:auto}
+.fgrp{display:flex;flex-wrap:wrap;gap:5px;align-items:center}
+.fgrp .fl{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-right:2px}
+.fc{border:1px solid var(--line);background:var(--surface);border-radius:14px;padding:3px 10px;font-size:13px;font-weight:600;cursor:pointer;color:var(--muted);white-space:nowrap}
+.fc:hover{border-color:var(--accent);color:var(--fg)}
+.fc[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--accent-ink)}
+.fc small{font-family:var(--f-mono);font-size:11px;opacity:.75;margin-left:4px}
+.filters.multi{flex-direction:column;align-items:flex-start;gap:8px}
+.search,.fsel{border:1px solid var(--line);background:var(--surface);border-radius:var(--r);padding:7px 10px;min-width:0;max-width:100%}
+.search{width:240px}
+.filters{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.note{font-size:13px;color:var(--muted);margin:0}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.sp{flex:1}
+
+/* KPIs */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 16px;display:grid;gap:2px;text-align:left;cursor:pointer}
+.kpi:hover{border-color:var(--accent)}
+.kpi b{font-family:var(--f-display);font-size:34px;line-height:1;font-variant-numeric:tabular-nums}
+.kpi.crit b{color:var(--crit)} .kpi.warn b{color:var(--warn)} .kpi.ok b{color:var(--ok)} .kpi.inf b{color:var(--st-inf)}
+.grid2{display:grid;grid-template-columns:minmax(0,1.1fr) minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:980px){.grid2{grid-template-columns:minmax(0,1fr)}}
+
+/* Alerts */
+.alerts{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.alerts li{display:grid;grid-template-columns:auto 1fr;gap:10px;align-items:start;padding:8px 10px;border-radius:var(--r);background:var(--surface-2);border-left:4px solid var(--warn);cursor:pointer}
+.alerts li.crit{border-left-color:var(--crit)}
+.alerts li.inf{border-left-color:var(--st-inf)}
+.alerts li:hover{outline:1px solid var(--line)}
+.alerts .what b{font-family:var(--f-mono);font-size:12px;margin-right:6px}
+.alerts .what small{display:block;color:var(--muted);font-size:13px}
+.sev{font-family:var(--f-mono);font-size:10px;font-weight:500;text-transform:uppercase;letter-spacing:.06em;padding:2px 6px;border-radius:3px;background:var(--warn-soft);color:var(--warn);white-space:nowrap}
+.crit .sev,.sev.crit{background:var(--crit-soft);color:var(--crit)}
+.inf .sev{background:color-mix(in srgb,var(--st-inf) 15%,var(--surface));color:var(--st-inf)}
+.empty-ok{padding:14px;border-radius:var(--r);background:var(--surface-2);color:var(--muted)}
+
+/* Upcoming months */
+.months{display:grid;gap:8px}
+.mrow{display:grid;grid-template-columns:96px 1fr;gap:10px;align-items:start;padding:8px 0;border-top:1px solid var(--line)}
+.mrow:first-child{border-top:0}
+.mrow .ml{font-family:var(--f-display);font-weight:700;font-size:16px}
+.mrow .ml small{display:block;font-family:var(--f-body);font-weight:400;font-size:12px;color:var(--muted)}
+.mrow.late .ml{color:var(--crit)}
+.labgrp{display:flex;flex-wrap:wrap;gap:4px;align-items:center;margin-bottom:4px}
+.labgrp .lab{font-size:11px;font-weight:700;letter-spacing:.05em;text-transform:uppercase;color:var(--muted);margin-right:4px}
+.codebtn{font-family:var(--f-mono);font-size:12px;border:1px solid var(--line);background:var(--surface);border-radius:4px;padding:1px 6px;cursor:pointer;color:var(--fg)}
+.codebtn:hover{border-color:var(--accent)}
+.codebtn.plan{border-color:var(--st-plan);color:var(--st-plan)}
+
+/* Pills */
+.pill{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:600;padding:1px 8px;border-radius:10px;white-space:nowrap;border:1px solid currentColor;color:var(--st)}
+.pill::before{content:"";width:6px;height:6px;border-radius:50%;background:currentColor}
+.k-valid{--st:var(--ok)} .k-soon,.k-nodata{--st:var(--warn)} .k-overdue,.k-nok{--st:var(--crit)} .k-pending{--st:var(--st-inf)}
+.k-beforeuse{--st:var(--st-plan)} .k-notreq,.k-reserved,.k-retired,.k-none{--st:var(--st-canc)} .k-oos{--st:var(--st-noap)}
+.res{font-size:11px;font-weight:700;padding:1px 7px;border-radius:3px;letter-spacing:.04em;white-space:nowrap}
+.res.OK{background:var(--ok-soft);color:var(--ok)} .res.NOK{background:var(--crit-soft);color:var(--crit)} .res.NA{background:var(--surface-2);color:var(--muted)}
+.chip{font-size:11px;padding:1px 6px;border-radius:3px;background:var(--surface-2);font-family:var(--f-mono);white-space:nowrap}
+.iss{font-family:var(--f-mono);font-size:11px;font-weight:600;padding:1px 6px;border-radius:8px;background:var(--warn-soft);color:var(--warn);white-space:nowrap}
+.iss.info{background:var(--surface-2);color:var(--muted)}
+.tick{color:var(--ok);font-weight:700} .cross{color:var(--muted)}
+
+/* Tables */
+.scroll-x{overflow-x:auto}
+.tbl{width:100%;border-collapse:collapse;font-size:14px}
+.tbl th{text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);font-weight:600;padding:8px;border-bottom:1px solid var(--line);white-space:nowrap}
+.tbl td{padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+.tbl tr.click{cursor:pointer} .tbl tr.click:hover td{background:var(--surface-2)}
+.tbl .num{text-align:right;font-variant-numeric:tabular-nums;white-space:nowrap}
+.tbl .nowrap{white-space:nowrap}
+.tbl .sub{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+.tbl.mini{font-size:13px} .tbl.mini td,.tbl.mini th{padding:5px 6px}
+.tbl tr.off td{color:var(--muted)}
+.th-sort{border:0;background:none;padding:0;font:inherit;color:inherit;letter-spacing:inherit;text-transform:inherit;cursor:pointer;display:inline-flex;gap:4px;align-items:center;white-space:nowrap}
+.th-sort:hover{color:var(--fg)}
+.th-sort .arr{font-size:9px;opacity:.35}
+.th-sort[aria-sort] .arr{opacity:1;color:var(--accent)}
+.code{font-family:var(--f-mono);font-size:13px;font-weight:500;white-space:nowrap}
+.folder{font-size:12px;text-decoration:none;white-space:nowrap}
+.cell-sel{border:1px solid var(--line);border-radius:var(--r);background:var(--surface);padding:2px 4px;font-size:13px}
+.due.crit{color:var(--crit);font-weight:600} .due.warn{color:var(--warn);font-weight:600}
+
+/* Annual plan */
+.pg-ctl{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.zoom{display:inline-flex;border:1px solid var(--line);border-radius:var(--r);overflow:hidden}
+.zoom button{border:0;background:var(--surface);padding:6px 10px;cursor:pointer;font-weight:600;font-size:13px}
+.zoom button[aria-pressed="true"]{background:var(--accent);color:var(--accent-ink)}
+.pg-wrap{overflow:auto;max-height:calc(100dvh - 250px);border:1px solid var(--line);border-radius:var(--r);background:var(--surface)}
+.pg{border-collapse:separate;border-spacing:0;font-variant-numeric:tabular-nums}
+.pg th,.pg td{border-bottom:1px solid var(--line);padding:0}
+.pg thead th{position:sticky;top:0;z-index:2;background:var(--surface);font-family:var(--f-mono);font-size:11px;color:var(--muted);font-weight:500;padding:5px 0;text-align:center;line-height:1.15}
+.pg thead th small{display:block;font-size:9px}
+.pg thead th.now{background:var(--accent);color:var(--accent-ink)}
+.pg .rh{position:sticky;left:0;z-index:1;background:var(--surface);text-align:left;padding:4px 10px;min-width:240px;max-width:260px;border-right:1px solid var(--line);font-family:var(--f-body)}
+.pg thead .rh{z-index:3}
+.pg .rh button{all:unset;cursor:pointer;display:block;width:100%}
+.pg .rh b{font-family:var(--f-mono);font-size:12px;font-weight:500}
+.pg .rh .d{display:block;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:230px}
+.pg .rh .pill{font-size:11px;padding:0 6px;margin-left:4px}
+.pg .rh.crit{box-shadow:inset 4px 0 0 var(--crit)} .pg .rh.warn{box-shadow:inset 4px 0 0 var(--warn)}
+.pg td.m{width:36px;min-width:36px;height:36px;text-align:center;cursor:pointer;border-left:1px solid color-mix(in srgb,var(--line) 55%,transparent)}
+.pg td.m:hover{background:var(--surface-2)}
+.pg .jan{border-left:2px solid var(--line)!important}
+.pg td.now{background:color-mix(in srgb,var(--accent) 7%,transparent)}
+.pg .sec th{background:var(--surface-2);text-align:left;padding:5px 0;font-family:var(--f-display);font-weight:700;font-size:14px;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.pg .sec th span{position:sticky;left:10px;padding-left:10px}
+.pg tfoot th,.pg tfoot td{font-family:var(--f-mono);font-size:11px;color:var(--muted);text-align:center;padding:5px 0;background:var(--surface-2)}
+.pg tfoot .rh{background:var(--surface-2);font-size:12px;font-weight:600}
+.mk{display:inline-grid;place-items:center;width:26px;height:22px;border-radius:4px;font-size:12px;font-weight:700;font-family:var(--f-mono)}
+.mk.due{box-shadow:inset 0 0 0 2px var(--crit);color:var(--crit)}
+.mk.due.late{background:var(--crit);color:#fff}
+.mk.proj{opacity:.45}
+.mk.plan{background:var(--st-plan);color:#fff}
+.mk.done{background:var(--ok);color:#fff}
+.mk.done.open{background:var(--ok-soft);color:var(--ok);box-shadow:inset 0 0 0 1.5px var(--ok)}
+.mk.plan.due,.mk.done.due{box-shadow:inset 0 0 0 2px var(--crit)}
+.legend{display:flex;flex-wrap:wrap;gap:14px;font-size:12px;color:var(--muted);align-items:center}
+.legend .mk{width:22px;height:18px;font-size:11px;margin-right:4px;vertical-align:middle}
+
+/* Review */
+.rev-sum{display:flex;flex-wrap:wrap;gap:6px}
+details.panel>summary{cursor:pointer;list-style:none}
+details.panel>summary::-webkit-details-marker{display:none}
+details.panel>summary h2::before{content:'▸ ';color:var(--muted)}
+details.panel[open]>summary h2::before{content:'▾ '}
+details.panel:not([open])>summary{margin-bottom:0}
+.rev-sum a{text-decoration:none}
+.rev-list{list-style:none;margin:0;padding:0;display:grid;gap:4px}
+.rev-list li{display:grid;grid-template-columns:auto 1fr auto;gap:10px;align-items:center;padding:6px 8px;border-radius:var(--r);background:var(--surface-2)}
+
+/* Forms & dialog */
+.field{display:grid;gap:4px;min-width:0;align-content:start}
+.field label,.field .lbl{font-size:12px;font-weight:600;color:var(--muted)}
+.field input:not([type="checkbox"]),.field select,.field textarea{border:1px solid var(--line);background:var(--surface);border-radius:var(--r);padding:7px 9px;width:100%;min-width:0}
+.field textarea{resize:vertical;min-height:64px}
+.field.req label::after{content:" *";color:var(--crit)}
+.field .help{font-size:12px;color:var(--muted)}
+.check{display:flex;gap:8px;align-items:center;font-size:14px;color:var(--fg);font-weight:400}
+dialog{border:0;border-radius:10px;padding:0;background:var(--surface);color:var(--fg);width:min(980px,calc(100vw - 24px));max-height:calc(100dvh - 24px);box-shadow:0 20px 60px rgba(0,0,0,.35)}
+dialog.narrow{width:min(640px,calc(100vw - 24px))}
+dialog::backdrop{background:rgba(8,20,24,.55)}
+.dlg-form{display:flex;flex-direction:column;max-height:calc(100dvh - 24px)}
+.dlg-h{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:16px 18px 12px;border-bottom:1px solid var(--line)}
+.dlg-h h2{font-size:22px}
+.dlg-body{padding:14px 18px;overflow-y:auto;display:grid;gap:14px}
+.dlg-f{display:flex;gap:8px;align-items:center;padding:12px 18px;border-top:1px solid var(--line);flex-wrap:wrap}
+fieldset{border:1px solid var(--line);border-radius:var(--r);padding:10px 12px 12px;margin:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:10px;min-width:0}
+legend{font-family:var(--f-display);font-weight:700;font-size:14px;padding:0 6px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.span2{grid-column:1/-1}
+.form-err{color:var(--crit);font-weight:600;font-size:14px}
+.hint{font-size:13px;padding:8px 10px;border-radius:var(--r);background:var(--surface-2)}
+.hint.ok{background:var(--ok-soft);color:var(--ok)} .hint.crit{background:var(--crit-soft);color:var(--crit)} .hint.warn{background:var(--warn-soft);color:var(--warn)}
+.recs{display:grid;gap:14px}
+.recs .panel-h{margin-bottom:6px}
+.guide{margin:0;padding-left:20px;font-size:14px;display:grid;gap:2px}
+
+#toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(20px + env(safe-area-inset-bottom,0px));background:var(--fg);color:var(--bg);padding:10px 16px;border-radius:var(--r);font-weight:600;z-index:100;max-width:calc(100vw - 32px)}
+.empty{display:grid;gap:12px;justify-items:start;padding:28px;background:var(--surface);border:1px dashed var(--line);border-radius:var(--r)}
+.empty h3{font-size:22px}
+.empty p{margin:0;max-width:62ch;color:var(--muted)}
+@media (max-width:600px){.view-h h2{font-size:22px}.brand h1{font-size:19px}.search{width:100%}.mrow{grid-template-columns:1fr}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+
+.acts-l{margin:0;padding-left:18px;display:grid;gap:2px;font-size:14px}
+.kv{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:8px 16px;margin:0}
+.kv dt{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em} .kv dd{margin:0;overflow-wrap:anywhere}
+.doc-sum{font-size:13px;color:var(--muted);margin-top:2px;max-width:70ch}
+.kind{font-size:11px;font-weight:600;padding:1px 6px;border-radius:3px;white-space:nowrap;background:var(--surface-2);color:var(--muted)}
+.kind.oferta{background:var(--accent-soft);color:var(--accent)} .kind.parte{background:var(--ok-soft);color:var(--ok)} .kind.correctiva{background:var(--crit-soft);color:var(--crit)}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand"><a class="home" href="../">← Laboratorio Polinyà</a><div class="row1"><h1>Maintenance Plan</h1><span class="tag" id="form-tag">F-IM-FM-002</span></div></div>
+    <button type="button" class="gh" id="btn-gh" data-act="gh"><i></i><span>Connect GitHub</span></button>
+    <nav class="tabs" id="tabs" aria-label="Views"></nav>
+  </div>
+</header>
+<main id="view"><div class="empty"><h3>Loading maintenance data…</h3></div></main>
+<dialog id="dlg"></dialog>
+<datalist id="prov-list"></datalist>
+<div id="toast" hidden></div>
+
+<script>/* Local test mode (development only): opened as a file or with ?local, the page loads local-data.js, which is not in the
+   repository, and keeps changes in this browser instead of saving them to GitHub. */
+if(location.protocol==='file:'||/[?&]local\b/.test(location.search)) document.write('<script src="local-data.js"><\/script>');</script>
+<script>
+/* ---------- Constants ---------- */
+const VIEWS=[['overview','Overview'],['plan','Maintenance plan'],['annual','Annual plan'],['corrective','Corrective actions'],['documents','Offers & reports'],['review','Data review'],['data','Data']];
+const ST_LABEL={valid:'Up to date',soon:'Due soon',overdue:'Overdue',nodata:'Dates missing'};
+const KEY_RANK={overdue:0,soon:1,nodata:2,valid:3};
+const ACTION_KEYS=['overdue','soon','nodata'];
+const KIND_LABEL={oferta:'Offer',parte:'Work report',correctiva:'Corrective'};
+const GROUPS=['Lab equipment','Facilities'];
+const DEFAULT_CFG={warnMonths:1,formCode:'F-IM-FM-002',
+  spBase:'https://fluidra.sharepoint.com/sites/127-RDCenterPolinya-SPO2/Shared%20Documents/07.%20Laboratory/4.%20Equipment/1.%20Maintenance'};
+const ISSUE={unmatched:'Name in the Excel without equipment code',nextbefore:'Next date not after the last maintenance',nextdiff:'Next date does not match last + period',
+  lastfuture:'Last maintenance in the future',nodates:'Dates missing',noprovider:'External maintenance without provider',plannedpast:'Programmed month already passed'};
+const ISSUE_WARN=new Set(['unmatched','nextbefore','nextdiff','lastfuture','nodates','plannedpast']);
+const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const COLS=['records','config'];
+
+/* ---------- State ---------- */
+const S={view:'overview',q:'',cfg:{...DEFAULT_CFG},f:{status:[],type:[],provider:[]},docf:{kind:[]},plan:{start:null,span:24}};
+try{const v=localStorage.getItem('mt.view'); if(VIEWS.some(x=>x[0]===v)) S.view=v; const sp=+localStorage.getItem('mt.span'); if(sp===12||sp===24) S.plan.span=sp;}catch(e){}
+if(location.hash&&VIEWS.some(x=>'#'+x[0]===location.hash)) S.view=location.hash.slice(1);
+let M=null, DATA=null, EQ=new Map(), IX=null;
+
+/* ---------- Utilities ---------- */
+const $=s=>document.querySelector(s);
+const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad=n=>String(n).padStart(2,'0');
+const clone=v=>v==null?v:JSON.parse(JSON.stringify(v));
+const norm=s=>String(s??'').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').replace(/[^a-z0-9]+/g,' ').trim();
+const rid=()=>Array.from(crypto.getRandomValues(new Uint8Array(10)),x=>'abcdefghijklmnopqrstuvwxyz0123456789'[x%36]).join('');
+const nowIso=()=>new Date().toISOString();
+const todayIso=()=>{const d=new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`};
+/* Maintenance is planned by month, as in the Excel. A month is "YYYY-MM"; a maintenance is due until the end of its month. */
+const toMonth=s=>{const m=/^(\d{4})-(\d{2})/.exec(s||''); return m?`${m[1]}-${m[2]}`:''};
+const mIdx=s=>{const m=/^(\d{4})-(\d{2})/.exec(s||''); return m?(+m[1])*12+(+m[2]-1):null};
+const mStr=i=>`${Math.floor(i/12)}-${pad(i%12+1)}`;
+const addM=(s,n)=>{const i=mIdx(s); return i==null||!n?'':mStr(i+ +n)};
+const nowIdx=()=>{const d=new Date(); return d.getFullYear()*12+d.getMonth()};
+const fmtM=s=>{const i=mIdx(s); return i==null?'—':`${pad(i%12+1)}/${Math.floor(i/12)}`};
+const fmtML=s=>{const i=mIdx(s); return i==null?'—':`${MN[i%12]} ${Math.floor(i/12)}`};
+const fmtD=s=>{const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(s||''); return m?`${m[3]}/${m[2]}/${m[1]}`:/^\d{4}-\d{2}$/.test(s||'')?fmtM(s):s?esc(s):'—'};
+const perLabel=p=>!p?'—':p%12===0?`${p/12} year${p>12?'s':''}`:`${p} month${p>1?'s':''}`;
+const plural=(n,w)=>`${n} ${w}${n===1?'':'s'}`;
+const clean=v=>String(v??'').replace(/\s+/g,' ').trim();
+const isNA=v=>/^(n\/?a|-|—)?$/i.test(clean(v));
+function toast(msg){const t=$('#toast'); t.textContent=msg; t.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>t.hidden=true,4200)}
+const eqCode=id=>{const e=EQ.get(id); return e?e.code:String(id||'').replace(/^eq-/,'')};
+const codesOf=p=>(p.equipmentIds||[]).map(eqCode);
+const typeOf=p=>{const t=norm(p.actionType); return !t?'':/int.*ext/.test(t)?'Internal / External':t.startsWith('ext')?'External':t.startsWith('int')?'Internal':clean(p.actionType)};
+const provOf=p=>{const v=clean(p.provider); return /^fluidra$/i.test(v)?'FLUIDRA':v};
+
+/* ---------- Domain ----------
+   A plan row comes from the Excel (last and next maintenance). Maintenance logged as done in the app after the Excel's last
+   date moves the next date (last + period); programmed maintenance is shown in the annual plan and in the overview. */
+function rowInfo(p){
+  const recs=IX.recs.get(p.id)||[], done=recs.filter(r=>r.status==='Done'), planned=recs.filter(r=>r.status==='Planned').sort((a,b)=>String(a.month).localeCompare(String(b.month)));
+  const xlLast=toMonth(p.last), appLast=done.map(r=>toMonth(r.date||r.month)).sort().pop()||'', per=+p.periodMonths||0;
+  const fromApp=appLast&&(!xlLast||appLast>xlLast);
+  const last=fromApp?appLast:xlLast;
+  const due=fromApp&&per?addM(appLast,per):(toMonth(p.next)||addM(xlLast,per));
+  const di=mIdx(due), n=nowIdx(), warn=+S.cfg.warnMonths||0, plan=planned[0]||null;
+  const base={last,due,fromApp,planned:plan,months:di==null?null:di-n,recs};
+  if(di==null) return {...base,key:'nodata'};
+  if(n>di) return {...base,key:'overdue'};
+  if(di-n<=warn) return {...base,key:'soon'};
+  return {...base,key:'valid'};
+}
+function issuesOf(p){
+  const out=[], add=(type,text)=>out.push({type,sev:ISSUE_WARN.has(type)?'warn':'info',text});
+  const l=toMonth(p.last), nx=toMonth(p.next), per=+p.periodMonths||0, i=IX.info.get(p.id);
+  if((M.unmatched||[]).some(u=>norm(typeof u==='string'?u:u.name)===norm(p.equipment))) add('unmatched',`“${clean(p.equipment)}” has no FLE code in the sync table (lab-data/sharepoint-sync.md).`);
+  if(!l||!nx) add('nodates',`${!l?'Last':'Next'} maintenance missing in the Excel.`);
+  if(l&&nx&&mIdx(nx)<=mIdx(l)) add('nextbefore',`Next ${fmtM(nx)} is not after the last maintenance ${fmtM(l)} in the Excel.`);
+  else if(l&&nx&&per&&addM(l,per)!==nx) add('nextdiff',`Next ${fmtM(nx)}, but last ${fmtM(l)} + ${perLabel(per)} gives ${fmtM(addM(l,per))}.`);
+  if(l&&mIdx(l)>nowIdx()) add('lastfuture',`Last maintenance ${fmtM(l)} is in the future.`);
+  if(typeOf(p)==='External'&&isNA(p.provider)) add('noprovider','External maintenance with no provider in the Excel.');
+  if(i.planned&&mIdx(i.planned.month)<nowIdx()) add('plannedpast',`Programmed for ${fmtM(i.planned.month)} and not logged as done.`);
+  return out;
+}
+function buildIndex(){
+  const rows=(M.plan||[]).map(p=>({...p,group:(p.equipmentIds||[]).length?GROUPS[0]:GROUPS[1]}));
+  const recs=new Map(), push=(m,k,v)=>{if(!m.has(k)) m.set(k,[]); m.get(k).push(v)};
+  for(const [id,r] of Object.entries(DATA.records)) push(recs,r.planId,{id,...r});
+  IX={rows,byId:new Map(rows.map(p=>[p.id,p])),recs,info:new Map(),issues:new Map()};
+  for(const p of rows) IX.info.set(p.id,rowInfo(p));
+  for(const p of rows) IX.issues.set(p.id,issuesOf(p));
+  IX.providers=[...new Set(rows.map(provOf).filter(v=>v&&!isNA(v)))].sort();
+  IX.types=[...new Set(rows.map(typeOf).filter(Boolean))].sort();
+}
+/* Documents and corrective actions of a plan row: same equipment code, or (facilities) the same name in the folder. */
+const sameEq=(p,ids,folder)=>(p.equipmentIds||[]).length?(ids||[]).some(x=>p.equipmentIds.includes(x)):!!folder&&norm(folder).endsWith(norm(p.equipment));
+const docsOf=p=>(M.documents||[]).filter(d=>sameEq(p,d.equipmentIds,d.folder)).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+const corrOf=p=>(M.corrective||[]).filter(c=>(p.equipmentIds||[]).includes(c.equipmentId));
+const rowLabel=p=>p?`${clean(p.equipment)} · ${clean((p.actions||[])[0]||'')}`:'(row no longer in the Excel)';
+
+/* ---------- Render ---------- */
+function render(){
+  let banner='';
+  if(LOCAL) banner=`<div class="banner"><b>Local test mode.</b> The data comes from <span class="mono">local-data.js</span>, which is not in the repository; changes stay in this browser and are never sent to GitHub. <button class="link" data-act="local-reset">Reset the test data</button></div>`;
+  else if(S.noDb) banner=S.privateData
+    ? (GH.login
+      ? `<div class="banner crit"><b>Your account ${esc(GH.login)} cannot see the maintenance data.</b> Ask the owner to add you to the private repository <span class="mono">${REPO.owner}/${REPO.repo}</span>.</div>`
+      : `<div class="banner crit"><b>The maintenance data is private.</b> Press <button class="link" data-act="gh">Connect GitHub</button> with an account that has access to see it.</div>`)
+    : `<div class="banner crit"><b>Could not load the maintenance data from GitHub.</b> Check your connection and reload the page.</div>`;
+  else if(GH.invalid) banner=`<div class="banner crit">Your GitHub key is no longer valid or has expired. <button class="link" data-act="gh">Connect GitHub</button> and paste a new one.</div>`;
+  else if(GH.login&&!GH.push) banner=`<div class="banner">Your GitHub account <b>${esc(GH.login)}</b> cannot edit this repository. Ask to be added as a collaborator with the Write role.</div>`;
+  else if(S.ro) banner=`<div class="banner">Read-only. To programme or log maintenance, <button class="link" data-act="gh">connect GitHub</button> with an account that has write access to the repository.</div>`;
+  renderGh();
+  if(!DATA||!M){$('#tabs').innerHTML=''; $('#view').innerHTML=banner+(S.noDb?'':'<div class="empty"><h3>Loading maintenance data…</h3></div>'); return;}
+  buildIndex();
+  S.cfg={...DEFAULT_CFG,...((DATA.config||{}).settings||{})};
+  $('#form-tag').textContent=S.cfg.formCode||'F-IM-FM-002';
+  $('#prov-list').innerHTML=IX.providers.map(l=>`<option value="${esc(l)}">`).join('');
+  const act=IX.rows.filter(p=>ACTION_KEYS.includes(IX.info.get(p.id).key)), crit=act.some(p=>IX.info.get(p.id).key==='overdue');
+  const nIss=IX.rows.reduce((n,p)=>n+IX.issues.get(p.id).filter(i=>i.sev==='warn').length,0)+(M.unmatched||[]).filter(u=>!IX.rows.some(p=>norm(p.equipment)===norm(typeof u==='string'?u:u.name))).length;
+  $('#tabs').innerHTML=VIEWS.map(([k,l])=>`<button data-view="${k}" ${S.view===k?'aria-current="page"':''}>${l}${k==='overview'&&act.length?`<span class="n ${crit?'crit':'warn'}">${act.length}</span>`:''}${k==='review'&&nIss?`<span class="n warn">${nIss}</span>`:''}</button>`).join('');
+  const fn={overview:vOverview,plan:vPlan,annual:vAnnual,corrective:vCorrective,documents:vDocuments,review:vReview,data:vData}[S.view]||vOverview;
+  $('#view').innerHTML=banner+fn();
+}
+function emptyState(){
+  return `<div class="empty"><p class="eyebrow">No maintenance plan yet</p><h3>Waiting for the first SharePoint sync</h3>
+  <p>The plan is copied from <b>Maintenance Plan.xlsx</b> (SharePoint · 07. Laboratory › 4. Equipment › 1. Maintenance) to <span class="mono">lab-data/${esc(REPO.main)}</span> by a scheduled task on the 1st and 15th of each month. It appears here as soon as that file has data.</p>
+  <div class="row"><a class="btn" href="${esc(S.cfg.spBase)}" target="_blank" rel="noopener">📁 Open the SharePoint folder</a></div></div>`;
+}
+const pill=i=>`<span class="pill k-${i.key==='nodata'?'nodata':i.key}">${esc(i.key==='soon'&&i.months===0?'Due this month':ST_LABEL[i.key])}</span>`;
+const searchBox=(ph='Search equipment, action, provider…')=>`<input class="search" id="q" type="search" placeholder="${ph}" value="${esc(S.q)}" aria-label="Search">`;
+const matchQ=(...vals)=>!S.q||vals.some(v=>String(v??'').toLowerCase().includes(S.q.toLowerCase()));
+const matchRow=p=>matchQ(p.equipment,...(p.actions||[]),p.provider,p.components,...codesOf(p));
+function filteredRows(){
+  const f=S.f;
+  return IX.rows.filter(p=>{
+    if(!matchRow(p)) return false;
+    if(f.status.length&&!f.status.some(v=>v==='action'?ACTION_KEYS.includes(IX.info.get(p.id).key):IX.info.get(p.id).key===v)) return false;
+    if(f.type.length&&!f.type.includes(typeOf(p))) return false;
+    if(f.provider.length&&!f.provider.includes(provOf(p)&&!isNA(p.provider)?provOf(p):'')) return false;
+    return true;
+  });
+}
+/* Filters are toggle buttons: several values of one filter are combined with OR, different filters with AND. Nothing pressed = all. */
+function chips(scope,key,label,opts){
+  const cur=S[scope][key];
+  return `<div class="fgrp" role="group" aria-label="${esc(label)}"><span class="fl">${esc(label)}</span>${opts.map(([v,l,n])=>`<button type="button" class="fc" data-act="fchip" data-scope="${scope}" data-k="${key}" data-v="${esc(v)}" aria-pressed="${cur.includes(v)}">${esc(l)}${n!=null?`<small>${n}</small>`:''}</button>`).join('')}</div>`;
+}
+function filterBar(){
+  const keys=IX.rows.map(p=>IX.info.get(p.id).key), cnt=fn=>IX.rows.filter(fn).length;
+  const provs=[...IX.providers]; if(IX.rows.some(p=>isNA(p.provider))) provs.push('');
+  const any=S.q||S.f.status.length||S.f.type.length||S.f.provider.length;
+  return `<div class="filters multi"><div class="row">${searchBox()}${any?'<button class="link" data-act="clear-f">Clear filters</button>':''}</div>
+    ${chips('f','status','Status',['overdue','soon','nodata','valid'].map(k=>[k,ST_LABEL[k],keys.filter(x=>x===k).length]))}
+    ${chips('f','type','Type',IX.types.map(t=>[t,t,cnt(p=>typeOf(p)===t)]))}
+    ${chips('f','provider','Provider',provs.map(v=>[v,v||'Not defined',cnt(p=>(isNA(p.provider)?'':provOf(p))===v)]))}</div>`;
+}
+const eqCell=p=>`${esc(clean(p.equipment))}<span class="sub">${(p.equipmentIds||[]).length?codesOf(p).map(c=>`<span class="code">${esc(c)}</span>`).join(' · '):'Facility'}</span>`;
+function alertText(p,i){
+  const prov=!isNA(p.provider)?` · ${provOf(p)}`:'', plan=i.planned?(mIdx(i.planned.month)<nowIdx()?` · was programmed ${fmtM(i.planned.month)}, not logged`:` · programmed ${fmtM(i.planned.month)}`):' · not programmed';
+  if(i.key==='overdue') return `Due at the end of ${fmtML(i.due)} (${plural(-i.months,'month')} ago)${prov}${plan}`;
+  if(i.key==='soon') return `Due ${i.months===0?'this month':`in ${plural(i.months,'month')}`} (${fmtML(i.due)})${prov}${plan}`;
+  if(i.key==='nodata') return 'No dates in the Excel: enter the last and next maintenance.';
+  return '';
+}
+
+function vOverview(){
+  if(!IX.rows.length) return emptyState();
+  const n=nowIdx(), cnt=k=>IX.rows.filter(p=>IX.info.get(p.id).key===k).length;
+  const progr=IX.rows.filter(p=>IX.info.get(p.id).planned).length;
+  const y12=mStr(n-12), corr=(M.corrective||[]).filter(c=>toMonth(c.problemDate)>=y12).length;
+  const act=IX.rows.filter(p=>ACTION_KEYS.includes(IX.info.get(p.id).key)).map(p=>({p,i:IX.info.get(p.id)})).sort((a,b)=>KEY_RANK[a.i.key]-KEY_RANK[b.i.key]||(mIdx(a.i.due)??0)-(mIdx(b.i.due)??0));
+  const kpi=(k,label,val,sub,cls)=>`<button class="kpi ${cls}" data-act="kpi" data-k="${k}"><span class="eyebrow">${label}</span><b>${val}</b><span class="muted">${sub}</span></button>`;
+  /* Upcoming: overdue first, then each month with maintenance due, grouped by provider so external visits can be batched. */
+  const buckets=[], over=IX.rows.filter(p=>IX.info.get(p.id).key==='overdue');
+  if(over.length) buckets.push({late:true,label:'Overdue',sub:plural(over.length,'item'),list:over});
+  for(let m=n;m<n+12;m++){const list=IX.rows.filter(p=>{const i=IX.info.get(p.id); return mIdx(i.due)===m||(i.planned&&mIdx(i.planned.month)===m&&mIdx(i.due)!==m&&i.key!=='overdue')}); if(list.length) buckets.push({label:fmtML(mStr(m)),sub:plural(list.length,'item'),list});}
+  const byProv=list=>{const g=new Map(); list.forEach(p=>{const k=isNA(p.provider)?'Provider not defined':provOf(p); if(!g.has(k)) g.set(k,[]); g.get(k).push(p)}); return [...g].sort((a,b)=>b[1].length-a[1].length).map(([l,ps])=>`<div class="labgrp"><span class="lab">${esc(l)}</span>${ps.map(p=>{const pl=IX.info.get(p.id).planned; return `<button class="codebtn ${pl?'plan':''}" data-act="row" data-id="${esc(p.id)}" title="${esc(rowLabel(p))}${pl?' · programmed '+fmtM(pl.month):''}">${esc(clean(p.equipment))}</button>`}).join('')}</div>`).join('')};
+  return `<div class="view-h"><h2>Maintenance overview</h2><span class="muted">${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</span></div>
+  <section class="kpis">
+    ${kpi('overdue','Overdue',cnt('overdue'),'past the next date',cnt('overdue')?'crit':'')}
+    ${kpi('soon',`Due ≤ ${S.cfg.warnMonths} month${+S.cfg.warnMonths===1?'':'s'}`,cnt('soon'),'programme them now',cnt('soon')?'warn':'')}
+    ${kpi('planned','Programmed',progr,'with a programmed month',progr?'inf':'')}
+    ${kpi('valid','Up to date',cnt('valid'),`of ${IX.rows.length} plan rows`,'ok')}
+    ${kpi('corrective','Corrective actions',corr,'in the last 12 months',corr?'warn':'')}
+    ${kpi('documents','Offers & reports',(M.documents||[]).length,'linked to SharePoint','')}
+  </section>
+  <div class="grid2">
+    <section class="panel"><div class="panel-h"><h2>Action needed</h2><span class="muted">${plural(act.length,'item')}</span></div>
+      ${act.length?`<ul class="alerts">${act.map(({p,i})=>`<li class="${i.key==='overdue'?'crit':''}" data-act="row" data-id="${esc(p.id)}"><span class="sev">${esc(ST_LABEL[i.key])}</span><span class="what"><b>${esc(codesOf(p).join(', ')||'Facility')}</b>${esc(rowLabel(p))}<small>${esc(alertText(p,i))}</small></span></li>`).join('')}</ul>`:'<div class="empty-ok">Nothing pending: every maintenance is up to date.</div>'}
+    </section>
+    <section class="panel"><div class="panel-h"><h2>Next 12 months</h2><span class="muted">by provider · blue = already programmed</span></div>
+      ${buckets.length?`<div class="months">${buckets.map(b=>`<div class="mrow ${b.late?'late':''}"><div class="ml">${esc(b.label)}<small>${esc(b.sub)}</small></div><div>${byProv(b.list)}</div></div>`).join('')}</div>`:'<div class="empty-ok">No maintenance due in the next 12 months.</div>'}
+    </section>
+  </div>`;
+}
+
+function vPlan(){
+  if(!IX.rows.length) return emptyState();
+  const list=filteredRows().sort((a,b)=>KEY_RANK[IX.info.get(a.id).key]-KEY_RANK[IX.info.get(b.id).key]||(mIdx(IX.info.get(a.id).due)??1e9)-(mIdx(IX.info.get(b.id).due)??1e9));
+  const rows=list.map(p=>{const i=IX.info.get(p.id), a=(p.actions||[]).map(clean).filter(Boolean), nc=i.key==='overdue'?'crit':i.key==='soon'?'warn':'';
+    return `<tr class="click" data-act="row" data-id="${esc(p.id)}">
+      <td>${eqCell(p)}</td>
+      <td>${esc(a[0]||'—')}${a.length>1?`<span class="sub">+ ${plural(a.length-1,'more action')}</span>`:''}</td>
+      <td class="nowrap">${esc(typeOf(p)||'—')}</td>
+      <td>${esc(isNA(p.provider)?'—':provOf(p))}</td>
+      <td>${esc(p.periodMonths?perLabel(+p.periodMonths):clean(p.periodicity)||'—')}</td>
+      <td class="nowrap">${fmtM(i.last)}${i.fromApp?'<span class="sub" title="Logged in the app after the Excel date">app</span>':''}</td>
+      <td class="nowrap"><span class="due ${nc}">${fmtM(i.due)}</span></td>
+      <td>${pill(i)}${i.planned?`<span class="sub">programmed ${fmtM(i.planned.month)}</span>`:''}</td></tr>`}).join('');
+  return `<div class="view-h"><h2>Maintenance plan</h2>${M.sources&&M.sources.plan&&M.sources.plan.url?`<a class="btn" href="${esc(M.sources.plan.url)}" target="_blank" rel="noopener">Open the Excel</a>`:''}</div>
+  ${filterBar()}
+  <p class="note">${list.length} of ${IX.rows.length} rows of the sheet ${esc((M.sources&&M.sources.plan&&M.sources.plan.sheet)||'')} of the Excel. Equipment, actions and periods are changed in the Excel in SharePoint (New Equipment Guide, steps 4 and 5); click a row to programme or log a maintenance.</p>
+  <div class="panel scroll-x" style="padding:6px 10px"><table class="tbl">
+    <thead><tr><th>Equipment</th><th>Actions</th><th>Type</th><th>Provider</th><th>Periodicity</th><th>Last</th><th>Next</th><th>Status</th></tr></thead>
+    <tbody>${rows||'<tr><td colspan="8" class="muted">No rows match the filters.</td></tr>'}</tbody></table></div>`;
+}
+
+function vAnnual(){
+  if(!IX.rows.length) return emptyState();
+  const n=nowIdx(), y0=S.plan.start??Math.floor(n/12), start=y0*12, span=S.plan.span, end=start+span-1;
+  const months=[...Array(span)].map((_,i)=>start+i), list=filteredRows();
+  const due=new Map(), plannedN=new Map();
+  const cells=p=>{
+    const i=IX.info.get(p.id), per=+p.periodMonths||0, d0=mIdx(i.due), dues=new Map(), done=new Map();
+    if(d0!=null){ dues.set(d0,'first'); if(per) for(let m=d0+per;m<=end;m+=per) dues.set(m,'proj'); }
+    const xl=mIdx(toMonth(p.last)); if(xl!=null) done.set(xl,{src:'Excel'});
+    for(const r of i.recs) if(r.status==='Done') done.set(mIdx(toMonth(r.date||r.month)),r);
+    return months.map(m=>{
+      const ms=mStr(m), dn=done.get(m), pl=i.recs.find(r=>r.status==='Planned'&&r.month===ms), dk=dues.get(m);
+      if(dk) due.set(m,(due.get(m)||0)+1);
+      if(pl) plannedN.set(m,(plannedN.get(m)||0)+1);
+      const cls=['m',m%12===0?'jan':'',m===n?'now':''].join(' ');
+      let mk='', tip=[];
+      if(dn){mk=`<span class="mk done">✓</span>`; tip.push(`Done ${fmtM(ms)}${dn.src==='Excel'?' (Excel)':dn.by?' · '+dn.by:''}`);}
+      else if(pl){mk=`<span class="mk plan ${dk?'due':''}">P</span>`; tip.push(`Programmed ${fmtM(ms)}${pl.provider?' · '+pl.provider:''}`);}
+      else if(dk){mk=`<span class="mk due ${dk==='proj'?'proj':''} ${dk==='first'&&m<n?'late':''}">M</span>`;}
+      if(dk) tip.push(dk==='first'?`Maintenance due ${fmtM(ms)}`:`Following due date ${fmtM(ms)} (projected)`);
+      const rid2=dn&&dn.id?dn.id:pl?pl.id:'';
+      return `<td class="${cls}" data-act="cell" data-id="${esc(p.id)}" data-m="${ms}" data-r="${esc(rid2)}" title="${esc(clean(p.equipment)+' · '+fmtML(ms)+(tip.length?'\n'+tip.join('\n'):'\nClick to programme a maintenance'))}">${mk}</td>`;
+    }).join('');
+  };
+  const sec=g=>{const ps=list.filter(p=>p.group===g); if(!ps.length) return '';
+    return `<tr class="sec"><th colspan="${span+1}"><span>${esc(g)} · ${ps.length}</span></th></tr>`+ps.map(p=>{const i=IX.info.get(p.id), a=clean((p.actions||[])[0]||'');
+      return `<tr><th class="rh ${i.key==='overdue'?'crit':i.key==='soon'?'warn':''}"><button data-act="row" data-id="${esc(p.id)}"><b>${esc(codesOf(p).join(', ')||'')}</b> ${esc(clean(p.equipment))}${pill(i)}<span class="d">${esc(a)}${!isNA(p.provider)?' · '+esc(provOf(p)):''}</span></button></th>${cells(p)}</tr>`}).join('');};
+  const body=GROUPS.map(sec).join('');
+  const head=`<tr><th class="rh">Equipment</th>${months.map(m=>`<th class="${m%12===0?'jan':''} ${m===n?'now':''}">${MN[m%12]}<small>${m%12===0||m===start?Math.floor(m/12):'&nbsp;'}</small></th>`).join('')}</tr>`;
+  const foot=`<tr><th class="rh">Due</th>${months.map(m=>`<td class="${m%12===0?'jan':''}">${due.get(m)||''}</td>`).join('')}</tr>
+    <tr><th class="rh">Programmed</th>${months.map(m=>`<td class="${m%12===0?'jan':''}">${plannedN.get(m)||''}</td>`).join('')}</tr>`;
+  return `<div class="view-h"><h2>Annual maintenance plan</h2>
+    <div class="pg-ctl"><button class="btn sm" data-act="plan-nav" data-d="-1" aria-label="Previous year">←</button><b>${y0}${span>12?'–'+(y0+1):''}</b><button class="btn sm" data-act="plan-nav" data-d="1" aria-label="Next year">→</button><button class="btn sm ghost" data-act="plan-nav" data-d="0">This year</button>
+    <span class="zoom"><button data-act="plan-span" data-s="12" aria-pressed="${span===12}">12 months</button><button data-act="plan-span" data-s="24" aria-pressed="${span===24}">24 months</button></span></div></div>
+  ${filterBar()}
+  <div class="legend"><span><span class="mk due">M</span>Due</span><span><span class="mk due late">M</span>Overdue</span><span><span class="mk due proj">M</span>Projected</span><span><span class="mk plan">P</span>Programmed</span><span><span class="mk done">✓</span>Done</span></div>
+  <p class="note">Generated from the last and next maintenance of the Excel and the period, plus what is programmed or logged in the app. Click an empty month to programme a maintenance; click a mark to open it.</p>
+  ${list.length?`<div class="pg-wrap"><table class="pg"><thead>${head}</thead><tbody>${body}</tbody><tfoot>${foot}</tfoot></table></div>`:'<div class="empty-ok">No rows match the filters.</div>'}`;
+}
+
+function vCorrective(){
+  const all=M.corrective||[];
+  const list=all.filter(c=>matchQ(c.code,eqCode(c.equipmentId),(EQ.get(c.equipmentId)||{}).description,c.problem,c.action,c.rootCause,c.preventive)).sort((a,b)=>String(b.problemDate||'').localeCompare(String(a.problemDate||'')));
+  const docs=(M.documents||[]).filter(d=>d.kind==='correctiva');
+  const rows=list.map(c=>{const e=EQ.get(c.equipmentId), ds=docs.filter(d=>(d.equipmentIds||[]).includes(c.equipmentId));
+    return `<tr><td class="nowrap">${fmtD(c.problemDate)}${c.dateNote?`<span class="sub" title="${esc(c.dateNote)}">check date</span>`:''}</td>
+      <td><span class="code">${esc(c.code||eqCode(c.equipmentId))}</span><span class="sub">${esc(e?e.description:'')}</span></td>
+      <td>${esc(c.problem||'—')}</td><td>${esc(c.action||'—')}<span class="sub">${c.fixDate?'Fixed '+fmtD(c.fixDate):'Not fixed yet'}</span></td>
+      <td>${esc(c.rootCause||'—')}</td><td>${esc(c.preventive||'—')}</td>
+      <td>${ds.map(d=>`<a class="folder" href="${esc(d.url)}" target="_blank" rel="noopener" title="${esc(d.summary||d.file||'')}">📄 ${esc(d.date?fmtD(d.date):'PDF')}</a>`).join('<br>')}</td></tr>`}).join('');
+  const url=M.sources&&M.sources.plan&&M.sources.plan.url;
+  return `<div class="view-h"><h2>Corrective actions</h2>${url?`<a class="btn" href="${esc(url)}" target="_blank" rel="noopener">Open the Excel</a>`:''}</div>
+  <div class="filters">${searchBox('Search code, problem, cause…')}</div>
+  <p class="note">From the sheet <i>Registro acciones correctivas</i> of the Excel, with the documents of <i>0. Registro acciones correctivas</i> for the same equipment. New corrective actions are added in the Excel.</p>
+  <div class="panel scroll-x" style="padding:6px 10px"><table class="tbl"><thead><tr><th>Problem date</th><th>Equipment</th><th>Problem</th><th>Corrective action</th><th>Possible root cause</th><th>Preventive action</th><th>Docs</th></tr></thead>
+  <tbody>${rows||`<tr><td colspan="7" class="muted">${all.length?'No corrective actions match the search.':'No corrective actions recorded.'}</td></tr>`}</tbody></table></div>`;
+}
+
+function vDocuments(){
+  const all=M.documents||[], f=S.docf;
+  const eqTxt=d=>(d.equipmentIds||[]).length?(d.equipmentIds.map(eqCode).join(', ')):String(d.folder||'').split('/').pop();
+  const list=all.filter(d=>(!f.kind.length||f.kind.includes(d.kind))&&matchQ(d.file,d.provider,d.ref,d.summary,d.folder,eqTxt(d))).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
+  const rows=list.map(d=>`<tr><td class="nowrap">${fmtD(d.date)}</td><td><span class="kind ${esc(d.kind)}">${esc(KIND_LABEL[d.kind]||d.kind)}</span></td>
+    <td>${esc(String(d.folder||'').split('/').pop())}<span class="sub">${(d.equipmentIds||[]).length?d.equipmentIds.map(id=>`<span class="code">${esc(eqCode(id))}</span>`).join(' · '):''}</span></td>
+    <td>${esc(d.provider||'—')}${d.ref?`<span class="sub mono">${esc(d.ref)}</span>`:''}</td>
+    <td>${d.url?`<a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.file||'Open')}</a>`:esc(d.file||'')}${d.summary?`<div class="doc-sum">${esc(d.summary)}</div>`:''}</td></tr>`).join('');
+  return `<div class="view-h"><h2>Offers &amp; work reports</h2><a class="btn" href="${esc(S.cfg.spBase)}" target="_blank" rel="noopener">📁 SharePoint folder</a></div>
+  <div class="filters multi"><div class="row">${searchBox('Search equipment, provider, reference…')}${S.q||f.kind.length?'<button class="link" data-act="clear-docf">Clear filters</button>':''}</div>
+    ${chips('docf','kind','Type',Object.entries(KIND_LABEL).map(([k,l])=>[k,l,all.filter(d=>d.kind===k).length]))}</div>
+  <p class="note">PDFs in <i>1. Mantenimientos programados</i> (offers and work reports) and <i>0. Registro acciones correctivas</i>. The summary is written by the sync task from the text of each PDF; the link opens the PDF in SharePoint with your Fluidra account.</p>
+  <div class="panel scroll-x" style="padding:6px 10px"><table class="tbl"><thead><tr><th>Date</th><th>Type</th><th>Equipment</th><th>Provider · ref.</th><th>Document</th></tr></thead>
+  <tbody>${rows||`<tr><td colspan="5" class="muted">${all.length?'No documents match the filters.':'No documents read yet.'}</td></tr>`}</tbody></table></div>`;
+}
+
+function vReview(){
+  if(!IX.rows.length) return emptyState();
+  const groups=new Map(), add=(k,v)=>{if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(v)};
+  for(const p of IX.rows) for(const it of IX.issues.get(p.id)) add(it.type,{p,it});
+  for(const u of M.unmatched||[]){const name=typeof u==='string'?u:u.name; if(!IX.rows.some(p=>norm(p.equipment)===norm(name))) add('unmatched',{p:null,it:{text:`“${name}”${u.where?' in '+u.where:''} has no FLE code in the sync table (lab-data/sharepoint-sync.md).`}});}
+  const order=Object.keys(ISSUE).filter(k=>groups.has(k)), total=order.reduce((n,k)=>n+groups.get(k).length,0);
+  return `<div class="view-h"><h2>Data review</h2><span class="muted">${total} findings</span></div>
+  <p class="note">Checks run live on the data copied from the Excel. <b>Warnings</b> affect the dates; fix them in the Excel in SharePoint and they disappear after the next sync.</p>
+  ${order.length?`<div class="rev-sum">${order.map(k=>`<a href="#rev-${k}" data-open="rev-${k}" class="iss ${ISSUE_WARN.has(k)?'':'info'}">${esc(ISSUE[k])} · ${groups.get(k).length}</a>`).join('')}</div>`:'<div class="empty-ok">No findings. The plan dates are complete and consistent.</div>'}
+  ${order.map(k=>`<details class="panel" id="rev-${k}" ${ISSUE_WARN.has(k)?'open':''}><summary class="panel-h"><h2>${esc(ISSUE[k])}</h2><span class="${ISSUE_WARN.has(k)?'iss':'iss info'}">${ISSUE_WARN.has(k)?'Warning':'To define'} · ${groups.get(k).length}</span></summary>
+    <ul class="rev-list">${groups.get(k).map(({p,it})=>`<li>${p?`<button class="codebtn" data-act="row" data-id="${esc(p.id)}">${esc(clean(p.equipment))}</button>`:'<span></span>'}<span>${esc(it.text)}${p?` <span class="muted">— ${esc(clean((p.actions||[])[0]||''))}</span>`:''}</span><span></span></li>`).join('')}</ul></details>`).join('')}`;
+}
+
+function vData(){
+  const src=(M.sources||{}).plan||{}, nRec=Object.keys(DATA.records).length;
+  const gh=p=>`https://github.com/${REPO.owner}/${REPO.repo}/blob/${REPO.branch}/${p}`, hist=p=>`https://github.com/${REPO.owner}/${REPO.repo}/commits/${REPO.branch}/${p}`;
+  return `<div class="view-h"><h2>Data</h2><button class="btn" data-act="settings">Settings</button></div>
+  <section class="panel"><div class="panel-h"><h2>Copied from SharePoint</h2><span class="muted">${M.updated?'last change '+new Date(M.updated).toLocaleString('en-GB'):'not synced yet'}</span></div>
+    <dl class="kv"><div><dt>Excel</dt><dd>${src.url?`<a href="${esc(src.url)}" target="_blank" rel="noopener">Maintenance Plan.xlsx</a>`:'Maintenance Plan.xlsx'}</dd></div><div><dt>Sheet</dt><dd>${esc(src.sheet||'—')}</dd></div><div><dt>Rev. date</dt><dd>${fmtD(src.revDate)}</dd></div><div><dt>Modified in SharePoint</dt><dd>${src.modified?new Date(src.modified).toLocaleString('en-GB'):'—'}</dd></div>
+    <div><dt>Plan rows</dt><dd>${IX.rows.length}</dd></div><div><dt>Corrective actions</dt><dd>${(M.corrective||[]).length}</dd></div><div><dt>Documents</dt><dd>${(M.documents||[]).length}${M.pending?` · ${M.pending} pending`:''}</dd></div></dl>
+    <p class="note" style="margin-top:10px">A scheduled task reads the Excel and the PDFs on the 1st and 15th of each month (only what changed) and writes <a href="${gh(REPO.main)}" target="_blank" rel="noopener"><span class="mono">${REPO.main}</span></a> (<a href="${hist(REPO.main)}" target="_blank" rel="noopener">history</a>). This app never changes that file; what it does is described in <a href="${gh('sharepoint-sync.md')}" target="_blank" rel="noopener"><span class="mono">sharepoint-sync.md</span></a>.</p></section>
+  <section class="panel"><div class="panel-h"><h2>Saved by this app</h2><span class="muted">${plural(nRec,'record')}</span></div>
+    <p class="note" style="margin-bottom:10px">Programmed and logged maintenance and the settings are kept in <a href="${gh(REPO.path)}" target="_blank" rel="noopener"><span class="mono">${REPO.path}</span></a> of the private repository <span class="mono">${REPO.owner}/${REPO.repo}</span>. Every change is saved as a commit: the <a href="${hist(REPO.path)}" target="_blank" rel="noopener">history</a> shows who changed what and when. Equipment codes and descriptions come from the Calibration Plan.</p>
+    <div class="row"><button class="btn" data-act="download">Download a copy (JSON)</button></div></section>`;
+}
+
+/* ---------- Dialogs ---------- */
+const dlg=$('#dlg');
+function fld(id,label,inner,cls='',help=''){return `<div class="field ${cls}"><label for="${id}">${label}</label>${inner}${help?`<span class="help" id="${id}-help">${help}</span>`:''}</div>`}
+function inp(name,val,type='text',extra=''){return `<input id="f-${name}" name="${name}" type="${type}" value="${esc(val??'')}" ${extra}>`}
+function sel(name,val,opts,extra=''){return `<select id="f-${name}" name="${name}" ${extra}>${opts.map(o=>{const [v,l]=Array.isArray(o)?o:[o,o]; return `<option value="${esc(v)}" ${String(val??'')===String(v)?'selected':''}>${esc(l)}</option>`}).join('')}</select>`}
+function dlgShell(eyebrow,title,body,footerLeft='',narrow=false,save=true){
+  dlg.classList.toggle('narrow',narrow);
+  if(S.ro) footerLeft='';
+  dlg.innerHTML=`<form class="dlg-form" id="dlg-form" novalidate><header class="dlg-h"><div><p class="eyebrow">${eyebrow}</p><h2>${esc(title)}</h2></div><button type="button" class="icon-btn" data-act="close" aria-label="Close">×</button></header>
+  <div class="dlg-body">${body}<div id="f-err" class="form-err" hidden></div></div>
+  <footer class="dlg-f">${footerLeft}<span class="sp"></span>${save?'<button type="button" class="btn ghost" data-act="close">Cancel</button><button class="btn primary" type="submit">Save</button>':'<button type="button" class="btn" data-act="close">Close</button>'}</footer></form>`;
+  if(!dlg.open) dlg.showModal();
+}
+function readForm(){const fd=new FormData($('#dlg-form')), o={}; for(const [k,v] of fd.entries()) o[k]=typeof v==='string'?v.trim():v; return o;}
+function formErr(m){const el=$('#f-err'); el.textContent=m; el.hidden=!m; if(m) el.scrollIntoView({block:'nearest'}); return null;}
+
+function openRow(id){
+  const p=IX.byId.get(id); if(!p) return;
+  dlg.dataset.kind='row'; dlg.dataset.id=id;
+  const i=IX.info.get(id), iss=IX.issues.get(id), docs=docsOf(p), corr=corrOf(p), recs=i.recs.slice().sort((a,b)=>String(b.date||b.month).localeCompare(String(a.date||a.month)));
+  const kv=(k,v)=>`<div><dt>${k}</dt><dd>${v}</dd></div>`;
+  const body=`<div class="row">${pill(i)} ${i.due?`<span class="muted">Next: <b>${fmtML(i.due)}</b>${i.fromApp?' (from the maintenance logged in the app)':''}</span>`:''}<span class="sp"></span>
+    <button type="button" class="btn sm" data-act="rec-plan" data-id="${esc(id)}">Programme maintenance</button><button type="button" class="btn sm primary" data-act="rec-done" data-id="${esc(id)}">Log maintenance done</button></div>
+  <section class="panel"><div class="panel-h"><h3>In the Excel</h3>${M.sources&&M.sources.plan&&M.sources.plan.url?`<a class="btn sm" href="${esc(M.sources.plan.url)}" target="_blank" rel="noopener">Open the Excel</a>`:''}</div>
+    <dl class="kv">${kv('Equipment',`${esc(clean(p.equipment))}${(p.equipmentIds||[]).length?'<br>'+p.equipmentIds.map(x=>`<span class="code">${esc(eqCode(x))}</span> <span class="muted">${esc((EQ.get(x)||{}).description||'')}</span>`).join('<br>'):'<br><span class="muted">Facility (no FLE code)</span>'}`)}
+      ${kv('Last maintenance',fmtM(toMonth(p.last)))}${kv('Next maintenance',fmtM(toMonth(p.next)))}${kv('Periodicity',esc(clean(p.periodicity)||'—'))}
+      ${kv('Action type',esc(typeOf(p)||'—'))}${kv('Provider',esc(isNA(p.provider)?'—':provOf(p)))}${kv('Components needed',esc(isNA(p.components)?'—':clean(p.components)))}${kv('Current contract',esc(isNA(p.contract)?'—':clean(p.contract)))}</dl>
+    <h3 style="margin:12px 0 4px;font-size:14px">Actions</h3><ul class="acts-l">${(p.actions||[]).map(a=>`<li>${esc(clean(a))}</li>`).join('')||'<li class="muted">—</li>'}</ul></section>
+  ${iss.length?`<section class="panel"><div class="panel-h"><h3>Data to review · ${iss.length}</h3></div><ul class="rev-list">${iss.map(it=>`<li><span class="iss ${it.sev==='warn'?'':'info'}">${it.sev==='warn'?'Warning':'To define'}</span><span>${esc(it.text)}</span><span></span></li>`).join('')}</ul></section>`:''}
+  <section class="panel"><div class="panel-h"><h3>Programmed and logged in the app</h3></div>
+    ${recs.length?`<table class="tbl mini"><thead><tr><th>When</th><th>Status</th><th>By / provider</th><th>Notes</th></tr></thead><tbody>${recs.map(r=>`<tr class="click" data-act="rec-edit" data-id="${esc(r.id)}"><td class="nowrap">${r.status==='Done'?fmtD(r.date):fmtM(r.month)}</td><td>${r.status==='Done'?'<span class="pill k-valid">Done</span>':`<span class="pill ${mIdx(r.month)<nowIdx()?'k-overdue':'k-beforeuse'}">Programmed</span>`}</td><td>${esc([r.by,r.provider].filter(Boolean).join(' · ')||'—')}</td><td>${esc(r.notes||'')}${r.docUrl?` <a href="${esc(r.docUrl)}" target="_blank" rel="noopener">📄</a>`:''}</td></tr>`).join('')}</tbody></table>`:'<p class="note">Nothing programmed or logged in the app.</p>'}</section>
+  <section class="panel"><div class="panel-h"><h3>Offers &amp; work reports</h3><span class="muted">${docs.length}</span></div>
+    ${docs.length?`<table class="tbl mini"><tbody>${docs.map(d=>`<tr><td class="nowrap">${fmtD(d.date)}</td><td><span class="kind ${esc(d.kind)}">${esc(KIND_LABEL[d.kind]||d.kind)}</span></td><td>${esc(d.provider||'')}</td><td>${d.url?`<a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.file||'Open')}</a>`:esc(d.file||'')}${d.summary?`<div class="doc-sum">${esc(d.summary)}</div>`:''}</td></tr>`).join('')}</tbody></table>`:'<p class="note">No documents in SharePoint for this equipment.</p>'}</section>
+  ${corr.length?`<section class="panel"><div class="panel-h"><h3>Corrective actions</h3><span class="muted">${corr.length}</span></div><table class="tbl mini"><tbody>${corr.map(c=>`<tr><td class="nowrap">${fmtD(c.problemDate)}</td><td>${esc(c.problem||'')}<span class="sub">${esc(c.action||'')}</span></td></tr>`).join('')}</tbody></table></section>`:''}`;
+  dlgShell(esc(p.group),rowLabel(p),body,'',false,false);
+}
+function openRec(id,preset={}){
+  const prev=id?DATA.records[id]:null, v={status:'Planned',...(prev||{}),...preset}, p=IX.byId.get(v.planId);
+  dlg.dataset.kind='rec'; dlg.dataset.id=id||'';
+  if(v.status==='Done'&&!v.date) v.date=todayIso();
+  if(!v.month){const d=(IX.info.get(v.planId)||{}).due; v.month=d&&mIdx(d)>=nowIdx()?d:mStr(nowIdx());}  /* overdue: this month */
+  if(!v.provider&&p&&!isNA(p.provider)) v.provider=provOf(p);
+  const opts=IX.rows.map(x=>[x.id,rowLabel(x)]); if(v.planId&&!IX.byId.has(v.planId)) opts.push([v.planId,'(row no longer in the Excel)']);
+  const body=`<fieldset><legend>Maintenance</legend>
+    ${fld('f-planId','Plan row',sel('planId',v.planId||'',[['','— choose —'],...opts]),'req span2')}
+    ${fld('f-status','Status',sel('status',v.status,[['Planned','Programmed'],['Done','Done']]))}
+    ${fld('f-month','Programmed month',inp('month',v.month,'month'),'req')}
+    ${fld('f-date','Date done',inp('date',v.date||'','date'),'req')}
+    ${fld('f-by','Done by',inp('by',v.by))}
+    ${fld('f-provider','Provider',inp('provider',v.provider,'text','list="prov-list" autocomplete="off"'))}
+    ${fld('f-notes','Notes',`<textarea id="f-notes" name="notes" rows="3">${esc(v.notes||'')}</textarea>`,'span2')}
+    ${fld('f-docUrl','Work report link (SharePoint)',inp('docUrl',v.docUrl,'url'),'span2')}
+  </fieldset>
+  <p class="note">A maintenance logged as done after the Excel's last date sets the next date (date + period) until the Excel is updated. Remember to update the Excel in SharePoint too.</p>`;
+  dlgShell('Maintenance',prev?(prev.status==='Done'?`Done ${fmtD(prev.date)}`:`Programmed ${fmtM(prev.month)}`):v.status==='Done'?'Log maintenance done':'Programme maintenance',body,prev?'<button type="button" class="btn ghost danger" data-act="del">Delete</button>':'',true);
+  recHints();
+}
+function recHints(){
+  if(dlg.dataset.kind!=='rec') return;
+  const done=$('#f-status').value==='Done';
+  $('#f-month').closest('.field').hidden=done; $('#f-date').closest('.field').hidden=!done; $('#f-docUrl').closest('.field').hidden=!done;
+}
+function saveRec(f){
+  const id=dlg.dataset.id, p=IX.byId.get(f.planId)||(id&&DATA.records[id]&&DATA.records[id].planId===f.planId?{}:null);
+  if(!f.planId||!p) return formErr('Choose the plan row.');
+  const done=f.status==='Done';
+  if(done&&!f.date) return formErr('Enter the date the maintenance was done.');
+  if(!done&&!f.month) return formErr('Enter the programmed month.');
+  const data={planId:f.planId,equipment:clean(p.equipment||(DATA.records[id]||{}).equipment||''),status:f.status,month:done?f.date.slice(0,7):f.month,date:done?f.date:'',by:f.by||'',provider:f.provider||'',notes:f.notes||'',docUrl:done?f.docUrl||'':'',updated:nowIso()};
+  const ops=[{op:'set',col:'records',id:id||'mt-'+rid(),data}];
+  /* Logging a programmed maintenance as done (new record) closes the programmed one of the same row. */
+  if(done&&!id){const pl=(IX.recs.get(f.planId)||[]).find(r=>r.status==='Planned'); if(pl) ops.push({op:'delete',col:'records',id:pl.id});}
+  return save(ops,`${clean(data.equipment)}: maintenance ${done?'logged':'programmed for '+fmtM(data.month)}.`);
+}
+function openSettings(){
+  dlg.dataset.kind='cfg'; dlg.dataset.id='';
+  const c=S.cfg;
+  dlgShell('Settings','Maintenance plan settings',`<fieldset><legend>Alerts</legend>${fld('f-warnMonths','Warn this many months before the due month',inp('warnMonths',c.warnMonths,'number','min="0" max="12" step="1"'),'','0 = only in the due month.')}</fieldset>
+  <fieldset><legend>SharePoint</legend>${fld('f-spBase','Maintenance folder link',inp('spBase',c.spBase,'url'),'span2')}</fieldset>
+  <fieldset><legend>Controlled form</legend>${fld('f-formCode','Form code',inp('formCode',c.formCode))}</fieldset>`,'',true);
+}
+function saveCfg(f){
+  return save([{op:'set',col:'config',id:'settings',data:{warnMonths:Math.max(0,Math.min(12,parseInt(f.warnMonths)||0)),spBase:f.spBase||DEFAULT_CFG.spBase,formCode:f.formCode||''}}],'Settings saved.');
+}
+function saveDialog(){
+  const f=readForm(), k=dlg.dataset.kind;
+  const r=k==='rec'?saveRec(f):k==='cfg'?saveCfg(f):null;
+  if(r) dlg.close();
+}
+function deleteFromDialog(btn){
+  if(!btn.classList.contains('armed')){btn.classList.add('armed'); btn.textContent='Confirm delete'; return;}
+  save([{op:'delete',col:'records',id:dlg.dataset.id}],'Deleted.'); dlg.close();
+}
+
+/* ---------- Storage: private data repository Polinya-LAB/lab-data ----------
+   mantenimiento/mantenimiento.json is written by the SharePoint sync task and only read here; calibraciones/calibraciones.json
+   (Calibration Plan) gives the code and description of each equipment. What the app saves goes to mantenimiento/registro.json,
+   which may not exist yet (the first save creates it). Same key (token) as the other lab apps; changes made close together are one commit. */
+const REPO={owner:'Polinya-LAB',repo:'lab-data',branch:'main',path:'mantenimiento/registro.json',main:'mantenimiento/mantenimiento.json',cal:'calibraciones/calibraciones.json'};
+const API=`https://api.github.com/repos/${REPO.owner}/${REPO.repo}`;
+const RAW=p=>`https://raw.githubusercontent.com/${REPO.owner}/${REPO.repo}/${REPO.branch}/${p}`;
+const TOKEN_KEY='pd-gh-token';
+const GH={token:'',login:null,push:false,invalid:false,saving:false};
+try{GH.token=localStorage.getItem(TOKEN_KEY)||'';}catch(e){}
+S.ro=true;
+const remote={data:null,sha:null,etag:{}};
+let flushTimer=null, flushing=null;
+const pendingOps=[];
+/* Local test mode: the data comes from local-data.js and is kept in this browser; nothing is read from or written to GitHub. */
+const LOCAL=!!window.MT_LOCAL, LS_LOCAL='mt.local.data';
+if(LOCAL) S.ro=false;
+const emptyData=()=>Object.fromEntries(COLS.map(c=>[c,{}]));
+const normData=x=>{const o=emptyData(); for(const c of COLS) if(x&&x[c]&&typeof x[c]==='object') o[c]=x[c]; return o;};
+const b64encode=str=>{const bytes=new TextEncoder().encode(str); let bin=''; for(let i=0;i<bytes.length;i+=0x8000) bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+0x8000)); return btoa(bin);};
+const b64decode=b=>new TextDecoder().decode(Uint8Array.from(atob(b.replace(/\s/g,'')),c=>c.charCodeAt(0)));
+const ghFetch=(url,opts={})=>fetch(url,{cache:'no-store',...opts,headers:{Accept:'application/vnd.github+json',...(GH.token?{Authorization:`Bearer ${GH.token}`}:{}),...(opts.headers||{})}});
+const httpError=res=>{const limited=res.status===429||(res.status===403&&res.headers.get('x-ratelimit-remaining')==='0'); return {code:res.status===401?'auth':limited?'rate':(res.status===403||res.status===404)?'forbidden':'unavailable',status:res.status};};
+function errMsg(e){const c=e&&e.code; if(c==='not_granted'||c==='forbidden') return 'You cannot change data: connect GitHub with an account that has write access to the repository.'; if(c==='auth') return 'Your GitHub key is no longer valid. Connect GitHub again with a new key.'; if(c==='conflict') return 'Someone else saved at the same time. Your change was not saved; try again.'; if(c==='rate') return 'GitHub is limiting requests right now. Wait a minute and try again.'; if(c==='unavailable') return 'Could not reach GitHub. Check your connection and try again.'; return 'Could not save: '+(e&&e.message||e)}
+
+/* Reads one file: {json, sha} or null when unchanged (ETag); {missing:true} when it does not exist. */
+async function fetchFile(path,useEtag){
+  if(!GH.token||GH.invalid){
+    const res=await fetch(`${RAW(path)}?t=${Date.now()}`,{cache:'no-store'});
+    if(res.status===404) throw {code:'private',status:404};
+    if(!res.ok) throw httpError(res);
+    return {json:await res.json(),sha:null};
+  }
+  const res=await ghFetch(`${API}/contents/${path}?ref=${REPO.branch}`,useEtag&&remote.etag[path]?{headers:{'If-None-Match':remote.etag[path]}}:{});
+  if(res.status===304) return null;
+  if(res.status===404) return {missing:true};
+  if(!res.ok) throw httpError(res);
+  const j=await res.json(); let text;
+  if(j.content) text=b64decode(j.content);
+  else{const blob=await ghFetch(`${API}/git/blobs/${j.sha}`); if(!blob.ok) throw httpError(blob); text=b64decode((await blob.json()).content);}
+  remote.etag[path]=res.headers.get('etag');
+  return {json:JSON.parse(text),sha:j.sha};
+}
+function applyOps(data,ops){
+  for(const o of ops){const c=data[o.col]||(data[o.col]={});
+    if(o.op==='set') c[o.id]=clone(o.data);
+    else if(o.op==='update'){ if(c[o.id]) Object.assign(c[o.id],clone(o.data)); }
+    else if(o.op==='delete') delete c[o.id];}
+  return data;
+}
+function recompute(){ DATA=remote.data?applyOps(clone(remote.data),pendingOps.flat()):null; }
+function commitMessage(ops){
+  const base=remote.data||emptyData(), cur=o=>({...(base[o.col]||{})[o.id],...(o.data||{})});
+  const label=o=>{const d=cur(o); return o.col==='config'?'settings':`${d.equipment||d.planId||o.id}${d.month?' '+d.month:''}`;};
+  if(ops.length===1){const o=ops[0], verb=o.op==='delete'?'delete':o.op==='set'&&!(base[o.col]||{})[o.id]?'add':'update';
+    return `Plan de mantenimiento: ${verb} ${o.col==='config'?'settings':`${cur(o).status==='Done'?'maintenance done':'programmed maintenance'} ${label(o)}`}`;}
+  return `Plan de mantenimiento: ${ops.length} changes`;
+}
+async function commitOps(ops){
+  for(let i=0;i<4;i++){
+    const r=await fetchFile(REPO.path,false), cur=r&&!r.missing?{data:normData(r.json),sha:r.sha}:{data:emptyData(),sha:null}, next=applyOps(clone(cur.data),ops);
+    const body={message:commitMessage(ops),branch:REPO.branch,content:b64encode(JSON.stringify(next,null,1)+'\n')}; if(cur.sha) body.sha=cur.sha;
+    const res=await ghFetch(`${API}/contents/${REPO.path}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    if(res.ok){const j=await res.json(); Object.assign(remote,{data:next,sha:j.content.sha}); remote.etag[REPO.path]=null; return;}
+    if(res.status!==409&&res.status!==422) throw httpError(res);
+    await new Promise(r=>setTimeout(r,500+Math.random()*800));
+  }
+  throw {code:'conflict'};
+}
+/* Writes show up at once on screen and are saved together, one commit per burst of changes. */
+function save(ops,msg){
+  if(!ops.length) return true;
+  if(LOCAL){applyOps(remote.data,ops); try{localStorage.setItem(LS_LOCAL,JSON.stringify(remote.data));}catch(e){} recompute(); render(); if(msg) toast(msg); return true;}
+  if(S.ro||!GH.push||GH.invalid){toast(errMsg({code:'not_granted'})); return null;}
+  pendingOps.push(ops); recompute(); render(); if(msg) toast(msg);
+  clearTimeout(flushTimer); flushTimer=setTimeout(flushOps,700);
+  return true;
+}
+async function flushOps(){
+  if(flushing) await flushing;
+  if(!pendingOps.length) return;
+  const batch=pendingOps.splice(0,pendingOps.length);
+  GH.saving=true; renderGh();
+  flushing=(async()=>{
+    try{await commitOps(batch.flat());}
+    catch(err){ if(err.code==='auth'){GH.invalid=true; GH.push=false; S.ro=true;} toast(errMsg(err)); }
+    finally{flushing=null; GH.saving=!!pendingOps.length; recompute(); render();}
+  })();
+  return flushing;
+}
+const setEq=cal=>{EQ=new Map(Object.entries((cal&&cal.equipment)||{}).map(([id,e])=>[id,{code:e.code,description:e.description}]));};
+async function refresh(){
+  if(LOCAL){
+    if(!remote.data){let s=null; try{s=JSON.parse(localStorage.getItem(LS_LOCAL)||'null');}catch(e){} remote.data=normData(s||clone(window.MT_LOCAL.registro)); M=window.MT_LOCAL.mantenimiento; setEq(window.MT_LOCAL.calibraciones);}
+    recompute(); render(); return;
+  }
+  if(pendingOps.length||flushing) return;
+  try{
+    const [m,r,c]=await Promise.all([fetchFile(REPO.main,true),fetchFile(REPO.path,true),fetchFile(REPO.cal,true).catch(()=>null)]);
+    if(m&&m.missing) throw {code:'private',status:404};
+    let changed=false;
+    if(m){M=m.json; changed=true;}
+    if(r){Object.assign(remote,r.missing?{data:emptyData(),sha:null}:{data:normData(r.json),sha:r.sha}); changed=true;}
+    if(c&&!c.missing){setEq(c.json); changed=true;}
+    S.noDb=false; S.privateData=false;
+    if(changed){recompute(); render();}
+  }catch(err){
+    if(err.code==='auth'){GH.invalid=true; GH.push=false; S.ro=true; return refresh();}
+    if(!DATA||!M){S.noDb=true; S.privateData=err.code==='private'||err.code==='forbidden'; render();}
+  }
+}
+async function connectGh(t){
+  const h={Accept:'application/vnd.github+json',Authorization:`Bearer ${t}`};
+  const [u,r]=await Promise.all([fetch('https://api.github.com/user',{headers:h,cache:'no-store'}),fetch(API,{headers:h,cache:'no-store'})]);
+  if(u.status===401||r.status===401) throw {code:'auth'};
+  if(!u.ok) throw httpError(u); if(!r.ok) throw httpError(r);
+  const user=await u.json(), repo=await r.json();
+  Object.assign(GH,{token:t,login:user.login,push:!!(repo.permissions&&repo.permissions.push),invalid:false});
+  S.ro=!GH.push;
+}
+function disconnectGh(){Object.assign(GH,{token:'',login:null,push:false,invalid:false}); S.ro=true; try{localStorage.removeItem(TOKEN_KEY);}catch(e){} remote.etag={}; dlg.close(); render(); toast('Disconnected from GitHub. This browser no longer has the key.');}
+function renderGh(){
+  const b=$('#btn-gh'); if(!b) return;
+  if(LOCAL){b.className='gh on'; b.querySelector('span').textContent='Local test data'; b.title='Local test mode: nothing is sent to GitHub.'; document.body.classList.remove('ro'); return;}
+  b.className='gh '+(GH.invalid?'bad':GH.saving?'busy':GH.login&&GH.push?'on':'');
+  b.querySelector('span').textContent=GH.invalid?'GitHub key expired':GH.saving?'Saving…':GH.login?GH.login:'Connect GitHub';
+  b.title=GH.login?(GH.push?'Connected with write access. Changes are saved as commits.':'Connected, but this account cannot edit the repository.'):'Connect GitHub to see and change the maintenance plan';
+  document.body.classList.toggle('ro',!!S.ro);
+}
+function openGh(){
+  dlg.dataset.kind='gh'; dlg.dataset.id=''; dlg.classList.add('narrow');
+  const body=`${GH.login?`<p class="note">Connected as <b>${esc(GH.login)}</b>${GH.push?' with write access.':', but this account cannot edit the repository.'}</p>`:''}
+  <ol class="guide">
+    <li>Create an access key in GitHub: <a href="https://github.com/settings/tokens/new?scopes=repo&amp;description=Laboratorio%20Polinya" target="_blank" rel="noopener">open the form</a>. The <span class="mono">repo</span> permission is already ticked (needed because the lab data is private); choose an expiry and press <i>Generate token</i>.</li>
+    <li>Copy the key and paste it here.</li>
+  </ol>
+  <div class="field"><label for="gh-token">Access key (token)</label><input id="gh-token" type="password" placeholder="ghp_…" autocomplete="off" spellcheck="false"></div>
+  <p class="note">The key is kept only in this browser and is shared with the other lab apps. Your GitHub account must have access to the data repository <span class="mono">${REPO.owner}/${REPO.repo}</span>: Read to view, Write to edit. Every change is saved as a commit, so the history shows who changed what.</p>`;
+  dlg.innerHTML=`<form class="dlg-form" id="dlg-form" novalidate><header class="dlg-h"><div><p class="eyebrow">Access</p><h2>Connect GitHub</h2></div><button type="button" class="icon-btn" data-act="close" aria-label="Close">×</button></header>
+  <div class="dlg-body">${body}<div id="f-err" class="form-err" hidden></div></div>
+  <footer class="dlg-f">${GH.token?'<button type="button" class="btn ghost danger" data-act="gh-off">Disconnect</button>':''}<span class="sp"></span><button type="button" class="btn ghost" data-act="close">Cancel</button><button class="btn primary gh-ok" type="submit">Connect</button></footer></form>`;
+  if(!dlg.open) dlg.showModal(); $('#gh-token').focus();
+}
+async function saveGh(){
+  const t=($('#gh-token').value||'').trim(); if(!t) return formErr('Paste the access key.');
+  const btn=dlg.querySelector('button[type="submit"]'); btn.disabled=true; btn.textContent='Checking…';
+  try{
+    await connectGh(t); try{localStorage.setItem(TOKEN_KEY,t);}catch(e){}
+    remote.etag={}; S.noDb=false; await refresh(); dlg.close(); render();
+    toast(GH.push?`Connected as ${GH.login}. You can now edit.`:`Connected as ${GH.login}, but this account cannot edit the repository.`);
+  }catch(err){ btn.disabled=false; btn.textContent='Connect'; formErr(err.code==='auth'?'That key is not valid or has expired.':err.code==='forbidden'?'That key cannot see the repository.':'Could not reach GitHub. Check your connection.'); }
+}
+function download(){
+  const url=URL.createObjectURL(new Blob([JSON.stringify({mantenimiento:M,registro:DATA},null,1)+'\n'],{type:'application/json'})), a=document.createElement('a');
+  a.href=url; a.download=`mantenimiento_${todayIso()}.json`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),2000);
+}
+window.addEventListener('beforeunload',e=>{ if(pendingOps.length||flushing){e.preventDefault(); e.returnValue='';} });
+
+/* ---------- Events ---------- */
+function setView(v){S.view=v; try{localStorage.setItem('mt.view',v)}catch(e){} if(location.hash!=='#'+v) history.replaceState(null,'','#'+v); render(); window.scrollTo(0,0);}
+document.addEventListener('click',async ev=>{
+  const op=ev.target.closest('[data-open]'); if(op){const d=document.getElementById(op.dataset.open); if(d) d.open=true; return;}
+  if(ev.target.closest('a[href]')) return;
+  const v=ev.target.closest('[data-view]'); if(v){setView(v.dataset.view); return;}
+  const t=ev.target.closest('[data-act]'); if(!t) return;
+  const a=t.dataset.act, id=t.dataset.id;
+  if(a==='row') openRow(id);
+  else if(a==='rec-plan') openRec(null,{planId:id,status:'Planned'});
+  else if(a==='rec-done'){const pl=(IX.recs.get(id)||[]).find(r=>r.status==='Planned'); if(pl) openRec(pl.id,{status:'Done',date:todayIso()}); else openRec(null,{planId:id,status:'Done'});}
+  else if(a==='rec-edit') openRec(id);
+  else if(a==='close') dlg.close();
+  else if(a==='del') deleteFromDialog(t);
+  else if(a==='kpi'){const k=t.dataset.k; if(k==='corrective'||k==='documents') return setView(k); S.f={status:k==='planned'?[]:[k],type:[],provider:[]}; S.q=''; setView(k==='planned'?'annual':'plan');}
+  else if(a==='clear-f'){S.f={status:[],type:[],provider:[]}; S.q=''; render();}
+  else if(a==='clear-docf'){S.docf={kind:[]}; S.q=''; render();}
+  else if(a==='fchip'){const arr=S[t.dataset.scope][t.dataset.k], v2=t.dataset.v, i=arr.indexOf(v2); if(i<0) arr.push(v2); else arr.splice(i,1); render();}
+  else if(a==='cell'){const r=t.dataset.r; if(r) return openRec(r); if(S.ro) return openRow(id); const ms=t.dataset.m; openRec(null,{planId:id,status:mIdx(ms)>=nowIdx()?'Planned':'Done',month:ms,date:mIdx(ms)<nowIdx()?ms+'-01':''});}
+  else if(a==='plan-nav'){const d=+t.dataset.d, y=Math.floor(nowIdx()/12); S.plan.start=d===0?null:(S.plan.start??y)+d; render();}
+  else if(a==='plan-span'){S.plan.span=+t.dataset.s; try{localStorage.setItem('mt.span',S.plan.span)}catch(e){} render();}
+  else if(a==='settings') openSettings();
+  else if(a==='download') download();
+  else if(a==='gh'){ if(LOCAL) toast('Local test mode: the data stays in this browser and GitHub is not used.'); else openGh(); }
+  else if(a==='local-reset'){try{localStorage.removeItem(LS_LOCAL);}catch(e){} remote.data=null; await refresh(); toast('Test data reset.');}
+  else if(a==='gh-off') disconnectGh();
+});
+document.addEventListener('input',ev=>{
+  if(ev.target.id==='q'){S.q=ev.target.value; const pos=ev.target.selectionStart; render(); const q=$('#q'); if(q){q.focus(); try{q.setSelectionRange(pos,pos)}catch(e){}}}
+});
+document.addEventListener('change',ev=>{ if(dlg.open&&dlg.contains(ev.target)) recHints(); });
+document.addEventListener('submit',ev=>{ if(ev.target.id!=='dlg-form') return; ev.preventDefault(); if(dlg.dataset.kind==='gh') saveGh(); else saveDialog(); });
+window.addEventListener('hashchange',()=>{const h=location.hash.slice(1); if(VIEWS.some(x=>x[0]===h)&&h!==S.view) setView(h);});
+
+/* ---------- Boot ---------- */
+render();
+(async()=>{
+  if(GH.token&&!LOCAL){ try{await connectGh(GH.token);}catch(err){ if(err.code==='auth') GH.invalid=true; } }
+  await refresh(); render();
+  setInterval(()=>{ if(!document.hidden&&!dlg.open) refresh(); }, GH.token?30000:60000);
+})();
+</script>
+</body>
+</html>

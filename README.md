@@ -12,7 +12,7 @@ El código y los datos están en repositorios distintos. Así cada persona solo 
 |---|---|---|---|
 | [management-tools](https://github.com/Polinya-LAB/management-tools) (este) | Código de las apps y la web | Público | Solo administradores |
 | [endurance-data](https://github.com/Polinya-LAB/endurance-data) | Datos de la piscina de durabilidad | Público | **Write** para quien registra bombas |
-| [lab-data](https://github.com/Polinya-LAB/lab-data) | Datos privados del laboratorio: `ensayos/` (Control de ensayos) y `calibraciones/` (Plan de calibraciones) | Privado | **Read** para consultar, **Write** para modificar |
+| [lab-data](https://github.com/Polinya-LAB/lab-data) | Datos privados del laboratorio: `ensayos/` (Control de ensayos), `calibraciones/` (Plan de calibraciones) y `mantenimiento/` (Plan de mantenimiento) | Privado | **Read** para consultar, **Write** para modificar |
 
 Para dar acceso a una persona: en el repositorio de datos que corresponda, **Settings → Collaborators and teams → Add people**,
 elige el rol y la persona acepta la invitación que le llega por correo. Para quitárselo, elimínala de la misma lista.
@@ -69,17 +69,37 @@ o técnicos sobrecargados. La interfaz está en inglés.
 
 Plan de calibración de los equipos del laboratorio (formulario F-IM-FM-001): equipos con sus puntos y tolerancias,
 plan anual, registro y cierre de calibraciones, evaluación de la tolerancia de uso (|e| + U ≤ TU), hojas de validación
-por cámara frente a las normas de ensayo (ISO 9227, IEC 60068), imprimibles en PDF, mantenimiento, revisión de datos e
-importación del Excel del plan. La interfaz está en inglés.
+por cámara frente a las normas de ensayo (ISO 9227, IEC 60068), imprimibles en PDF, revisión de datos e
+importación del Excel del plan. El mantenimiento está en su propia aplicación, [Plan de mantenimiento](#plan-de-mantenimiento). La interfaz está en inglés.
 
 **Abrir la aplicación:** https://polinya-lab.github.io/management-tools/calibraciones/
 
 - Es una única página ([`calibraciones/index.html`](calibraciones/index.html)) que guarda igual que Control de ensayos.
 - Los datos están en [`calibraciones/calibraciones.json`](https://github.com/Polinya-LAB/lab-data/blob/main/calibraciones/calibraciones.json) del repositorio privado `lab-data`:
-  equipos (`equipment`), calibraciones (`calibrations`), evaluaciones TU (`evaluations`), mantenimiento (`maintenance`) y ajustes (`config`).
+  equipos (`equipment`), calibraciones (`calibrations`), evaluaciones TU (`evaluations`) y ajustes (`config`). La colección `maintenance` se conserva en el fichero pero ya no se usa.
 - Para consultarla hay que **Connect GitHub** con una cuenta con acceso de lectura a `lab-data`, y para modificar, con acceso de escritura.
   La clave es la misma que la de las otras apps.
 - Cada cambio es un commit; el [historial](https://github.com/Polinya-LAB/lab-data/commits/main/calibraciones/calibraciones.json) muestra quién cambió qué y cuándo.
+
+## Plan de mantenimiento
+
+Plan de mantenimiento de equipos e instalaciones del laboratorio (formulario F-IM-FM-002), separado del Plan de calibraciones:
+resumen con lo vencido y lo próximo agrupado por proveedor, plan con filtros, plan anual por meses, acciones correctivas,
+ofertas y partes de trabajo, y revisión de fechas. La interfaz está en inglés.
+
+**Abrir la aplicación:** https://polinya-lab.github.io/management-tools/mantenimiento/
+
+- Es una única página ([`mantenimiento/index.html`](mantenimiento/index.html)) que guarda igual que el Plan de calibraciones.
+- El plan sale del Excel `Maintenance Plan.xlsx` de SharePoint (07. Laboratory › 4. Equipment › 1. Maintenance). Una tarea
+  programada lo copia, junto con los PDF de ofertas, partes y correctivas (resumen y enlace), a
+  [`mantenimiento/mantenimiento.json`](https://github.com/Polinya-LAB/lab-data/blob/main/mantenimiento/mantenimiento.json) los días 1 y 15
+  ([instrucciones](https://github.com/Polinya-LAB/lab-data/blob/main/sharepoint-sync.md)). La app solo lee ese fichero:
+  los equipos, acciones y periodos se cambian en el Excel.
+- Lo que se hace en la app (mantenimientos programados y realizados, ajustes) se guarda en
+  [`mantenimiento/registro.json`](https://github.com/Polinya-LAB/lab-data/blob/main/mantenimiento/registro.json) (`records`, `config`),
+  que crea el primer guardado. Un mantenimiento registrado como hecho después de la fecha del Excel mueve la próxima fecha (fecha + periodo).
+- El código y la descripción de cada equipo (`equipmentIds`, p. ej. `eq-FLE-003`) se leen de `calibraciones/calibraciones.json`.
+- Se consulta y modifica con la misma clave de GitHub que las otras apps (lectura o escritura en `lab-data`).
 
 ## Seguimiento piscina durabilidad
 
