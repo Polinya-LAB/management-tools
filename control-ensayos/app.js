@@ -652,7 +652,8 @@ function mappingGrid(I,fields,kind){
 /* ---------- ARAS import ---------- */
 function eqMatchByName(name){
   const n=norm(name); if(!n) return null;
-  return S.equipment.find(b=>norm(b.nombreAras)===n)||S.equipment.find(b=>norm(b.nombre)===n)||null;
+  /* The ARAS name may list several aliases separated by ";". */
+  return S.equipment.find(b=>String(b.nombreAras||'').split(';').some(x=>norm(x)===n))||S.equipment.find(b=>norm(b.nombre)===n)||null;
 }
 function eqSuggest(name){
   const stop=new Set(['test','tests','the','of','and','bench','stand','testbench']); const tok=s=>new Set(norm(s).split(' ').filter(w=>w&&!stop.has(w)));
@@ -662,6 +663,8 @@ function eqSuggest(name){
 }
 function personMatch(name){const n=norm(name); return n?S.people.find(p=>norm(p.nombre)===n)||null:null;}
 const mapStatus=s=>ARAS_STATUS[norm(s)]||'';
+/* Lab statuses that refine an ARAS status do not count as a difference (ARAS has no Planned, On hold or Report). */
+const ARAS_SAME={'Queued':['Queued','Planned'],'In progress':['In progress','Endurance running','On hold','Report'],'Endurance running':['Endurance running','On hold','Report']};
 function arasPreview(){
   const I=S.imp, recs=readRecs(I,ARAS_FIELDS), T=todayMs();
   const eqMap=I.eqMap||(I.eqMap={});
@@ -703,19 +706,47 @@ function arasPreview(){
     if(!t.equipmentId&&r._eq){patch.equipmentId=r._eq; changes.push('equipment');}
     if(!t.techId&&r._tech){patch.techId=r._tech; changes.push('technician');}
     if(!t.start&&r.start){patch.start=r.start; changes.push('start');}
-    let ns=null;
-    if(CLOSED.includes(st)&&t.status!==st) ns=st;
-    else if(st==='In progress'&&['Not approved','Queued','Planned'].includes(t.status)) ns='In progress';
-    else if(st==='Not approved'&&t.status==='Queued') ns='Not approved';
-    else if(st==='Queued'&&t.status==='Not approved') ns='Queued';
-    if(ns){patch.status=ns; if(CLOSED.includes(ns)&&!t.closedAt) patch.closedAt=iso(T); if(ns==='Completed') patch.progress=100; changes.unshift(`status: ${t.status} → ${ns}`);}
+    /* A different status is never applied on its own: it is asked. Keeping the app status is remembered until ARAS changes again. */
+    if(st&&!(ARAS_SAME[st]||[st]).includes(t.status)&&t.arasStatusKept!==r.status) r._conflict={id:t.id,from:t.status,to:st,aras:r.status};
+    if(t.arasStatusKept&&t.arasStatusKept!==r.status) patch.arasStatusKept='';
     r._patch=patch; r._changes=changes; r._st=Object.keys(patch).length?'update':'same';
     if(r._st==='update'&&!changes.length) r._quiet=true;
   }
   return {recs,unknownEq,newPeople,newQtps,eqMap};
 }
+function statusPanel(P){
+  const I=S.imp, ch=I.choice||(I.choice={}), list=P.recs.filter(r=>r._conflict);
+  if(!list.length) return I.done?'<section class="panel"><div class="panel-h"><h2>Status differences</h2></div><div class="empty-ok">Every imported test has the same status in the app and in ARAS.</div></section>':'';
+  const n=list.filter(r=>ch[r._conflict.id]).length;
+  return `<section class="panel"><div class="panel-h"><h2>Status differences · ${list.length}</h2><span class="muted">These tests already exist and ARAS shows a different status. Choose which one to keep.</span>
+    <span class="sp"></span><button class="btn sm ghost" data-act="sc-all" data-v="app">Keep all app</button><button class="btn sm ghost" data-act="sc-all" data-v="aras">Use all ARAS</button></div>
+    <div class="scroll-x"><table class="tbl"><thead><tr><th>PLR · QTP</th><th>Test</th><th>Keep app status</th><th>Use ARAS status</th></tr></thead><tbody>
+    ${list.map(r=>{const c=r._conflict, v=ch[c.id]; return `<tr><td class="ref nowrap">${esc(r.plr+' · '+r.qtp)}${r.equipmentName?`<br><small class="muted">${esc(r.equipmentName)}</small>`:''}</td><td>${esc(r.title||'')}</td>
+      <td><label class="check"><input type="radio" name="sc-${esc(c.id)}" data-sc="${esc(c.id)}" value="app" ${v==='app'?'checked':''} ${dis()}><span class="pill est st-${ST_CLS[c.from]||''}">${esc(c.from)}</span></label></td>
+      <td><label class="check"><input type="radio" name="sc-${esc(c.id)}" data-sc="${esc(c.id)}" value="aras" ${v==='aras'?'checked':''} ${dis()}><span class="pill est st-${ST_CLS[c.to]||''}">${esc(c.to)}</span>${c.aras!==c.to?` <small class="muted">(${esc(c.aras)})</small>`:''}</label></td></tr>`}).join('')}
+    </tbody></table></div>
+    <div class="row" style="margin-top:12px"><button class="btn primary" data-act="sc-apply" ${n&&!S.ro?'':'disabled'}>Apply ${n} of ${list.length} choice${list.length===1?'':'s'}</button></div>
+    <p class="note" style="margin-top:10px">Tests left without a choice keep their app status and are asked again on the next import. When you keep the app status, it is not asked again until ARAS shows another status. Planned counts as In Queue, and Endurance running, On hold and Report count as In Progress.</p></section>`;
+}
+async function applyStatusChoices(){
+  const I=S.imp; if(!I||!I.P||!db) return; const ch=I.choice||{}, now=nowIso(), T=iso(todayMs()), jobs=[]; let nA=0,nK=0;
+  for(const r of I.P.recs){const c=r._conflict, v=c&&ch[c.id]; if(!v) continue; const t=S.tests.find(x=>x.id===c.id); if(!t) continue;
+    if(v==='app'){jobs.push(db.doc(`${COL.tests}/${t.id}`).update({arasStatusKept:c.aras,updated:now})); nK++; continue;}
+    const patch={status:c.to,arasStatusKept:'',updated:now};
+    if(CLOSED.includes(c.to)){ if(!t.closedAt) patch.closedAt=T; } else patch.closedAt='';
+    if(c.to==='Completed') patch.progress=100;
+    if(RUNNING.has(c.to)&&!t.start) patch.start=T;
+    jobs.push(db.doc(`${COL.tests}/${t.id}`).update(patch)); nA++;}
+  I.choice={};
+  try{await Promise.all(jobs); toast(`Status: ${nA} changed to the ARAS status, ${nK} kept.`);}catch(e){toast(errMsg(e));}
+  render();
+}
 function importPanelAras(){
   const I=S.imp, P=arasPreview(); I.P=P;
+  if(I.done) return `<section class="panel"><div class="panel-h"><h2>Imported</h2><span class="muted">${esc(I.fileName)}</span><span class="sp"></span><button class="btn sm ghost" data-act="cancel-import">Close</button></div>
+    <div class="imp-sum"><span class="tag-st new">${I.done.nNew} new</span><span class="tag-st update">${I.done.nUpd} updated</span></div>
+    ${I.done.rows.length?`<div class="scroll-x" style="margin-top:8px"><table class="tbl"><thead><tr><th>Result</th><th>PLR · QTP</th><th>Test</th><th>Changes</th></tr></thead><tbody>${I.done.rows.slice(0,250).map(r=>`<tr><td><span class="tag-st ${r.st}">${r.st==='update'?'Updated':r.st==='hist'?'New → History':'New'}</span></td><td class="ref nowrap">${esc(r.ref)}</td><td>${esc(r.title||'')}</td><td><small class="muted">${esc(r.changes||'')}</small></td></tr>`).join('')}</tbody></table></div>`:''}</section>
+  ${statusPanel(P)}`;
   const c=k=>P.recs.filter(r=>r._st===k).length, upd=P.recs.filter(r=>r._st==='update'&&!r._quiet).length, stch=P.recs.filter(r=>r._patch&&r._patch.status).length;
   const label={new:'New',hist:'New → History',update:'Update',same:'No change',skip:'Skipped (closed)',error:'Missing PLR or QTP'};
   const show=P.recs.filter(r=>r._st!=='same'||r._quiet).filter(r=>!r._quiet).slice(0,250);
@@ -734,8 +765,15 @@ function importPanelAras(){
     ${show.map(r=>`<tr><td><span class="tag-st ${r._st}">${label[r._st]}</span></td><td class="ref nowrap">${esc((r.plr||'—')+' · '+(r.qtp||'—'))}${r.equipmentName?`<br><small class="muted">${esc(r.equipmentName)}</small>`:''}</td><td>${esc(r.title||'')}</td><td>${esc(r.project||'')}</td><td>${esc(r.requester||'')}</td><td class="nowrap">${esc(r.status||'—')}${r._status&&r._st!=='update'&&r._st!=='same'?` → ${esc(r._status)}`:''}</td><td><small class="muted">${r._changes?esc(r._changes.join(', ')):''}</small></td></tr>`).join('')}
     </tbody></table></div>${show.length===250?'<p class="muted">Showing the first 250 rows.</p>':''}
     <div class="row" style="margin-top:12px"><button class="btn primary" data-act="do-import" ${!I.map.plr||!I.map.qtp||!(c('new')+c('hist')+upd+P.recs.filter(r=>r._quiet).length)||S.ro?'disabled':''}>Import ${c('new')+c('hist')} new and update ${upd}</button><button class="btn ghost" data-act="cancel-import">Discard file</button></div>
-    <p class="note" style="margin-top:10px">On re-import, ARAS updates the request data (description, project, requester, comments, due date, result…). Equipment, technician and start date are only filled when empty. Status follows ARAS only forwards: Completed and Cancelled always close the test, In Progress starts a queued or planned test, and lab statuses such as Planned, On hold or Report are never undone.</p>
-  </section>`;
+    <p class="note" style="margin-top:10px">Once the columns and equipment names are set, later files are imported as soon as they are loaded. On re-import, ARAS updates the request data (description, project, requester, comments, due date, result…). Equipment, technician and start date are only filled when empty. A different status is never changed on its own: you choose it after the import.</p>
+  </section>
+  ${statusPanel(P)}`;
+}
+/* New files go in without a confirm step once the columns are mapped and every unknown ARAS equipment name has a remembered choice. */
+function arasReady(){
+  const I=S.imp, P=I&&I.P; if(!P||S.ro||!db||!I.map.plr||!I.map.qtp) return false;
+  const saved=(S.cfg.importAras&&S.cfg.importAras.eqMap)||{};
+  return [...P.unknownEq.keys()].every(n=>n in saved);
 }
 async function runArasImport(){
   const I=S.imp; if(!I||!db||!I.P) return; const P=I.P, now=nowIso(), T=iso(todayMs());
@@ -753,24 +791,24 @@ async function runArasImport(){
     const resId=v=>!v?'':v.startsWith('new:')?newEqIds.get(v.slice(4))||'':v.startsWith('newp:')?newPIds.get(v.slice(5))||'':v;
     /* 2. tests */
     const usedIds=new Set(S.tests.map(t=>t.id));
-    let nNew=0,nUpd=0;
+    let nNew=0,nUpd=0; const doneRows=[];
     for(const r of P.recs){
       if(r._st==='new'||r._st==='hist'){
         let base='aras-'+slug(r.plr)+'-'+slug(r.qtp), id=base, i=2; while(usedIds.has(id)) id=base+'-'+(i++); usedIds.add(id);
         const data={source:'ARAS',plr:r.plr,qtp:r.qtp,title:r.title,project:r.project,requester:r.requester,comments:r.comments,pieces:r.pieces,requestedDue:r.requestedDue,flexible:!!r.flexible,sequence:r.sequence,category:r.category,requestNote:r.requestNote,result:r.result,
           arasStatus:r.status,arasDurVal:r.durVal,arasDurUnit:normUnit(r.durUnit),arasEquipment:r.equipmentName,arasTech:r.techName,
           status:r._status,equipmentId:resId(r._eq),techId:resId(r._tech),start:r.start,end:'',durVal:'',durUnit:'',continuous:'',techHours:'',priority:'Medium',progress:r._status==='Completed'?100:0,holdReason:'',labNotes:'',agreedDue:'',closedAt:'',created:now,updated:now,imported:now};
-        jobs.push(()=>db.doc(`${COL.tests}/${id}`).set(data)); nNew++;
+        jobs.push(()=>db.doc(`${COL.tests}/${id}`).set(data)); nNew++; doneRows.push({st:r._st,ref:`${r.plr} · ${r.qtp}`,title:r.title});
       }else if(r._st==='update'){
         const patch={...r._patch,updated:now,imported:now}; if(patch.equipmentId) patch.equipmentId=resId(patch.equipmentId); if(patch.techId) patch.techId=resId(patch.techId);
-        jobs.push(()=>db.doc(`${COL.tests}/${r._match.id}`).update(patch)); if(!r._quiet) nUpd++;
+        jobs.push(()=>db.doc(`${COL.tests}/${r._match.id}`).update(patch)); if(!r._quiet){nUpd++; doneRows.push({st:'update',ref:`${r.plr} · ${r.qtp}`,title:r.title,changes:r._changes.join(', ')});}
       }
     }
     /* All writes are queued together so the whole import becomes one commit. */
     const keepEq={...((S.cfg.importAras&&S.cfg.importAras.eqMap)||{}),...P.eqMap};
     jobs.push(()=>db.doc('config/importAras').set({map:I.map,eqMap:keepEq,lastFile:I.fileName,date:now,includeClosed:S.incClosed}));
     await Promise.all(jobs.map(j=>j()));
-    S.imp=null; toast(`Import finished: ${nNew} new, ${nUpd} updated.`); S.view='queue'; try{localStorage.setItem(VIEW_KEY,'queue')}catch(e){} render();
+    I.done={nNew,nUpd,rows:doneRows}; toast(`Import finished: ${nNew} new, ${nUpd} updated.`); render();
   }catch(e){toast(errMsg(e)); render();}
 }
 
@@ -820,7 +858,7 @@ async function runQtpImport(){
 
 function vImport(){
   return `<div class="view-h"><h2>Import from ARAS</h2>${S.tests.length?'<button class="btn" data-act="export">Export tests to Excel</button>':''}</div>
-  <ol class="steps"><li>In ARAS, run the lab request search (a_Lab_Dashboard) and export it to Excel.</li><li>Load the file here (.xlsx, .xls or .csv).</li><li>Check the column mapping, the equipment names and the preview.</li><li>Confirm. New tasks are created and existing ones are updated.</li></ol>
+  <ol class="steps"><li>In ARAS, run the lab request search (a_Lab_Dashboard) and export it to Excel.</li><li>Load the file here (.xlsx, .xls or .csv).</li><li>New tasks are created and existing ones updated at once. The first time, or when ARAS brings an unknown equipment name, check the mapping and confirm.</li><li>Choose the status to keep for tests whose status differs from ARAS.</li></ol>
   ${S.ro||S.noDb?'':`<label class="drop-zone" data-dz="aras"><input type="file" id="file-aras" accept=".xlsx,.xls,.csv"><b>Drop the ARAS export here</b><span class="muted">or click to choose the file</span></label>`}
   ${S.imp?importPanelAras():''}`;
 }
@@ -831,6 +869,7 @@ async function onFile(f,kind){
     if(kind==='qtp'){ sh.map=guessMap(sh.headers,QTP_FIELDS,S.cfg.importQtp&&S.cfg.importQtp.map); S.qimp=sh; }
     else { sh.map=guessMap(sh.headers,ARAS_FIELDS,S.cfg.importAras&&S.cfg.importAras.map); if(S.cfg.importAras&&S.cfg.importAras.includeClosed===false) S.incClosed=false; S.imp=sh; }
     render();
+    if(kind==='aras'&&arasReady()) await runArasImport();
   }catch(e){toast('Could not read the file: '+(e.message||e));}
 }
 
@@ -943,7 +982,7 @@ function openEquipment(id){
   dlg.dataset.kind='equipment'; dlg.dataset.id=id||'';
   const body=`<fieldset><legend>Equipment</legend>
     ${fld('f-nombre','Name',inp('nombre',b.nombre,'text','required'),'req')}
-    ${fld('f-nombreAras','Name in ARAS (Equipment column)',inp('nombreAras',b.nombreAras,'text','placeholder="Same as name"'))}
+    ${fld('f-nombreAras','Name in ARAS (Equipment column)',inp('nombreAras',b.nombreAras,'text','placeholder="Same as name"'),'','Several names: separate them with ;')}
     ${fld('f-capacidad','Simultaneous tests (capacity)',inp('capacidad',eqCap(b),'number','min="1" max="200" step="1"'),'','How many tests can run on it at the same time')}
     ${fld('f-estado','Status',sel('estado',eqStatus(b),EQ_STATUS))}
     ${fld('f-proximaCalibracion','Next calibration',inp('proximaCalibracion',b.proximaCalibracion,'date'))}
@@ -1095,6 +1134,8 @@ document.addEventListener('click',ev=>{
   else if(a==='zoom'){S.dayW=+t.dataset.z; try{localStorage.setItem('tl.dayW',S.dayW)}catch(e){} render();}
   else if(a==='do-import') runArasImport();
   else if(a==='cancel-import'){S.imp=null; render();}
+  else if(a==='sc-all'){const I=S.imp; if(I&&I.P){I.choice=I.choice||{}; I.P.recs.forEach(r=>{if(r._conflict) I.choice[r._conflict.id]=t.dataset.v;}); render();}}
+  else if(a==='sc-apply') applyStatusChoices();
   else if(a==='do-qimport') runQtpImport();
   else if(a==='cancel-qimport'){S.qimp=null; render();}
   else if(a==='export') exportXlsx();
@@ -1117,6 +1158,7 @@ document.addEventListener('change',ev=>{
   if(el.id==='file-aras') onFile(el.files[0],'aras');
   else if(el.id==='file-qtp') onFile(el.files[0],'qtp');
   else if(el.dataset.map){const I=el.dataset.kind==='qtp'?S.qimp:S.imp; if(el.value) I.map[el.dataset.map]=el.value; else delete I.map[el.dataset.map]; render();}
+  else if(el.dataset.sc){const I=S.imp; if(I){(I.choice||(I.choice={}))[el.dataset.sc]=el.value; render();}}
   else if(el.dataset.eqmap!=null){S.imp.eqMap[el.dataset.eqmap]=el.value; render();}
   else if(el.id==='inc-closed'){S.incClosed=el.checked; render();}
   else if(el.name==='fle'&&dlg.open) $('#fle-sel').innerHTML=fleSel([...dlg.querySelectorAll('input[name="fle"]:checked')].map(x=>x.value));

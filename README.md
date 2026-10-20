@@ -41,7 +41,11 @@ La interfaz está en inglés.
   y para modificar, con acceso de escritura.
 - Los cambios hechos en poco tiempo (por ejemplo una importación de ARAS) se guardan juntos en un solo commit. El
   [historial](https://github.com/Polinya-LAB/lab-data/commits/main/ensayos/ensayos.json) muestra quién cambió qué y cuándo.
-- Para importar de ARAS: exporta la búsqueda `a_Lab_Dashboard` a Excel y cárgala en la pestaña **Import ARAS**.
+- Para importar de ARAS: exporta la búsqueda `a_Lab_Dashboard` a Excel y cárgala en la pestaña **Import ARAS**. Las líneas nuevas
+  y los datos de solicitud se importan al cargar el fichero (la primera vez, o si aparece un equipo desconocido, se confirma a mano).
+  Si un ensayo ya existente tiene otro estado en ARAS, la app pregunta cuál quedarse; si se mantiene el de la app, no vuelve a
+  preguntar hasta que ARAS cambie (`tests/<id>.arasStatusKept`). Planned cuenta como In Queue, y Endurance running, On hold y
+  Report como In Progress. En el nombre ARAS de un equipo se pueden poner varios nombres separados por `;`.
 - Cada equipo puede tener asignados los instrumentos (FLE) del Plan de calibraciones que se usan habitualmente en él
   (pestaña **Equipment & team**, al editar el equipo). Se guardan en `bancos/<id>.instrumentos` como lista de ids de
   `calibraciones/calibraciones.json` → `equipment` (por ejemplo `eq-FLE-014`); se usan ids y no códigos porque hay códigos FLE repetidos.
