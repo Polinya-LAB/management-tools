@@ -62,7 +62,7 @@ a{color:var(--accent)}
 .gh i{width:8px;height:8px;border-radius:50%;background:var(--st-canc)}
 .gh.on i{background:var(--ok)} .gh.bad i{background:var(--crit)} .gh.busy i{background:var(--warn)}
 .gh.on{color:var(--fg)}
-/* Read-only (not connected, or no write access): editing controls are hidden. */
+/* Read-only (not connected, or no write access): the page hides editing controls. */
 body.ro :is([data-act="rec-plan"],[data-act="rec-done"],[data-act="settings"],[data-act="del"]){display:none!important}
 body.ro .dlg-f button[type="submit"]:not(.gh-ok){display:none}
 body.ro :is([data-act="rec-plan"],[data-act="rec-done"],[data-act="settings"],[data-act="del"]){display:none!important}
@@ -413,7 +413,7 @@ function filteredRows(){
     return true;
   });
 }
-/* Filters are toggle buttons: several values of one filter are combined with OR, different filters with AND. Nothing pressed = all. */
+/* Filters are toggle buttons: several values of one filter combine with OR, different filters with AND. Nothing pressed = all. */
 function chips(scope,key,label,opts){
   const cur=S[scope][key];
   return `<div class="fgrp" role="group" aria-label="${esc(label)}"><span class="fl">${esc(label)}</span>${opts.map(([v,l,n])=>`<button type="button" class="fc" data-act="fchip" data-scope="${scope}" data-k="${key}" data-v="${esc(v)}" aria-pressed="${cur.includes(v)}">${esc(l)}${n!=null?`<small>${n}</small>`:''}</button>`).join('')}</div>`;
@@ -696,7 +696,7 @@ S.ro=true;
 const remote={data:null,sha:null,etag:{}};
 let flushTimer=null, flushing=null;
 const pendingOps=[];
-/* Local test mode: the data comes from local-data.js and is kept in this browser; nothing is read from or written to GitHub. */
+/* Local test mode: the data comes from local-data.js and is kept in this browser; the page neither reads from nor writes to GitHub. */
 const LOCAL=!!window.MT_LOCAL, LS_LOCAL='mt.local.data';
 if(LOCAL) S.ro=false;
 const emptyData=()=>Object.fromEntries(COLS.map(c=>[c,{}]));
@@ -751,7 +751,7 @@ async function commitOps(ops){
   }
   throw {code:'conflict'};
 }
-/* Writes show up at once on screen and are saved together, one commit per burst of changes. */
+/* Writes show on screen at once; the app saves them together, one commit per burst of changes. */
 function save(ops,msg){
   if(!ops.length) return true;
   if(LOCAL){applyOps(remote.data,ops); try{localStorage.setItem(LS_LOCAL,JSON.stringify(remote.data));}catch(e){} recompute(); render(); if(msg) toast(msg); return true;}

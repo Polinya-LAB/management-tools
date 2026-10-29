@@ -62,7 +62,7 @@ a{color:var(--accent)}
 .gh i{width:8px;height:8px;border-radius:50%;background:var(--st-canc)}
 .gh.on i{background:var(--ok)} .gh.bad i{background:var(--crit)} .gh.busy i{background:var(--warn)}
 .gh.on{color:var(--fg)}
-/* Read-only (not connected, or no write access): editing controls are hidden. */
+/* Read-only (not connected, or no write access): the page hides editing controls. */
 body.ro :is([data-act="eq-new"],[data-act="cal-new"],[data-act="cal-plan"],[data-act="ev-new"],[data-act="mt-new"],[data-act="note-done"],[data-act="settings"],[data-act="pt-add"],[data-act="pt-del"],[data-act="res-add"],[data-act="cert-reg"],[data-act="res-del"],[data-act="del"],[data-act="do-import"],[data-dz]){display:none!important}
 body.ro .dlg-f button[type="submit"]:not(.gh-ok){display:none}
 body.ro :is(input[data-tog],select[data-tol]){pointer-events:none;opacity:.6}
@@ -414,7 +414,7 @@ const slug=s=>String(s||'').trim().replace(/[^A-Za-z0-9_-]+/g,'_').slice(0,60);
 const rid=()=>Array.from(crypto.getRandomValues(new Uint8Array(10)),x=>'abcdefghijklmnopqrstuvwxyz0123456789'[x%36]).join('');
 const nowIso=()=>new Date().toISOString();
 const todayIso=()=>{const d=new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`};
-/* Calibrations are planned by month, as in the Excel. A month is "YYYY-MM"; a calibration is valid until the end of its due month. */
+/* The lab plans calibrations by month, as in the Excel. A month is "YYYY-MM"; a calibration is valid until the end of its due month. */
 const mIdx=s=>{const m=/^(\d{4})-(\d{2})$/.exec(s||''); return m?(+m[1])*12+(+m[2]-1):null};
 const mStr=i=>`${Math.floor(i/12)}-${pad(i%12+1)}`;
 const addM=(s,n)=>{const i=mIdx(s); return i==null||!n?'':mStr(i+ +n)};
@@ -586,7 +586,7 @@ function filteredEqs({plan=false}={}){
     return true;
   });
 }
-/* Filters are toggle buttons: several values of one filter are combined with OR, different filters with AND. Nothing pressed = all. */
+/* Filters are toggle buttons: several values of one filter combine with OR, different filters with AND. Nothing pressed = all. */
 const statusIs=(k,v)=>v==='action'?ACTION_KEYS.includes(k):v==='off'?OFF_KEYS.includes(k):k===v;
 function chips(scope,key,label,opts){
   const cur=S[scope][key];
@@ -799,7 +799,7 @@ function sheetData(e){
     const drift=e1!=null&&e0!=null?Math.max(0,Math.abs(e1)-Math.abs(e0)):null;
     const x={r,q:r.q,key:ptKey(r),label:ptLabel(r),nom,atT:num(r.atT),e1,e0,drift,U,U0:p?num(p.U):null,
       A:e1!=null&&U!=null?Math.abs(e1)+U:null,C:U!=null?U+(drift||0):null,corr:e1==null?null:-e1,
-      stab:num(r.stab),unif:num(r.unif),zones:(r.zones||[]).map(num),pz:p&&(p.zones||[]).length===(r.zones||[]).length?p.zones.map(num):[],hasPrev:!!p};  // positions are compared only when both certificates measured the same number
+      stab:num(r.stab),unif:num(r.unif),zones:(r.zones||[]).map(num),pz:p&&(p.zones||[]).length===(r.zones||[]).length?p.zones.map(num):[],hasPrev:!!p};  // compare positions only when both certificates measured the same number
     x.T=tu[r.q].tu; Object.assign(x,judge(x,x.T));
     x.zOut=x.zones.map((z,i)=>z!=null&&x.T!=null&&Math.abs(z-nom)>x.T+EPS?i:-1).filter(i=>i>=0);
     return x;
@@ -1394,7 +1394,7 @@ function deleteFromDialog(btn){
 
 /* ---------- Storage: one JSON file in the private data repository Polinya-LAB/lab-data (folder calibraciones/) ----------
    Same as Control de ensayos: reading calibraciones.json needs the key (token) of an account with read access; saving needs
-   write access; changes made close together are saved as one commit. The key is shared with the other lab apps (same site, same browser storage). */
+   write access; the app saves changes made close together as one commit. The key is shared with the other lab apps (same site, same browser storage). */
 const REPO={owner:'Polinya-LAB',repo:'lab-data',branch:'main',path:'calibraciones/calibraciones.json'};
 const API=`https://api.github.com/repos/${REPO.owner}/${REPO.repo}`;
 const RAW=`https://raw.githubusercontent.com/${REPO.owner}/${REPO.repo}/${REPO.branch}/${REPO.path}`;
@@ -1405,7 +1405,7 @@ S.ro=true;
 const remote={data:null,sha:null,etag:null};
 let flushTimer=null, flushing=null;
 const pendingOps=[];
-/* Local test mode: the data comes from local-data.js and is kept in this browser; nothing is read from or written to GitHub. */
+/* Local test mode: the data comes from local-data.js and is kept in this browser; the page neither reads from nor writes to GitHub. */
 const LOCAL=!!window.CAL_LOCAL, LS_LOCAL='cal.local.data';
 /* Preview mode (copy in new-projects only): reads lab-data but never writes to it. */
 const PREVIEW=false;
@@ -1434,7 +1434,7 @@ async function fetchRaw(){
   if(!res.ok) throw httpError(res);
   return {data:normData(await res.json()),sha:null,etag:null};
 }
-/* Applies writes to a copy of the data. An update to a document someone else deleted is skipped. */
+/* Applies writes to a copy of the data and skips updates to documents someone else deleted. */
 function applyOps(data,ops){
   for(const o of ops){const c=data[o.col]||(data[o.col]={});
     if(o.op==='set') c[o.id]=clone(o.data);
@@ -1478,7 +1478,7 @@ async function commitOps(ops){
   }
   throw {code:'conflict'};
 }
-/* Writes show up at once on screen and are saved together, one commit per burst of changes. */
+/* Writes show on screen at once; the app saves them together, one commit per burst of changes. */
 function save(ops,msg){
   if(!ops.length) return true;
   if(LOCAL){applyOps(remote.data,ops); try{localStorage.setItem(LS_LOCAL,JSON.stringify(remote.data));}catch(e){} recompute(); render(); if(msg) toast(msg); return true;}
