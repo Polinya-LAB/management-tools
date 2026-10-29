@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Muestras · Laboratorio Polinyà</title>
+<meta name="description" content="Recepción de muestras del laboratorio, enlace con los PLR de ARAS y etiquetas DYMO.">
+<meta name="theme-color" content="#0A6C7C">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600&family=Barlow+Semi+Condensed:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="../control-ensayos/app.css?v=20261029">
+</head>
+<!-- Same engine as Control de ensayos and Ocupación (app.js, app.css); <body data-app="samples"> picks the Muestras app. -->
+<body data-app="samples">
+
+<header class="top">
+  <div class="top-in">
+    <div class="brand"><a class="home" href="../">← Laboratorio Polinyà</a><div class="row1"><h1>Muestras</h1><span class="tag">SAMPLES</span></div></div>
+    <button type="button" class="gh" id="btn-gh" data-act="gh"><i></i><span>Connect GitHub</span></button>
+    <button class="btn ghost" id="btn-install" type="button" hidden>⤓ Instalar app</button>
+    <button class="btn primary" id="btn-new" data-act="new" hidden>+ New test</button>
+    <nav class="tabs" id="tabs" aria-label="Views"></nav>
+  </div>
+</header>
+<main id="view"><div class="empty"><h3>Loading lab data…</h3></div></main>
+<dialog id="dlg"></dialog>
+<datalist id="qtp-list"></datalist>
+<datalist id="smp-plr-list"></datalist>
+<datalist id="smp-loc-list"></datalist>
+<div id="toast" hidden></div>
+<div id="smp-print"></div>
+<style id="smp-page-size">@page{size:89mm 36mm;margin:0}</style>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/barcodes/JsBarcode.code128.min.js"></script>
+<script src="../control-ensayos/app.js?v=20261029"></script>
+<script>
+/* Desktop app (PWA): Chrome or Edge offer to install it from the published page (https). The service worker keeps the
+   app files so it opens without connection; the app always reads lab data from GitHub. */
+if('serviceWorker' in navigator&&(location.protocol==='https:'||location.hostname==='localhost')) navigator.serviceWorker.register('sw.js').catch(()=>{});
+(()=>{let ev=null; const b=document.getElementById('btn-install');
+  window.addEventListener('beforeinstallprompt',e=>{e.preventDefault(); ev=e; b.hidden=false;});
+  b.addEventListener('click',async()=>{if(!ev) return; ev.prompt(); await ev.userChoice; ev=null; b.hidden=true;});
+  window.addEventListener('appinstalled',()=>{b.hidden=true;});})();
+</script>
+</body>
+</html>

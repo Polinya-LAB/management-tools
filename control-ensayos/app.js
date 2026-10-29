@@ -17,16 +17,17 @@ const UNITS=['Hours','Days','Weeks','Cycles'];
 const UNIT_SHORT={Hours:'h',Days:'d',Weeks:'wk',Cycles:'cycles'};
 const RESULTS=['Pass','Fail','N/A'];
 const ARAS_STATUS={'in queue':'Queued','queued':'Queued','in progress':'In progress','completed':'Completed','complete':'Completed','cancelled':'Cancelled','canceled':'Cancelled','endurance running':'Endurance running','endurance':'Endurance running','not approved':'Not approved','not aproved':'Not approved','rejected':'Not approved'};
-/* The same code runs two apps on the same data: Control de ensayos (tests) and Ocupación (equipment and technician load),
-   chosen by <body data-app>. Each app shows only its own views and alerts. */
-const APP=document.body.dataset.app==='occupancy'?'occupancy':'tests';
+/* The same code runs three apps on the same data, chosen by <body data-app>: Control de ensayos (tests), Ocupación
+   (equipment and technician load) and Muestras (samples: reception, PLR links and labels). Each app shows only its own views. */
+const APP=['occupancy','samples'].includes(document.body.dataset.app)?document.body.dataset.app:'tests';
 const VIEWS=APP==='occupancy'
   ?[['overview','Overview'],['planning','Planning'],['occupancy','Occupancy'],['resources','Equipment & team']]
+  :APP==='samples'?[['samples','Samples'],['import','Import ARAS']]
   :[['overview','Overview'],['board','Board'],['queue','Queue'],['planning','Planning'],['history','History'],['resources','Equipment & team'],['library','QTP library'],['import','Import ARAS']];
-const VIEW_KEY=APP==='occupancy'?'occ.view':'tl.view';
+const VIEW_KEY=APP==='occupancy'?'occ.view':APP==='samples'?'smp.view':'tl.view';
 const DAY=86400000, WEEKS_HEAT=8;
 /* Firestore-style collections. People and equipment keep the collections created in the first version. */
-const COL={tests:'tests',people:'personas',equipment:'bancos',qtps:'qtps'};
+const COL={tests:'tests',people:'personas',equipment:'bancos',qtps:'qtps',samples:'muestras'};
 
 const ARAS_FIELDS=[
   {k:'plr',label:'Request number (PLR)',req:true,syn:['request number','request','plr','request no']},
@@ -63,7 +64,7 @@ const QTP_FIELDS=[
 ];
 
 /* ---------- State ---------- */
-const S={tests:[],people:[],equipment:[],qtps:[],cfg:{},loaded:new Set(),view:'overview',q:'',imp:null,qimp:null,ro:false,noDb:false,dayW:18,hist:{st:'',res:''},incClosed:true,sort:{queue:{k:'',dir:1},hist:{k:'',dir:1}},qst:['Not approved','Queued','Planned','In progress','Endurance running','On hold'],occ:{start:null,weeks:4,sel:null}};
+const S={tests:[],people:[],equipment:[],qtps:[],cfg:{},loaded:new Set(),view:APP==='samples'?'samples':'overview',q:'',imp:null,qimp:null,ro:false,noDb:false,dayW:18,hist:{st:'',res:''},incClosed:true,sort:{queue:{k:'',dir:1},hist:{k:'',dir:1}},qst:['Not approved','Queued','Planned','In progress','Endurance running','On hold'],occ:{start:null,weeks:4,sel:null}};
 let db=null, dl=null, IX=null;
 try{const v=localStorage.getItem(VIEW_KEY); if(VIEWS.some(x=>x[0]===v)) S.view=v; S.hideIdle=localStorage.getItem('tl.hideIdle')==='1'; const z=+localStorage.getItem('tl.dayW'); if(z) S.dayW=z===30?32:z; const qs=JSON.parse(localStorage.getItem('tl.qst')||'null'); if(Array.isArray(qs)&&qs.length) S.qst=qs.filter(x=>ACTIVE.includes(x)); if(!localStorage.getItem('tl.qstv')){ if(!S.qst.includes('Not approved')) S.qst.unshift('Not approved'); localStorage.setItem('tl.qstv','2'); } if(localStorage.getItem('tl.qstv')==='2'){ if(!S.qst.includes('Endurance running')) S.qst.push('Endurance running'); localStorage.setItem('tl.qstv','3'); } localStorage.setItem('tl.qst',JSON.stringify(S.qst)); const ow=+localStorage.getItem('tl.occw'); if([2,4,6,8].includes(ow)) S.occ.weeks=ow;}catch(e){}
 if(location.hash&&VIEWS.some(x=>'#'+x[0]===location.hash)) S.view=location.hash.slice(1);
@@ -309,21 +310,23 @@ function computeAlerts(ix){
 function render(){
   IX=buildIndex(S.tests); const A=computeAlerts(IX); S.A=A;
   $('#qtp-list').innerHTML=[...S.qtps].sort(byName).map(q=>`<option value="${esc(q.code||q.id)}">${esc(q.name||'')}</option>`).join('');
-  const crit=A.global.filter(a=>a.sev==='crit').length, nq=S.tests.filter(t=>t.status==='Queued').length, nh=S.tests.filter(t=>CLOSED.includes(t.status)).length;
-  $('#tabs').innerHTML=VIEWS.map(([k,l])=>`<button data-view="${k}" ${S.view===k?'aria-current="page"':''}>${l}${k==='overview'&&A.global.length?`<span class="n ${crit?'crit':''}">${A.global.length}</span>`:''}${k==='queue'&&nq?`<span class="n">${nq}</span>`:''}${k==='history'&&nh?`<span class="n">${nh}</span>`:''}</button>`).join('');
-  $('#btn-new').hidden=S.ro||S.noDb||APP==='occupancy';
+  const crit=A.global.filter(a=>a.sev==='crit').length, nq=S.tests.filter(t=>t.status==='Queued').length, nh=S.tests.filter(t=>CLOSED.includes(t.status)).length, ns=APP!=='occupancy'?smpMissingCount():0;
+  $('#tabs').innerHTML=VIEWS.map(([k,l])=>`<button data-view="${k}" ${S.view===k?'aria-current="page"':''}>${k==='samples'?tx('tab'):l}${k==='samples'&&ns?`<span class="n warn" title="${esc(tx('k_miss'))}">${ns}</span>`:''}${k==='overview'&&A.global.length?`<span class="n ${crit?'crit':''}">${A.global.length}</span>`:''}${k==='queue'&&nq?`<span class="n">${nq}</span>`:''}${k==='history'&&nh?`<span class="n">${nh}</span>`:''}</button>`).join('');
+  $('#btn-new').hidden=S.ro||S.noDb||APP!=='tests';
   let banner='';
   if(S.noDb) banner=S.privateData
     ? (GH.login
       ? `<div class="banner crit"><b>Your account ${esc(GH.login)} cannot see the lab data.</b> Ask the owner to add you to the private repository <span class="mono">${REPO.owner}/${REPO.repo}</span>.</div>`
-      : `<div class="banner crit"><b>The lab data is private.</b> Press Connect GitHub with an account that has access to see it.</div>`)
-    : `<div class="banner crit"><b>Could not load the lab data from GitHub.</b> Check your connection and reload the page.</div>`;
+      : `<div class="banner crit"><b>The lab data is private.</b> Press Connect GitHub with an account that has access to see it${PREVIEW?`, or <button class="link" data-pv="demo-on">try the preview with example data</button>`:''}.</div>`)
+    : `<div class="banner crit"><b>Could not load the lab data from GitHub.</b> Check your connection and reload the page${PREVIEW?`, or <button class="link" data-pv="demo-on">try the preview with example data</button>`:''}.</div>`;
+  else if(PREVIEW&&DEMO) banner=`<div class="banner"><b>Preview with example data.</b> The data is invented and changes are kept only in this browser; nothing is read from or sent to GitHub. You can also import an ARAS export to try it. <button class="link" data-pv="demo-reset">Reset the example data</button> · <button class="link" data-pv="demo-off">Use the real data</button></div>`;
+  else if(PREVIEW&&remote.data) banner=`<div class="banner"><b>Preview version.</b> It shows the real data from <span class="mono">lab-data</span>, but changes are not saved to GitHub: they stay in this page until you reload it.</div>`;
   else if(GH.invalid) banner=`<div class="banner crit">Your GitHub key is no longer valid or has expired. <button class="link" data-act="gh">Connect GitHub</button> and paste a new one.</div>`;
   else if(GH.login&&!GH.push) banner=`<div class="banner">Your GitHub account <b>${esc(GH.login)}</b> cannot edit this repository. Ask to be added as a collaborator with the Write role.</div>`;
   else if(S.ro) banner=`<div class="banner">Read-only. To create or change tests, <button class="link" data-act="gh">connect GitHub</button> with an account that has write access to the repository.</div>`;
   renderGh();
-  const loading=!S.noDb&&S.loaded.size<5;
-  const fn={overview:vOverview,board:vBoard,queue:vQueue,planning:vPlanning,occupancy:vOccupancy,history:vHistory,resources:vResources,library:vLibrary,import:vImport}[S.view]||vOverview;
+  const loading=!S.noDb&&S.loaded.size<6;
+  const fn={overview:vOverview,board:vBoard,queue:vQueue,planning:vPlanning,samples:vSamples,occupancy:vOccupancy,history:vHistory,resources:vResources,library:vLibrary,import:vImport}[S.view]||vOverview;
   $('#view').innerHTML=banner+(loading?`<div class="empty"><h3>Loading lab data…</h3></div>`:fn(A));
 }
 function noTests(){
@@ -403,7 +406,7 @@ function card(t,al){
     <div class="card-top"><span class="ref">${esc(baseRef(t))}</span>${prioTag(t.priority)}</div>
     ${g?`<div class="tagline">${esc(g)}</div>`:''}
     <h4>${esc(t.title||'(no description)')}</h4>
-    <div class="chips">${projChip(t)}${t.requester?`<span class="by">by ${esc(t.requester)}</span>`:''}</div>
+    <div class="chips">${projChip(t)}${t.requester?`<span class="by">by ${esc(t.requester)}</span>`:''}${smpTestChip(t)}</div>
     <dl class="meta"><div><dt>Equipment</dt><dd>${esc(b?eqName(b):(t.arasEquipment?t.arasEquipment+' (ARAS)':'—'))}</dd></div><div><dt>Technician</dt><dd>${esc(p?p.nombre:'—')}</dd></div>
     <div><dt>Plan</dt><dd>${esc(planText(t))}</dd></div><div><dt>Due</dt><dd>${dueText(t)}</dd></div></dl>
     ${['In progress','Endurance running','Report','On hold'].includes(t.status)?`<div class="prog" title="${+t.progress||0}%"><span style="width:${Math.min(100,+t.progress||0)}%"></span></div>`:''}
@@ -745,6 +748,7 @@ function importPanelAras(){
   const I=S.imp, P=arasPreview(); I.P=P;
   if(I.done) return `<section class="panel"><div class="panel-h"><h2>Imported</h2><span class="muted">${esc(I.fileName)}</span><span class="sp"></span><button class="btn sm ghost" data-act="cancel-import">Close</button></div>
     <div class="imp-sum"><span class="tag-st new">${I.done.nNew} new</span><span class="tag-st update">${I.done.nUpd} updated</span></div>
+    ${(n=>n&&!S.ro?`<div class="row" style="margin-top:8px"><span>📦 ${esc(tx('impProp',n))}</span>${APP==='samples'?`<button class="btn sm primary" data-view="samples">${esc(tx('impGo'))}</button>`:`<a class="btn sm primary" href="../muestras/">${esc(tx('impGo'))}</a>`}</div>`:'')(smpProposals().length)}
     ${I.done.rows.length?`<div class="scroll-x" style="margin-top:8px"><table class="tbl"><thead><tr><th>Result</th><th>PLR · QTP</th><th>Test</th><th>Changes</th></tr></thead><tbody>${I.done.rows.slice(0,250).map(r=>`<tr><td><span class="tag-st ${r.st}">${r.st==='update'?'Updated':r.st==='hist'?'New → History':'New'}</span></td><td class="ref nowrap">${esc(r.ref)}</td><td>${esc(r.title||'')}</td><td><small class="muted">${esc(r.changes||'')}</small></td></tr>`).join('')}</tbody></table></div>`:''}</section>
   ${statusPanel(P)}`;
   const c=k=>P.recs.filter(r=>r._st===k).length, upd=P.recs.filter(r=>r._st==='update'&&!r._quiet).length, stch=P.recs.filter(r=>r._patch&&r._patch.status).length;
@@ -936,7 +940,8 @@ function openEditor(id){
     <div class="span2 note" id="f-hint"></div>
   </fieldset>
   <div id="f-warn"></div>
-  ${sibs.length?`<div><p class="eyebrow" style="margin-bottom:6px">Other tasks in ${esc(t.plr)}</p><div class="siblings">${sibs.map(x=>`<button type="button" data-act="open-sib" data-id="${esc(x.id)}"><span class="ref">${esc(ref(x))}</span><span>${esc(x.title||'')}</span>${x.sequence?`<span class="chip">seq ${esc(x.sequence)}</span>`:''}<span class="sp"></span>${estPill(x.status)}${resTag(x.result)}</button>`).join('')}</div></div>`:''}`;
+  ${sibs.length?`<div><p class="eyebrow" style="margin-bottom:6px">Other tasks in ${esc(t.plr)}</p><div class="siblings">${sibs.map(x=>`<button type="button" data-act="open-sib" data-id="${esc(x.id)}"><span class="ref">${esc(ref(x))}</span><span>${esc(x.title||'')}</span>${x.sequence?`<span class="chip">seq ${esc(x.sequence)}</span>`:''}<span class="sp"></span>${estPill(x.status)}${resTag(x.result)}</button>`).join('')}</div></div>`:''}
+  ${isNew||APP==='occupancy'?'':smpEditorBlock(t)}`;
   dlg.innerHTML=dlgShell(isNew?'New manual test':(fromAras?'ARAS task':'Manual test'),isNew?'New test':`${baseRef(t)} · ${t.title||''}`,body,isNew?'':`<button type="button" class="btn ghost danger" data-act="del">Delete</button>`);
   if(!dlg.open) dlg.showModal(); liveHints();
 }
@@ -1039,6 +1044,9 @@ const num=v=>v===''||v==null||isNaN(+v)?'':+v;
 function formErr(m){const el=$('#f-err'); el.textContent=m; el.hidden=!m; return null;}
 async function saveDialog(){
   if(dlg.dataset.kind==='gh') return saveGh();
+  if(dlg.dataset.kind==='smp-rc') return smpSaveReceive(false);
+  if(dlg.dataset.kind==='smp-lot') return smpSaveLot();
+  if(dlg.dataset.kind==='smp-lb'||dlg.dataset.kind==='smp-gen') return;
   if(!db||S.ro) return;
   const kind=dlg.dataset.kind, id=dlg.dataset.id, f=readForm(), now=nowIso(), T=iso(todayMs());
   try{
@@ -1117,6 +1125,685 @@ async function setTech(id,techId){
   const t=S.tests.find(x=>x.id===id); if(!t||!db||(t.techId||'')===techId) return;
   try{await db.doc(`${COL.tests}/${id}`).update({techId,updated:nowIso()}); const p=personById(techId); toast(`${baseRef(t)} → ${p?p.nombre:'Unassigned'}`);}catch(e){toast(errMsg(e)); render();}
 }
+
+/* ---------- Samples (muestras) ----------
+   Each reception of samples is one document in the collection "muestras": one FLS-xxxxx number per reception and
+   one suffix per physical unit (-1, -2…), which keeps its number when it is withdrawn. A reception is linked to one or
+   more PLRs; its tests are the ARAS tests (PLR · QTP) of those PLRs, so an ARAS import updates them here too.
+   Units whose codes come from an ARAS request start as "expected" and count as received once someone receives them.
+   This tab is in Spanish with an English switch: all its texts go through tx(). */
+const SMP=['expected','received','waiting','testing','tested','stored','returned','scrapped'];
+const SMP_CLS={expected:'exp',received:'plan',waiting:'cola',testing:'curso',tested:'inf',stored:'cerr',returned:'endu',scrapped:'canc'};
+const SMP_DEFAULT=['expected','received','waiting','testing','tested','stored'];
+const SMP_PHASES=['Feasibility','MSL','ESL','Pilot','Production','N/A'];
+const SMP_LABELS={
+  '99012':{w:89,h:36,n:'99012 Large Address · 89 × 36 mm'},
+  '99010':{w:89,h:28,n:'99010 Standard Address · 89 × 28 mm'},
+  '11354':{w:57,h:32,n:'11354 Multi-purpose · 57 × 32 mm'},
+  '11352':{w:54,h:25,n:'11352 Return Address · 54 × 25 mm'}};
+const SMP_CODE_RE=/FLS-\d{5}(?:-\d+)?/i;
+const SMP_I18N={
+es:{
+  tab:'Muestras', title:'Muestras',
+  search:'Buscar o escanear: FLS, PLR, QTP, proyecto, nº serie…',
+  byPlr:'Por PLR', list:'Lista', lang:'Idioma',
+  receive:'+ Recibir muestras', labels:n=>`Etiquetas${n?` · ${n} por imprimir`:''}`,
+  k_inlab:'En el laboratorio', k_inlab_s:'unidades recibidas, sin devolver',
+  k_wait:'En espera', k_wait_s:'recibidas, sin empezar ensayo',
+  k_test:'En ensayo', k_test_s:'unidades en un ensayo',
+  k_done:'Ensayadas', k_done_s:'falta decidir: guardar, devolver o desechar',
+  k_miss:'PLR con muestras pendientes', k_miss_s:'faltan piezas por recibir',
+  k_lbl:'Etiquetas por imprimir', k_lbl_s:'unidades sin etiqueta',
+  show:'Mostrar:', phaseAll:'Todas las fases', onlyMissing:'Solo PLR con muestras pendientes',
+  st:{expected:'Pendiente de recibir',received:'Recibida',waiting:'En espera',testing:'En ensayo',tested:'Ensayada',stored:'Almacenada',returned:'Devuelta',scrapped:'Desechada'},
+  removed:'Retirada',
+  recvOf:(a,b)=>`de ${b} recibidas`, recvN:'recibidas',
+  missing:n=>`Faltan ${n} muestra${n===1?'':'s'}`, complete:'Muestras completas', none:'Pendiente de recibir', extra:n=>`${n} de más`,
+  closedPlr:'Ensayos cerrados', legacy:'Referencia antigua (FLT): no está en Control de ensayos',
+  alsoIn:p=>`también en ${p}`, noLots:'Aún no ha llegado ninguna muestra.', hiddenN:n=>`${n} recepción${n===1?'':'es'} oculta${n===1?'':'s'} por el filtro`,
+  by:'por', units:n=>`${n} ud${n===1?'':'s'}.`, notPrinted:'sin etiqueta', receiveFor:'+ Recibir',
+  noMatch:'Ninguna muestra cumple el filtro.', noPlr:'Ningún PLR cumple el filtro.',
+  empty_h:'Aún no hay muestras ni ensayos', empty_p:'Importa el Excel de ARAS en Import ARAS: cada PLR aparecerá aquí, listo para recibir sus muestras. También puedes recibir muestras de un PLR escribiéndolo a mano.',
+  c_sample:'Muestra', c_plr:'PLR · QTP', c_desc:'Descripción', c_proj:'Proyecto', c_phase:'Fase proyecto', c_state:'Estado', c_pn:'Part number', c_sn:'Nº serie', c_loc:'Ubicación', c_recv:'Recepción', c_com:'Comentarios',
+  several:'varios', expandAll:'Desplegar todo', collapseAll:'Contraer todo', listHelp:'Cada recepción (FLS-xxxxx) agrupa sus unidades (-1, -2…). El estado de cada unidad se cambia en la tabla; el resto, abriendo la recepción.',
+  selN:n=>`${n} unidad${n===1?'':'es'} seleccionada${n===1?'':'s'}`, setState:'Cambiar estado a…', printSel:'Imprimir etiquetas', clearSel:'Quitar selección',
+  stateChanged:n=>`Estado cambiado en ${n} unidad${n===1?'':'es'}.`,
+  rc_eyebrow:'Recepción de muestras', rc_title:'Recibir muestras',
+  f_plr:'PLR', f_plr_ph:'PLR000000', f_plr_help:'Escribe o elige el PLR. Los antiguos FLT-XXXX también sirven.',
+  f_plr2:'Otros PLR', f_plr2_help:'Si la misma muestra repite en otro ensayo. Separados por comas.',
+  qtpLines:'Ensayos (QTP) por los que pasará', piecesInfo:(p,r)=>`Piezas pedidas en ARAS: <b>${p||'—'}</b> · ya recibidas: <b>${r}</b>`,
+  plrUnknown:'Este PLR aún no está en Control de ensayos. Se guarda igual y se enlazará con sus ensayos cuando se importe de ARAS.',
+  plrPick:'Elige un PLR para ver sus ensayos.',
+  lg_sample:'Muestra', f_desc:'Descripción', f_pn:'Part number', f_phase:'Fase del proyecto', f_project:'Proyecto', f_date:'Fecha de recepción', f_by:'Recibido por', f_loc:'Ubicación', f_loc_ph:'Estantería A2', f_com:'Comentarios',
+  lg_units:'Unidades y numeración', f_qty:'Número de unidades',
+  nextCode:c=>`Se asignará <b class="mono">${c}</b>. Cada unidad lleva su sufijo (-1, -2…) y su propia etiqueta.`,
+  u_code:'Código', u_sn:'Nº serie', u_state:'Estado', u_loc:'Ubicación', u_note:'Nota', u_lbl:'Etiqueta',
+  save:'Guardar', savePrint:'Guardar e imprimir etiquetas', cancel:'Cancelar', close:'Cerrar',
+  errPlr:'Indica el PLR.', errDesc:'Escribe la descripción de la muestra.', errQty:'Tiene que haber al menos una unidad.',
+  saved:c=>`Recepción ${c} guardada.`,
+  lot_eyebrow:c=>`Recepción ${c}`, addUnit:'+ Añadir unidad', allTo:'Todas a…', withdraw:'Retirar', restore:'Recuperar',
+  printed:'Impresa', notPrintedS:'Pendiente', history:'Historial', del:'Eliminar recepción', delArm:'Pulsa otra vez para eliminar',
+  deleted:c=>`Recepción ${c} eliminada. Su número no se vuelve a usar.`, unitsHelp:'Las unidades retiradas conservan su número: no se reutiliza. Una unidad nueva recibe el siguiente sufijo libre.',
+  linked:'Ensayos enlazados', printLot:'Imprimir etiquetas',
+  log_recv:n=>`Recibida (${n} ud${n===1?'':'s'}.)`, log_state:(c,a,b)=>`${c}: ${a} → ${b}`, log_add:c=>`${c} añadida`, log_rm:c=>`${c} retirada`, log_back:c=>`${c} recuperada`, log_edit:'Datos de la recepción editados', log_print:n=>`${n} etiqueta${n===1?'':'s'} impresa${n===1?'':'s'}`,
+  lb_eyebrow:'Etiquetas · DYMO LabelWriter 550', lb_title:n=>`Imprimir ${n} etiqueta${n===1?'':'s'}`, lb_units:'Unidades', lb_all:'Todas', lb_noneSel:'Ninguna',
+  lb_size:'Etiqueta', lb_code:'Código', qr:'QR (abre la muestra en la app)', bar:'Código de barras (Code 128)', noCode:'Sin código',
+  lb_show:'Contenido', lb_plr:'PLR · QTP', lb_desc:'Descripción', lb_proj:'Proyecto', lb_phase:'Fase del proyecto', lb_date:'Fecha de recepción',
+  lb_preview:'Vista previa a tamaño real',
+  lb_how:'<b>En el cuadro de impresión:</b> impresora <b>DYMO LabelWriter 550</b>, tamaño de papel el de la etiqueta (p. ej. <i>99012 Large Address</i>), márgenes <b>ninguno</b>, escala <b>100 %</b> y sin encabezados ni pies de página. Sale una etiqueta por página.',
+  lb_print:'Imprimir', lb_done:n=>`${n} etiqueta${n===1?'':'s'} enviada${n===1?'':'s'} a la impresora.`, lb_empty:'Marca al menos una unidad.', lb_noLib:'No se ha podido cargar la librería del código. Revisa la conexión.',
+  prop_h:n=>`Códigos por validar · ${n} PLR`, prop_help:'PLR activos con piezas pedidas en ARAS que aún no tienen código. Revisa la propuesta y valida: los números FLS se asignan al validar y las unidades quedan pendientes de recibir.',
+  prop_all:'Validar todos', prop_ok:'Validar', prop_okPrint:'Validar e imprimir etiquetas', prop_skip:'Descartar',
+  prop_mode:'Piezas', prop_plr:'Las mismas para todo el PLR', prop_line:'Distintas por QTP',
+  prop_code:'Código', prop_qtp:'Ensayos (QTP)', prop_units:'Unidades', prop_desc:'Descripción',
+  propDone:n=>`${n} código${n===1?'':'s'} FLS creado${n===1?'':'s'}.`, propNone:'No hay ninguna unidad que generar.',
+  propSkipped:p=>`${p} descartado. Puedes generar sus códigos más tarde desde su tarjeta.`,
+  gen:'Generar códigos', gen_eyebrow:'Códigos de muestra desde ARAS', gen_title:p=>`Generar códigos · ${p}`,
+  gen_help:n=>n?`Este PLR ya tiene ${n} unidad${n===1?'':'es'} con código. La propuesta cubre las piezas de ARAS que faltan; ajusta las unidades si hace falta.`:'La propuesta sale de las piezas pedidas en ARAS; ajusta las unidades si hace falta.',
+  recvExp:n=>`✓ Marcar recibidas (${n})`, recvDone:n=>`${n} unidad${n===1?'':'es'} marcada${n===1?'':'s'} como recibida${n===1?'':'s'}.`,
+  expN:n=>`${n} pendiente${n===1?'':'s'} de recibir`,
+  impProp:n=>`${n} PLR con códigos de muestra por validar.`, impGo:'Ir a Muestras',
+  log_gen:n=>`Códigos generados desde ARAS (${n} ud${n===1?'':'s'}.)`,
+  ed_title:p=>`Muestras de ${p}`, ed_none:'Aún no se ha recibido ninguna muestra de este PLR.', chip:(r,p)=>p?`Muestras ${r}/${p}`:`Muestras ${r}`, notFound:c=>`No hay ninguna muestra ${c}.`
+},
+en:{
+  tab:'Samples', title:'Samples',
+  search:'Search or scan: FLS, PLR, QTP, project, serial no.…',
+  byPlr:'By PLR', list:'List', lang:'Language',
+  receive:'+ Receive samples', labels:n=>`Labels${n?` · ${n} to print`:''}`,
+  k_inlab:'In the lab', k_inlab_s:'units received, not returned',
+  k_wait:'Waiting', k_wait_s:'received, test not started',
+  k_test:'Under test', k_test_s:'units in a test',
+  k_done:'Tested', k_done_s:'to decide: store, return or scrap',
+  k_miss:'PLRs missing samples', k_miss_s:'pieces still to receive',
+  k_lbl:'Labels to print', k_lbl_s:'units without a label',
+  show:'Show:', phaseAll:'All phases', onlyMissing:'Only PLRs missing samples',
+  st:{expected:'Expected',received:'Received',waiting:'Waiting',testing:'Under test',tested:'Tested',stored:'Stored',returned:'Returned',scrapped:'Scrapped'},
+  removed:'Withdrawn',
+  recvOf:(a,b)=>`of ${b} received`, recvN:'received',
+  missing:n=>`${n} sample${n===1?'':'s'} missing`, complete:'All samples in', none:'Not received yet', extra:n=>`${n} extra`,
+  closedPlr:'Tests closed', legacy:'Old reference (FLT): not in Control de ensayos',
+  alsoIn:p=>`also in ${p}`, noLots:'No samples have arrived yet.', hiddenN:n=>`${n} reception${n===1?'':'s'} hidden by the filter`,
+  by:'by', units:n=>`${n} unit${n===1?'':'s'}`, notPrinted:'no label', receiveFor:'+ Receive',
+  noMatch:'No samples match the filter.', noPlr:'No PLRs match the filter.',
+  empty_h:'No samples or tests yet', empty_p:'Import the ARAS export in Import ARAS: each PLR will show up here, ready to receive its samples. You can also receive samples for a PLR by typing it.',
+  c_sample:'Sample', c_plr:'PLR · QTP', c_desc:'Description', c_proj:'Project', c_phase:'Project phase', c_state:'Status', c_pn:'Part number', c_sn:'Serial no.', c_loc:'Location', c_recv:'Received', c_com:'Comments',
+  several:'several', expandAll:'Expand all', collapseAll:'Collapse all', listHelp:'Each reception (FLS-xxxxx) groups its units (-1, -2…). Change the status of a unit in the table; everything else by opening the reception.',
+  selN:n=>`${n} unit${n===1?'':'s'} selected`, setState:'Set status to…', printSel:'Print labels', clearSel:'Clear selection',
+  stateChanged:n=>`Status changed on ${n} unit${n===1?'':'s'}.`,
+  rc_eyebrow:'Sample reception', rc_title:'Receive samples',
+  f_plr:'PLR', f_plr_ph:'PLR000000', f_plr_help:'Type or pick the PLR. Old FLT-XXXX references also work.',
+  f_plr2:'Other PLRs', f_plr2_help:'When the same sample is used again in another request. Comma separated.',
+  qtpLines:'Tests (QTP) it will go through', piecesInfo:(p,r)=>`Pieces requested in ARAS: <b>${p||'—'}</b> · already received: <b>${r}</b>`,
+  plrUnknown:'This PLR is not in Control de ensayos yet. It is saved anyway and linked to its tests when it is imported from ARAS.',
+  plrPick:'Pick a PLR to see its tests.',
+  lg_sample:'Sample', f_desc:'Description', f_pn:'Part number', f_phase:'Project phase', f_project:'Project', f_date:'Reception date', f_by:'Received by', f_loc:'Location', f_loc_ph:'Shelf A2', f_com:'Comments',
+  lg_units:'Units and numbering', f_qty:'Number of units',
+  nextCode:c=>`It will get <b class="mono">${c}</b>. Each unit gets its suffix (-1, -2…) and its own label.`,
+  u_code:'Code', u_sn:'Serial no.', u_state:'Status', u_loc:'Location', u_note:'Note', u_lbl:'Label',
+  save:'Save', savePrint:'Save and print labels', cancel:'Cancel', close:'Close',
+  errPlr:'Enter the PLR.', errDesc:'Enter the sample description.', errQty:'There must be at least one unit.',
+  saved:c=>`Reception ${c} saved.`,
+  lot_eyebrow:c=>`Reception ${c}`, addUnit:'+ Add unit', allTo:'Set all to…', withdraw:'Withdraw', restore:'Restore',
+  printed:'Printed', notPrintedS:'Pending', history:'History', del:'Delete reception', delArm:'Press again to delete',
+  deleted:c=>`Reception ${c} deleted. Its number is not used again.`, unitsHelp:'Withdrawn units keep their number: it is never reused. A new unit gets the next free suffix.',
+  linked:'Linked tests', printLot:'Print labels',
+  log_recv:n=>`Received (${n} unit${n===1?'':'s'})`, log_state:(c,a,b)=>`${c}: ${a} → ${b}`, log_add:c=>`${c} added`, log_rm:c=>`${c} withdrawn`, log_back:c=>`${c} restored`, log_edit:'Reception details edited', log_print:n=>`${n} label${n===1?'':'s'} printed`,
+  lb_eyebrow:'Labels · DYMO LabelWriter 550', lb_title:n=>`Print ${n} label${n===1?'':'s'}`, lb_units:'Units', lb_all:'All', lb_noneSel:'None',
+  lb_size:'Label', lb_code:'Code', qr:'QR (opens the sample in the app)', bar:'Barcode (Code 128)', noCode:'No code',
+  lb_show:'Content', lb_plr:'PLR · QTP', lb_desc:'Description', lb_proj:'Project', lb_phase:'Project phase', lb_date:'Reception date',
+  lb_preview:'Preview at real size',
+  lb_how:'<b>In the print dialog:</b> printer <b>DYMO LabelWriter 550</b>, paper size of the label (e.g. <i>99012 Large Address</i>), margins <b>none</b>, scale <b>100%</b> and no headers or footers. One label per page.',
+  lb_print:'Print', lb_done:n=>`${n} label${n===1?'':'s'} sent to the printer.`, lb_empty:'Tick at least one unit.', lb_noLib:'Could not load the code library. Check the connection.',
+  prop_h:n=>`Codes to validate · ${n} PLR${n===1?'':'s'}`, prop_help:'Active PLRs with pieces requested in ARAS that have no code yet. Check the proposal and validate: the FLS numbers are assigned when you validate, and the units wait to be received.',
+  prop_all:'Validate all', prop_ok:'Validate', prop_okPrint:'Validate and print labels', prop_skip:'Dismiss',
+  prop_mode:'Pieces', prop_plr:'Same for the whole PLR', prop_line:'Different per QTP',
+  prop_code:'Code', prop_qtp:'Tests (QTP)', prop_units:'Units', prop_desc:'Description',
+  propDone:n=>`${n} FLS code${n===1?'':'s'} created.`, propNone:'There are no units to create.',
+  propSkipped:p=>`${p} dismissed. You can create its codes later from its card.`,
+  gen:'Create codes', gen_eyebrow:'Sample codes from ARAS', gen_title:p=>`Create codes · ${p}`,
+  gen_help:n=>n?`This PLR already has ${n} unit${n===1?'':'s'} with a code. The proposal covers the ARAS pieces still missing; change the units if needed.`:'The proposal comes from the pieces requested in ARAS; change the units if needed.',
+  recvExp:n=>`✓ Mark received (${n})`, recvDone:n=>`${n} unit${n===1?'':'s'} marked as received.`,
+  expN:n=>`${n} expected`,
+  impProp:n=>`${n} PLR${n===1?'':'s'} with sample codes to validate.`, impGo:'Go to Samples',
+  log_gen:n=>`Codes created from ARAS (${n} unit${n===1?'':'s'})`,
+  ed_title:p=>`Samples of ${p}`, ed_none:'No samples of this PLR have been received yet.', chip:(r,p)=>p?`Samples ${r}/${p}`:`Samples ${r}`, notFound:c=>`There is no sample ${c}.`
+}};
+let SMP_LANG='es'; try{SMP_LANG=localStorage.getItem('tl.lang')==='en'?'en':'es';}catch(e){}
+const tx=(k,...a)=>{const v=SMP_I18N[SMP_LANG][k]??SMP_I18N.es[k]??k; return typeof v==='function'?v(...a):v;};
+const smpSt=s=>tx('st')[s]||s;
+S.samples=[];
+S.smp={sv:'plr',sst:new Set(SMP_DEFAULT),phase:'',onlyMissing:false,collapsed:new Set(),sel:new Set(),edit:null,rc:null,lb:null,prop:{}};
+try{if(localStorage.getItem('tl.smp.view')==='list') S.smp.sv='list';}catch(e){}
+
+/* Helpers */
+const smpLive=l=>(l.units||[]).filter(u=>!u.removed);
+const smpIn=l=>smpLive(l).filter(u=>u.state!=='expected');   // units physically received
+const smpCode=(l,u)=>`${l.code}-${u.n}`;
+const smpKey=(l,u)=>`${l.id}:${u.n}`;
+const smpByKey=k=>{const [id,n]=String(k).split(':'); const l=S.samples.find(x=>x.id===id); const u=l&&(l.units||[]).find(x=>x.n===+n); return l&&u?{l,u}:null;};
+const smpPlrKey=p=>String(p||'').trim().toUpperCase();
+const smpBySeq=(a,b)=>(+a.sequence||99)-(+b.sequence||99)||String(a.qtp).localeCompare(String(b.qtp));
+const smpTestsOfPlr=p=>S.tests.filter(x=>smpPlrKey(x.plr)===smpPlrKey(p)).sort(smpBySeq);
+/* Tests of a reception: the ones ticked at reception; for a PLR with none ticked (e.g. imported from ARAS later), all of its tests. */
+function smpLotTests(l){
+  const ids=new Set(l.tests||[]);
+  return (l.plrs||[]).flatMap(p=>{const all=smpTestsOfPlr(p), picked=all.filter(x=>ids.has(x.id)); return picked.length?picked:all;});
+}
+/* Pieces a PLR expects: its lines share the samples (the largest number of pieces of a line), unless its receptions are
+   split per QTP line, as "different per QTP" creates them: then each line brings its own pieces. */
+function smpPieces(p){
+  const ts=smpTestsOfPlr(p), ids=new Set(ts.map(x=>x.id)), own=new Set();
+  S.samples.filter(l=>(l.plrs||[]).includes(smpPlrKey(p))).forEach(l=>{const mine=(l.tests||[]).filter(id=>ids.has(id)); if(mine.length===1) own.add(mine[0]);});
+  return own.size>1?ts.reduce((a,x)=>a+(+x.pieces||0),0):Math.max(0,...ts.map(x=>+x.pieces||0));
+}
+const smpRecv=p=>S.samples.filter(l=>(l.plrs||[]).includes(smpPlrKey(p))).reduce((a,l)=>a+smpIn(l).length,0);
+const smpNum=l=>+((String(l.code||'').match(/\d{5}/)||[0])[0]);
+const smpNextSeq=()=>Math.max(+((S.cfg.samples||{}).seq)||0,0,...S.samples.map(smpNum))+1;
+const smpFmtCode=n=>`FLS-${String(n).padStart(5,'0')}`;
+const smpLegacy=p=>/^FLT/i.test(p);
+const smpWho=id=>id?(personById(id)?.nombre||id):'';
+const smpLogTxt=e=>e.txt&&e.txt.k?tx(e.txt.k,...(e.txt.a||[]).map(x=>x&&x.st?smpSt(x.st):x)):String(e.txt||'');
+const smpLog=(k,...a)=>({at:nowIso(),by:GH.login||'',txt:{k,a}});
+const smpProj=p=>projCell({project:p});
+const smpPhase=p=>{ if(!p) return '<span class="muted">—</span>'; const i=SMP_PHASES.indexOf(p);
+  if(p==='N/A'||i<0) return `<span class="phase na">${esc(p)}</span>`;
+  return `<span class="phase" title="${esc(p)}"><span class="p5" aria-hidden="true">${[0,1,2,3,4].map(k=>`<i class="${k<=i?'on':''}"></i>`).join('')}</span>${esc(p)}</span>`;};
+const smpChipU=(l,u)=>`<i class="u st-${SMP_CLS[u.state]}${u.removed?' rm':''}${!u.printed&&!u.removed?' np':''}" title="${esc(smpCode(l,u))} · ${esc(u.removed?tx('removed'):smpSt(u.state))}${!u.printed&&!u.removed?' · '+esc(tx('notPrinted')):''}">${u.n}</i>`;
+function smpSummary(l){
+  const L=smpLive(l), c={}; L.forEach(u=>c[u.state]=(c[u.state]||0)+1);
+  const keys=SMP.filter(s=>c[s]);
+  return `<div class="ssum"><div class="sbar">${keys.map(s=>`<i class="st-${SMP_CLS[s]}" style="flex:${c[s]}"></i>`).join('')}</div>${keys.map(s=>`<span class="st-${SMP_CLS[s]}">${c[s]} ${esc(smpSt(s))}</span>`).join('')}${(l.units||[]).length>L.length?`<small>${(l.units||[]).length-L.length} ${esc(tx('removed').toLowerCase())}</small>`:''}</div>`;
+}
+function smpMatch(l,q){ if(!q) return true; q=norm(q);
+  return [l.code,l.desc,l.pn,l.project,l.loc,l.comments,smpWho(l.by),...(l.plrs||[]),...(l.units||[]).flatMap(u=>[smpCode(l,u),u.serial,u.loc,u.note]),...smpLotTests(l).flatMap(x=>[x.qtp,x.title])].some(v=>norm(v).includes(q)); }
+const smpInState=l=>smpLive(l).some(u=>S.smp.sst.has(u.state));
+const smpVisible=l=>smpInState(l)&&(!S.smp.phase||l.phase===S.smp.phase)&&smpMatch(l,S.q);
+function smpGroups(){
+  const M=new Map(), get=p=>{p=smpPlrKey(p); if(!M.has(p)) M.set(p,{plr:p,tests:[],lots:[]}); return M.get(p);};
+  S.tests.forEach(x=>{ if(x.plr) get(x.plr).tests.push(x); });
+  S.samples.forEach(l=>(l.plrs||[]).forEach(p=>get(p).lots.push(l)));
+  return [...M.values()].map(g=>{ g.tests.sort(smpBySeq);
+    g.active=g.tests.some(x=>ACTIVE.includes(x.status)&&x.status!=='Not approved'); g.legacy=!g.tests.length;
+    g.pieces=smpPieces(g.plr); g.recv=g.lots.reduce((a,l)=>a+smpIn(l).length,0); g.exp=g.lots.flatMap(l=>smpLive(l).filter(u=>u.state==='expected').map(u=>smpKey(l,u)));
+    g.project=(g.tests[0]||{}).project||(g.lots[0]||{}).project||''; g.requester=(g.tests[0]||{}).requester||'';
+    g.rc=g.legacy?'rc-legacy':!g.active?'rc-closed':g.recv===0?'rc-none':g.pieces&&g.recv<g.pieces?'rc-part':'rc-ok';
+    g.rank=g.legacy?4:!g.active?3:g.rc==='rc-ok'?2:g.rc==='rc-part'?0:1; return g;});
+}
+function smpKpis(){
+  const U=S.samples.flatMap(smpLive), n=s=>U.filter(u=>u.state===s).length;
+  return {inlab:U.filter(u=>!['expected','returned','scrapped'].includes(u.state)).length,wait:n('received')+n('waiting'),test:n('testing'),done:n('tested'),
+    miss:smpGroups().filter(g=>g.active&&g.pieces>g.recv).length,lbl:U.filter(u=>!u.printed).length};
+}
+const smpMissingCount=()=>smpGroups().filter(g=>g.active&&g.pieces>g.recv).length;
+const smpPending=()=>S.samples.flatMap(l=>smpLive(l).filter(u=>!u.printed).map(u=>smpKey(l,u)));
+
+/* ---------- Codes from the ARAS requests ----------
+   Every active PLR with pieces in ARAS and no codes gets a proposal: one reception for the whole PLR when its QTP lines
+   share the samples, or one per line when each line has its own pieces (the default when the lines ask for different
+   numbers of pieces). A proposal takes no number: the next free FLS numbers go to it when someone validates it. */
+const smpCfg=()=>S.cfg.samples||{};
+const smpSkipped=p=>!!(smpCfg().skip||{})[smpPlrKey(p)];
+const smpLines=p=>smpTestsOfPlr(p).filter(x=>ACTIVE.includes(x.status)&&x.status!=='Not approved'&&+x.pieces>0);
+function smpProposal(p){
+  p=smpPlrKey(p); const st=S.smp.prop[p]||{}, ls=smpLines(p), all=smpTestsOfPlr(p), t0=all[0]||{};
+  const mode=ls.length>1?(st.mode||(new Set(ls.map(x=>+x.pieces)).size>1?'line':'plr')):'plr';
+  const lots=S.samples.filter(l=>(l.plrs||[]).includes(p)), units=ls2=>ls2.reduce((a,l)=>a+smpLive(l).length,0);
+  const groups=mode==='line'
+    ?ls.map(x=>({key:x.id,tests:[x.id],qtps:[x.qtp],desc:x.title||t0.project||p,need:Math.max(0,+x.pieces-units(lots.filter(l=>(l.tests||[]).includes(x.id))))}))
+    :[(src=>({key:'plr',tests:src.map(x=>x.id),qtps:src.map(x=>x.qtp),desc:[...new Set(src.map(x=>x.title).filter(Boolean))].join(' / ')||t0.project||p,
+        need:Math.max(0,Math.max(0,...ls.map(x=>+x.pieces))-units(lots))}))(ls.length?ls:all)];
+  // A forced proposal (button on the card) offers one unit when ARAS asks for nothing more.
+  const none=!groups.some(g=>g.need);
+  groups.forEach((g,i)=>{const q=(st.qty||{})[g.key]; g.qty=q!=null?q:st.force&&none&&!i?1:g.need;});
+  return {plr:p,mode,canSplit:ls.length>1,groups,project:t0.project||'',requester:t0.requester||'',have:units(lots)};
+}
+const smpProposals=()=>smpGroups().filter(g=>g.active&&!g.legacy&&!smpSkipped(g.plr)).map(g=>smpProposal(g.plr)).filter(P=>P.groups.some(g=>g.need>0));
+/* One proposal; next.n numbers the preview in the order shown. */
+function smpPropBlock(P,next){
+  const rows=P.groups.map(g=>{const n=g.qty>0?next.n++:0;
+    return `<tr><td class="ref nowrap">${n?esc(smpFmtCode(n))+(g.qty>1?`-1…${g.qty}`:'-1'):'<span class="muted">—</span>'}</td><td>${esc(g.qtps.join(' · ')||'—')}</td>
+      <td><input type="number" min="0" max="200" data-pq="${esc(P.plr)}|${esc(g.key)}" value="${g.qty}" aria-label="${esc(tx('prop_units'))} ${esc(g.qtps.join(' '))}"></td><td>${esc(g.desc)}</td></tr>`;}).join('');
+  return `<div class="prop"><div class="prop-h"><b class="ref">${esc(P.plr)}</b>${smpProj(P.project)}${P.requester?`<span class="muted">${esc(tx('by'))} ${esc(P.requester)}</span>`:''}
+      ${P.canSplit?`<span class="sp"></span><span class="muted" style="font-size:13px">${esc(tx('prop_mode'))}</span><div class="seg" role="group" aria-label="${esc(tx('prop_mode'))}"><button type="button" data-sa="prop-mode" data-plr="${esc(P.plr)}" data-m="plr" aria-pressed="${P.mode==='plr'}">${esc(tx('prop_plr'))}</button><button type="button" data-sa="prop-mode" data-plr="${esc(P.plr)}" data-m="line" aria-pressed="${P.mode==='line'}">${esc(tx('prop_line'))}</button></div>`:''}</div>
+    <div class="scroll-x"><table class="utbl"><thead><tr><th>${esc(tx('prop_code'))}</th><th>${esc(tx('prop_qtp'))}</th><th>${esc(tx('prop_units'))}</th><th>${esc(tx('prop_desc'))}</th></tr></thead><tbody>${rows}</tbody></table></div></div>`;
+}
+const smpPropActs=p=>`<button type="button" class="btn sm ghost" data-sa="prop-skip" data-plr="${esc(p)}">${esc(tx('prop_skip'))}</button><span class="sp"></span><button type="button" class="btn sm" data-sa="prop-ok" data-plr="${esc(p)}">${esc(tx('prop_ok'))}</button><button type="button" class="btn sm primary" data-sa="prop-ok-print" data-plr="${esc(p)}">🏷 ${esc(tx('prop_okPrint'))}</button>`;
+function smpPropPanel(){
+  if(S.ro||S.noDb) return ''; const Ps=smpProposals(); if(!Ps.length) return '';
+  const next={n:smpNextSeq()};
+  return `<details class="panel smp-prop" open><summary class="panel-h"><h2>${esc(tx('prop_h',Ps.length))}</h2><span class="muted">${esc(tx('prop_help'))}</span><span class="sp"></span>${Ps.length>1?`<button type="button" class="btn sm primary" data-sa="prop-all">${esc(tx('prop_all'))}</button>`:''}</summary>
+    <div class="prop-list">${Ps.map(P=>`<div class="prop-item">${smpPropBlock(P,next)}<div class="row">${smpPropActs(P.plr)}</div></div>`).join('')}</div></details>`;
+}
+/* Validating creates the receptions with consecutive numbers and the counter in one commit; the units wait as "expected". */
+async function smpValidate(plrs,print){
+  if(S.ro||!db) return;
+  let n=smpNextSeq()-1, made=0; const now=nowIso(), jobs=[], keys=[], skip={...(smpCfg().skip||{})};
+  for(const p of plrs){ const P=smpProposal(p);
+    for(const g of P.groups){ if(!(g.qty>0)) continue; n++; made++; const id=rid();
+      const units=Array.from({length:g.qty},(_,i)=>({n:i+1,state:'expected',serial:'',loc:'',note:'',removed:false,printed:false}));
+      jobs.push(db.doc(`${COL.samples}/${id}`).set({code:smpFmtCode(n),plrs:[P.plr],tests:g.tests,desc:g.desc,pn:'',phase:'',project:P.project,received:'',by:'',loc:'',comments:'',
+        units,source:'ARAS',log:[smpLog('log_gen',g.qty)],created:now,updated:now}));
+      units.forEach(u=>keys.push(`${id}:${u.n}`)); }
+    delete skip[P.plr]; delete S.smp.prop[P.plr]; }
+  if(!made) return toast(tx('propNone'));
+  jobs.push(db.doc('config/samples').set({...smpCfg(),seq:n,skip,updated:now}));
+  try{await Promise.all(jobs); if(dlg.open&&dlg.dataset.kind==='smp-gen') dlg.close(); toast(tx('propDone',made)); render(); if(print) smpOpenLabels(keys);}
+  catch(e){toast(errMsg(e));}
+}
+async function smpSkip(p){
+  if(S.ro||!db) return; p=smpPlrKey(p);
+  try{await db.doc('config/samples').set({...smpCfg(),skip:{...(smpCfg().skip||{}),[p]:true},updated:nowIso()}); delete S.smp.prop[p]; toast(tx('propSkipped',p)); render();}catch(e){toast(errMsg(e));}
+}
+/* "Create codes" on a PLR card: the same proposal in a dialog, also for a dismissed PLR or one ARAS has changed. */
+function smpOpenGen(p){
+  if(S.ro) return; p=smpPlrKey(p); S.smp.prop[p]={...(S.smp.prop[p]||{}),force:true};
+  dlg.dataset.kind='smp-gen'; dlg.dataset.id=p; smpGenRender(); if(!dlg.open) dlg.showModal();
+}
+function smpGenRender(){
+  const P=smpProposal(dlg.dataset.id);
+  dlg.innerHTML=smpShell(tx('gen_eyebrow'),tx('gen_title',P.plr),`<p class="note">${esc(tx('gen_help',P.have))}</p>${smpPropBlock(P,{n:smpNextSeq()})}`,
+    `<span class="sp"></span><button type="button" class="btn ghost" data-act="close">${esc(tx('cancel'))}</button><button type="button" class="btn" data-sa="prop-ok" data-plr="${esc(P.plr)}">${esc(tx('prop_ok'))}</button><button type="button" class="btn primary" data-sa="prop-ok-print" data-plr="${esc(P.plr)}">🏷 ${esc(tx('prop_okPrint'))}</button>`);
+}
+const smpPropRerender=()=>dlg.open&&dlg.dataset.kind==='smp-gen'?smpGenRender():render();
+
+/* Board cards and the test editor show the samples of the PLR. */
+function smpTestChip(t){
+  if(!t.plr) return ''; const p=smpPieces(t.plr), r=smpRecv(t.plr); if(!p&&!r) return '';
+  return `<span class="chip smp-chip ${p&&r<p&&counts(t)?'warn':''}" title="${esc(tx('ed_title',t.plr))}">📦 ${esc(tx('chip',r,p))}</span>`;
+}
+function smpEditorBlock(t){
+  if(!t||!t.plr) return '';
+  const lots=S.samples.filter(l=>(l.plrs||[]).includes(smpPlrKey(t.plr))).sort((a,b)=>a.code.localeCompare(b.code));
+  const p=smpPieces(t.plr), r=smpRecv(t.plr);
+  return `<div><div class="row" style="margin-bottom:6px"><p class="eyebrow">${esc(tx('ed_title',t.plr))} · ${r}${p?` / ${p}`:''}</p><span class="sp"></span>${S.ro?'':`<button type="button" class="btn sm" data-sa="receive" data-plr="${esc(t.plr)}">${esc(tx('receiveFor'))}</button>`}</div>
+    ${lots.length?`<div class="lots">${lots.map(l=>smpLotBtn(l,t.plr)).join('')}</div>`:`<p class="note">${esc(tx('ed_none'))}</p>`}</div>`;
+}
+function smpLotBtn(l,plr){
+  const others=(l.plrs||[]).filter(p=>p!==smpPlrKey(plr));
+  return `<button type="button" class="lot" data-sa="lot" data-id="${esc(l.id)}"><span class="ref">${esc(l.code)}</span><span class="ds">${esc(l.desc)}</span>${smpPhase(l.phase)}
+    <span class="m2"><span class="uchips">${(l.units||[]).map(u=>smpChipU(l,u)).join('')}</span><span>${esc(tx('units',smpLive(l).length))}</span>${others.length?`<span class="chip">${esc(tx('alsoIn',others.join(', ')))}</span>`:''}<span>${fmt(l.received)}</span>${l.loc?`<span>📍 ${esc(l.loc)}</span>`:''}</span></button>`;
+}
+
+/* ---------- Samples view ---------- */
+function vSamples(){
+  const k=smpKpis(), V=S.smp;
+  $('#smp-plr-list').innerHTML=[...new Map(S.tests.filter(x=>x.plr).map(x=>[smpPlrKey(x.plr),x])).values()].map(x=>`<option value="${esc(smpPlrKey(x.plr))}">${esc(projectNo(x))} · ${esc(x.title||'')}</option>`).join('');
+  $('#smp-loc-list').innerHTML=[...new Set(S.samples.flatMap(l=>[l.loc,...(l.units||[]).map(u=>u.loc)]).filter(Boolean))].sort().map(v=>`<option value="${esc(v)}">`).join('');
+  if(!S.tests.length&&!S.samples.length) return `<div class="empty"><p class="eyebrow">${esc(tx('title'))}</p><h3>${esc(tx('empty_h'))}</h3><p>${esc(tx('empty_p'))}</p>
+    <div class="row">${S.ro||S.noDb?'':`<button class="btn primary" data-view="import">Import ARAS</button><button class="btn" data-sa="receive">${esc(tx('receive'))}</button>`}${smpLangSeg()}</div></div>`;
+  const kpi=(act,lab,val,sub,cls='')=>`<button class="kpi ${cls}" data-sa="kpi" data-k="${act}"><span class="eyebrow">${esc(lab)}</span><b>${val}</b><span class="muted">${esc(sub)}</span></button>`;
+  const chips=SMP.map(s=>`<button type="button" class="chipbtn st-${SMP_CLS[s]}" data-sa="sst" data-s="${s}" aria-pressed="${V.sst.has(s)}">${esc(smpSt(s))}</button>`).join('');
+  return `<div class="view-h smp-h"><h2>${esc(tx('title'))}</h2>
+    <input class="search" id="q" type="search" placeholder="${esc(tx('search'))}" value="${esc(S.q)}" aria-label="${esc(tx('search'))}">
+    <div class="seg" role="group" aria-label="${esc(tx('title'))}"><button data-sa="sv" data-v="plr" aria-pressed="${V.sv==='plr'}">${esc(tx('byPlr'))}</button><button data-sa="sv" data-v="list" aria-pressed="${V.sv==='list'}">${esc(tx('list'))}</button></div>
+    ${smpLangSeg()}
+    <button class="btn" data-sa="labels-pending">🏷 ${esc(tx('labels',k.lbl))}</button>
+    ${S.ro?'':`<button class="btn primary" data-sa="receive">${esc(tx('receive'))}</button>`}</div>
+  ${smpPropPanel()}
+  <section class="kpis">
+    ${kpi('inlab',tx('k_inlab'),k.inlab,tx('k_inlab_s'))}
+    ${kpi('wait',tx('k_wait'),k.wait,tx('k_wait_s'))}
+    ${kpi('test',tx('k_test'),k.test,tx('k_test_s'))}
+    ${kpi('done',tx('k_done'),k.done,tx('k_done_s'),k.done?'warn':'')}
+    ${kpi('miss',tx('k_miss'),k.miss,tx('k_miss_s'),k.miss?'crit':'')}
+    ${kpi('lbl',tx('k_lbl'),k.lbl,tx('k_lbl_s'),k.lbl?'warn':'')}
+  </section>
+  <div class="row smp-filters" role="group" aria-label="${esc(tx('show'))}"><span class="muted" style="font-size:13px">${esc(tx('show'))}</span>${chips}
+    <select class="fsel" id="smp-phase" aria-label="${esc(tx('c_phase'))}"><option value="">${esc(tx('phaseAll'))}</option>${SMP_PHASES.map(p=>`<option ${V.phase===p?'selected':''}>${p}</option>`).join('')}</select>
+    ${V.sv==='plr'?`<label class="check" style="font-size:13px"><input type="checkbox" id="smp-only-missing" ${V.onlyMissing?'checked':''}> ${esc(tx('onlyMissing'))}</label>`:''}</div>
+  ${V.sv==='plr'?smpByPlr():smpList()}`;
+}
+const smpLangSeg=()=>`<div class="seg" role="group" aria-label="${esc(tx('lang'))}"><button data-sa="lang" data-l="es" aria-pressed="${SMP_LANG==='es'}">ES</button><button data-sa="lang" data-l="en" aria-pressed="${SMP_LANG==='en'}">EN</button></div>`;
+function smpByPlr(){
+  const q=S.q, V=S.smp;
+  const gs=smpGroups().filter(g=>{
+    const lotsOk=g.lots.filter(smpVisible);
+    if(V.onlyMissing&&!(g.active&&g.pieces>g.recv)) return false;
+    if(V.phase&&!lotsOk.length) return false;
+    const textOk=!q||[g.plr,g.project,g.requester,...g.tests.flatMap(x=>[x.qtp,x.title])].some(v=>norm(v).includes(norm(q)))||g.lots.some(l=>smpMatch(l,q));
+    if(!textOk) return false;
+    return g.active||lotsOk.length;
+  }).sort((a,b)=>a.rank-b.rank||b.plr.localeCompare(a.plr));
+  if(!gs.length) return `<div class="empty-ok">${esc(tx('noPlr'))}</div>`;
+  return `<div class="pgrid">${gs.map(smpCard).join('')}</div>`;
+}
+function smpCard(g){
+  const V=S.smp, shown=g.lots.filter(l=>smpInState(l)&&(!V.phase||l.phase===V.phase)).sort((a,b)=>a.code.localeCompare(b.code)), hidden=g.lots.length-shown.length;
+  const pct=g.pieces?Math.min(100,g.recv/g.pieces*100):(g.recv?100:0);
+  const status=g.legacy?`<span class="wtag mut">${esc(tx('legacy'))}</span>`
+    :!g.active?`<span class="wtag mut">${esc(tx('closedPlr'))}</span>`
+    :g.recv===0?`<span class="wtag crit">${esc(tx('none'))}</span>`
+    :g.pieces&&g.recv<g.pieces?`<span class="wtag">${esc(tx('missing',g.pieces-g.recv))}</span>`
+    :g.pieces&&g.recv>g.pieces?`<span class="wtag mut">${esc(tx('extra',g.recv-g.pieces))}</span>`:`<span class="wtag ok">${esc(tx('complete'))}</span>`;
+  return `<article class="pcard ${g.rc}">
+    <div class="pc-h"><div class="who"><span class="plr">${esc(g.plr)}</span><div class="chips">${smpProj(g.project)}</div>${g.requester?`<span class="by">${esc(tx('by'))} ${esc(g.requester)}</span>`:''}</div>
+      <div class="recv"><b>${g.recv}</b>${g.pieces?` / ${g.pieces}`:''}<br>${esc(g.pieces?tx('recvOf',g.recv,g.pieces):tx('recvN'))}<div class="prog"><span style="width:${pct}%"></span></div></div></div>
+    ${g.tests.length?`<ol class="qlines">${g.tests.map(x=>`<li><span class="seq">${esc(x.sequence||'·')}</span><button type="button" class="link ref" data-act="edit" data-id="${esc(x.id)}">${esc(x.qtp)}</button><span class="tt" title="${esc(x.title)}">${esc(x.title)}</span>${estPill(x.status)}${resTag(x.result)}</li>`).join('')}</ol>`:''}
+    <div class="lots">${shown.map(l=>smpLotBtn(l,g.plr)).join('')||(g.lots.length?'':`<p class="note">${esc(tx('noLots'))}</p>`)}${hidden?`<span class="hidden-n">${esc(tx('hiddenN',hidden))}</span>`:''}</div>
+    <div class="pc-f">${status}${g.exp.length?`<span class="wtag mut">${esc(tx('expN',g.exp.length))}</span>`:''}<span class="sp"></span>${g.legacy||S.ro?'':`${g.exp.length?`<button class="btn sm primary" data-sa="recv-exp" data-plr="${esc(g.plr)}">${esc(tx('recvExp',g.exp.length))}</button>`:''}<button class="btn sm" data-sa="gen" data-plr="${esc(g.plr)}">${esc(tx('gen'))}</button><button class="btn sm" data-sa="receive" data-plr="${esc(g.plr)}">${esc(tx('receiveFor'))}</button>`}</div>
+  </article>`;
+}
+function smpList(){
+  const V=S.smp, lots=S.samples.filter(smpVisible).sort((a,b)=>b.code.localeCompare(a.code));
+  const st=(u,k,c)=>u.removed?`<span class="rm-tag">${esc(tx('removed'))}</span>`:S.ro?`<span class="pill est st-${SMP_CLS[u.state]}">${esc(smpSt(u.state))}</span>`
+    :`<select class="st-sel st-${SMP_CLS[u.state]}" data-setunit="${esc(k)}" aria-label="${esc(tx('c_state'))} ${esc(c)}">${SMP.map(s=>`<option value="${s}" ${s===u.state?'selected':''}>${esc(smpSt(s))}</option>`).join('')}</select>`;
+  const rows=lots.map(l=>{
+    const open=!V.collapsed.has(l.id), L=smpLive(l), allSel=L.length&&L.every(u=>V.sel.has(smpKey(l,u)));
+    const serials=[...new Set(L.map(u=>u.serial).filter(Boolean))], qtps=smpLotTests(l).map(x=>x.qtp);
+    const head=`<tr class="lot-row click" data-sa="lot" data-id="${esc(l.id)}">
+      <td class="ck"><input type="checkbox" data-sellot="${esc(l.id)}" ${allSel?'checked':''} aria-label="${esc(l.code)}"></td>
+      <td class="nowrap"><button type="button" class="tog" data-sa="tog" data-id="${esc(l.id)}" aria-expanded="${open}" aria-label="${esc(open?tx('collapseAll'):tx('expandAll'))}"><span>▾</span></button><span class="ref"><b>${esc(l.code)}</b></span><small style="padding-left:20px">${esc(tx('units',L.length))}</small></td>
+      <td><div class="chips">${(l.plrs||[]).map(p=>`<span class="chip">${esc(p)}</span>`).join('')}</div><small>${esc(qtps.join(' · ')||'—')}</small></td>
+      <td><b>${esc(l.desc)}</b></td>
+      <td>${smpProj(l.project)}</td>
+      <td>${smpPhase(l.phase)}</td>
+      <td>${smpSummary(l)}</td>
+      <td class="mono">${esc(l.pn||'—')}</td>
+      <td class="mono">${serials.length>1?`<span class="muted">${esc(tx('several'))}</span>`:esc(serials[0]||'—')}</td>
+      <td>${esc(l.loc||'—')}</td>
+      <td class="nowrap">${fmt(l.received)}<small>${esc(smpWho(l.by))}</small></td>
+      <td>${l.comments?`<span class="snip" title="${esc(l.comments)}">${esc(l.comments)}</span>`:''}</td></tr>`;
+    const units=open?(l.units||[]).map(u=>{const k=smpKey(l,u), c=smpCode(l,u);
+      return `<tr class="unit-row click ${u.removed?'rm':'strow st-'+SMP_CLS[u.state]}" data-sa="lot" data-id="${esc(l.id)}">
+      <td class="ck">${u.removed?'':`<input type="checkbox" data-sel="${esc(k)}" ${V.sel.has(k)?'checked':''} aria-label="${esc(c)}">`}</td>
+      <td class="ref nowrap u-code"><b>${esc(c)}</b>${!u.printed&&!u.removed?`<span class="np-tag">${esc(tx('notPrinted'))}</span>`:''}</td>
+      <td colspan="4"><span class="snip muted">${esc(u.note||'')}</span></td>
+      <td>${st(u,k,c)}</td><td></td><td class="mono">${esc(u.serial||'')}</td><td>${esc(u.loc||'')}</td><td></td><td></td></tr>`;}).join(''):'';
+    return head+units;}).join('');
+  const nsel=V.sel.size;
+  return `${nsel?`<div class="selbar"><span>${esc(tx('selN',nsel))}</span>${S.ro?'':`<select class="fsel" id="smp-sel-state"><option value="">${esc(tx('setState'))}</option>${SMP.map(s=>`<option value="${s}">${esc(smpSt(s))}</option>`).join('')}</select>`}<button class="btn sm" data-sa="print-sel">🏷 ${esc(tx('printSel'))}</button><button class="btn sm ghost" data-sa="clear-sel">${esc(tx('clearSel'))}</button></div>`:''}
+  <section class="panel"><div class="panel-h"><h2>${lots.length} · ${esc(tx('title').toLowerCase())}</h2><span class="muted">${esc(tx('listHelp'))}</span><button class="btn sm ghost" data-sa="tog-all">${esc(V.collapsed.size?tx('expandAll'):tx('collapseAll'))}</button></div>
+  ${lots.length?`<div class="scroll-x"><table class="tbl compact smp-tbl"><thead><tr><th class="ck"></th><th>${esc(tx('c_sample'))}</th><th>${esc(tx('c_plr'))}</th><th>${esc(tx('c_desc'))}</th><th>${esc(tx('c_proj'))}</th><th>${esc(tx('c_phase'))}</th><th>${esc(tx('c_state'))}</th><th>${esc(tx('c_pn'))}</th><th>${esc(tx('c_sn'))}</th><th>${esc(tx('c_loc'))}</th><th>${esc(tx('c_recv'))}</th><th>${esc(tx('c_com'))}</th></tr></thead><tbody>${rows}</tbody></table></div>`:`<div class="empty-ok">${esc(tx('noMatch'))}</div>`}
+  </section>`;
+}
+
+/* ---------- Samples dialogs ---------- */
+function smpShell(eyebrow,title,body,footer){
+  return `<form class="dlg-form" id="dlg-form" novalidate><header class="dlg-h"><div><p class="eyebrow">${esc(eyebrow)}</p><h2>${esc(title)}</h2></div><button type="button" class="icon-btn" data-act="close" aria-label="${esc(tx('close'))}">×</button></header>
+  <div class="dlg-body">${body}<div id="f-err" class="form-err" hidden></div></div><footer class="dlg-f">${footer}</footer></form>`;
+}
+const smpPeople=()=>[['',''],...[...S.people].sort(byName).map(p=>[p.id,p.nombre])];
+const smpSplit=s=>[...new Set(String(s||'').split(/[,;\s]+/).map(smpPlrKey).filter(Boolean))];
+const smpFd=()=>{const fd=new FormData($('#dlg-form')); return {fd,g:k=>String(fd.get(k)||'').trim()};};
+
+function smpOpenReceive(plr){
+  if(S.ro) return;
+  S.smp.rc={units:[{serial:'',note:''}],qtyTouched:false};
+  dlg.dataset.kind='smp-rc'; dlg.dataset.id='';
+  const body=`<fieldset><legend>${esc(tx('f_plr'))}</legend>
+      ${fld('f-plr',esc(tx('f_plr')),inp('plr',plr||'','text',`list="smp-plr-list" placeholder="${esc(tx('f_plr_ph'))}" autocomplete="off"`),'req',esc(tx('f_plr_help')))}
+      ${fld('f-plr2',esc(tx('f_plr2')),inp('plr2','','text','placeholder="PLR003707, FLT-0179"'),'',esc(tx('f_plr2_help')))}
+      <div class="span2" id="smp-rc-plr"></div></fieldset>
+    <fieldset><legend>${esc(tx('lg_sample'))}</legend>
+      ${fld('f-desc',esc(tx('f_desc')),inp('desc',''),'req span2')}
+      ${fld('f-pn',esc(tx('f_pn')),inp('pn',''))}
+      ${fld('f-phase',esc(tx('f_phase')),sel('phase','',[['',''],...SMP_PHASES]))}
+      ${fld('f-project',esc(tx('f_project')),inp('project','','text','placeholder="25046 - PROJECT NAME"'))}
+      ${fld('f-received',esc(tx('f_date')),inp('received',iso(todayMs()),'date'))}
+      ${fld('f-by',esc(tx('f_by')),sel('by','',smpPeople()))}
+      ${fld('f-loc',esc(tx('f_loc')),inp('loc','','text',`list="smp-loc-list" placeholder="${esc(tx('f_loc_ph'))}"`))}
+      ${fld('f-comments',esc(tx('f_com')),`<textarea id="f-comments" name="comments"></textarea>`,'span2')}</fieldset>
+    <fieldset><legend>${esc(tx('lg_units'))}</legend>
+      <div class="field"><label for="smp-qty">${esc(tx('f_qty'))}</label><div class="qty"><button type="button" data-sa="qty" data-d="-1" aria-label="−">−</button><input id="smp-qty" type="number" min="1" max="200" value="1"><button type="button" data-sa="qty" data-d="1" aria-label="+">+</button></div></div>
+      <p class="note span2">${tx('nextCode',smpFmtCode(smpNextSeq()))}</p>
+      <div class="span2 scroll-x" id="smp-rc-units"></div></fieldset>`;
+  dlg.innerHTML=smpShell(tx('rc_eyebrow'),tx('rc_title'),body,`<span class="sp"></span><button type="button" class="btn ghost" data-act="close">${esc(tx('cancel'))}</button><button class="btn" type="submit">${esc(tx('save'))}</button><button class="btn primary" type="button" data-sa="rc-save-print">🏷 ${esc(tx('savePrint'))}</button>`);
+  if(!dlg.open) dlg.showModal();
+  smpRcPlr(); smpRcUnits(); (plr?$('#f-desc'):$('#f-plr')).focus();
+}
+function smpRcPlr(){
+  const p=smpPlrKey($('#f-plr').value), box=$('#smp-rc-plr');
+  if(!p){box.innerHTML=`<p class="note">${esc(tx('plrPick'))}</p>`; return;}
+  const ts=smpTestsOfPlr(p);
+  if(!ts.length){box.innerHTML=`<p class="note">${esc(smpLegacy(p)?tx('legacy'):tx('plrUnknown'))}</p>`; return;}
+  const pieces=smpPieces(p), recv=smpRecv(p);
+  box.innerHTML=`<div class="plr-box"><div class="row"><b>${esc(p)}</b>${smpProj(ts[0].project)}<span class="by">${esc(tx('by'))} ${esc(ts[0].requester||'—')}</span></div>
+    <span class="eyebrow">${esc(tx('qtpLines'))}</span>
+    <ol class="qlines">${ts.map(x=>`<li><label><input type="checkbox" name="tests" value="${esc(x.id)}" ${ACTIVE.includes(x.status)?'checked':''}><span class="seq">${esc(x.sequence||'·')}</span><span class="ref">${esc(x.qtp)}</span><span class="tt">${esc(x.title||'')}</span></label>${estPill(x.status)}</li>`).join('')}</ol>
+    <span class="note">${tx('piecesInfo',pieces,recv)}</span></div>`;
+  if(!$('#f-project').value) $('#f-project').value=ts[0].project||'';
+  if(!S.smp.rc.qtyTouched){ const n=Math.max(1,(pieces||1)-recv); $('#smp-qty').value=n; smpRcResize(n); }
+}
+function smpRcResize(n){ n=Math.max(1,Math.min(200,parseInt(n)||1)); const U=S.smp.rc.units; while(U.length<n) U.push({serial:'',note:''}); U.length=n; smpRcUnits(); }
+function smpRcUnits(){
+  const c=smpFmtCode(smpNextSeq());
+  $('#smp-rc-units').innerHTML=`<table class="utbl"><thead><tr><th>${esc(tx('u_code'))}</th><th>${esc(tx('u_sn'))}</th><th>${esc(tx('u_note'))}</th></tr></thead><tbody>${S.smp.rc.units.map((u,i)=>`<tr><td class="ref nowrap">${c}-${i+1}</td><td><input data-rcu="${i}" data-f="serial" value="${esc(u.serial)}" aria-label="${esc(tx('u_sn'))} ${i+1}"></td><td><input data-rcu="${i}" data-f="note" value="${esc(u.note)}" aria-label="${esc(tx('u_note'))} ${i+1}"></td></tr>`).join('')}</tbody></table>`;
+}
+async function smpSaveReceive(print){
+  if(S.ro||!db) return;
+  const {fd,g}=smpFd(), p1=smpPlrKey(g('plr'));
+  if(!p1) return formErr(tx('errPlr'));
+  if(!g('desc')) return formErr(tx('errDesc'));
+  if(!S.smp.rc.units.length) return formErr(tx('errQty'));
+  const n=smpNextSeq(), code=smpFmtCode(n), id=rid(), now=nowIso();
+  const units=S.smp.rc.units.map((u,i)=>({n:i+1,state:'received',serial:u.serial.trim(),loc:'',note:u.note.trim(),removed:false,printed:false}));
+  const data={code,plrs:[...new Set([p1,...smpSplit(g('plr2'))])],tests:fd.getAll('tests').map(String),desc:g('desc'),pn:g('pn'),phase:g('phase'),project:g('project'),
+    received:g('received')||iso(todayMs()),by:g('by'),loc:g('loc'),comments:g('comments'),units,log:[smpLog('log_recv',units.length)],created:now,updated:now};
+  try{
+    /* The reception and the counter go in the same commit. */
+    await Promise.all([db.doc(`${COL.samples}/${id}`).set(data),db.doc('config/samples').set({...smpCfg(),seq:n,updated:now})]);
+    dlg.close(); toast(tx('saved',code)); render();
+    if(print) smpOpenLabels(units.map(u=>`${id}:${u.n}`));
+  }catch(e){formErr(errMsg(e));}
+}
+
+function smpOpenLot(id,focusN){
+  const l=S.samples.find(x=>x.id===id); if(!l) return;
+  S.smp.edit=clone(l); dlg.dataset.kind='smp-lot'; dlg.dataset.id=id;
+  const tests=smpLotTests(l), unlinked=(l.plrs||[]).filter(p=>!smpLegacy(p)&&!smpTestsOfPlr(p).length);
+  const body=`<fieldset><legend>${esc(tx('lg_sample'))}</legend>
+      ${fld('f-desc',esc(tx('f_desc')),inp('desc',l.desc),'req span2')}
+      ${fld('f-plrs',esc(tx('f_plr')),inp('plrs',(l.plrs||[]).join(', ')),'',esc(tx('f_plr2_help')))}
+      ${fld('f-pn',esc(tx('f_pn')),inp('pn',l.pn))}
+      ${fld('f-phase',esc(tx('f_phase')),sel('phase',l.phase,[['',''],...SMP_PHASES]))}
+      ${fld('f-project',esc(tx('f_project')),inp('project',l.project))}
+      ${fld('f-received',esc(tx('f_date')),inp('received',l.received,'date'))}
+      ${fld('f-by',esc(tx('f_by')),sel('by',l.by,[...smpPeople(),...(l.by&&!personById(l.by)?[[l.by,l.by]]:[])]))}
+      ${fld('f-loc',esc(tx('f_loc')),inp('loc',l.loc,'text','list="smp-loc-list"'))}
+      ${fld('f-comments',esc(tx('f_com')),`<textarea id="f-comments" name="comments" ${dis()}>${esc(l.comments||'')}</textarea>`,'span2')}</fieldset>
+    <fieldset><legend>${esc(tx('lg_units'))}</legend><div class="span2 scroll-x" id="smp-lot-units"></div>
+      ${S.ro?'':`<div class="span2 row"><button type="button" class="btn sm" data-sa="add-unit">${esc(tx('addUnit'))}</button>
+        <select class="fsel" id="smp-all-to" aria-label="${esc(tx('allTo'))}"><option value="">${esc(tx('allTo'))}</option>${SMP.map(s=>`<option value="${s}">${esc(smpSt(s))}</option>`).join('')}</select>
+        <span class="note">${esc(tx('unitsHelp'))}</span></div>`}</fieldset>
+    <div><p class="eyebrow" style="margin-bottom:6px">${esc(tx('linked'))}</p>
+      ${tests.length?`<ol class="qlines">${tests.map(x=>`<li><span class="seq">${esc(x.sequence||'·')}</span><button type="button" class="link ref" data-act="edit" data-id="${esc(x.id)}">${esc(x.plr)} · ${esc(x.qtp)}</button><span class="tt">${esc(x.title||'')}</span>${estPill(x.status)}${resTag(x.result)}</li>`).join('')}</ol>`:''}
+      ${(l.plrs||[]).filter(smpLegacy).map(p=>`<p class="note">${esc(p)} · ${esc(tx('legacy'))}</p>`).join('')}
+      ${unlinked.map(p=>`<p class="note">${esc(p)} · ${esc(tx('plrUnknown'))}</p>`).join('')}</div>
+    <details><summary>${esc(tx('history'))} (${(l.log||[]).length})</summary><ul class="log">${[...(l.log||[])].reverse().map(e=>`<li><time>${fmt(String(e.at||'').slice(0,10))}</time>${esc(smpLogTxt(e))}${e.by?` <span class="muted">· ${esc(e.by)}</span>`:''}</li>`).join('')}</ul></details>`;
+  dlg.innerHTML=smpShell(tx('lot_eyebrow',l.code),l.desc,body,`${S.ro?'':`<button type="button" class="btn ghost danger" data-sa="del">${esc(tx('del'))}</button>`}<button type="button" class="btn" data-sa="print-lot">🏷 ${esc(tx('printLot'))}</button><span class="sp"></span><button type="button" class="btn ghost" data-act="close">${esc(S.ro?tx('close'):tx('cancel'))}</button>${S.ro?'':`<button class="btn primary" type="submit">${esc(tx('save'))}</button>`}`);
+  if(!dlg.open) dlg.showModal();
+  smpLotUnits();
+  if(focusN){const el=dlg.querySelector(`[data-un="${focusN}"][data-f="state"]`); if(el) el.focus();}
+}
+function smpLotUnits(){
+  const l=S.smp.edit;
+  $('#smp-lot-units').innerHTML=`<table class="utbl"><thead><tr><th>${esc(tx('u_code'))}</th><th>${esc(tx('u_state'))}</th><th>${esc(tx('u_sn'))}</th><th>${esc(tx('u_loc'))}</th><th>${esc(tx('u_note'))}</th><th>${esc(tx('u_lbl'))}</th><th></th></tr></thead><tbody>${(l.units||[]).map(u=>`<tr class="${u.removed?'rm':''}">
+    <td class="ref nowrap">${esc(smpCode(l,u))}</td>
+    <td>${u.removed?`<span class="rm-tag">${esc(tx('removed'))}</span>`:`<select class="st-sel st-${SMP_CLS[u.state]}" data-un="${u.n}" data-f="state" ${dis()}>${SMP.map(s=>`<option value="${s}" ${s===u.state?'selected':''}>${esc(smpSt(s))}</option>`).join('')}</select>`}</td>
+    <td><input data-un="${u.n}" data-f="serial" value="${esc(u.serial)}" aria-label="${esc(tx('u_sn'))}" ${dis()}></td>
+    <td><input data-un="${u.n}" data-f="loc" value="${esc(u.loc)}" list="smp-loc-list" placeholder="${esc(l.loc||'')}" aria-label="${esc(tx('u_loc'))}" ${dis()}></td>
+    <td><input data-un="${u.n}" data-f="note" value="${esc(u.note)}" aria-label="${esc(tx('u_note'))}" ${dis()}></td>
+    <td class="nowrap">${u.removed?'':u.printed?`<span class="wtag ok">${esc(tx('printed'))}</span>`:`<span class="wtag">${esc(tx('notPrintedS'))}</span>`}</td>
+    <td>${S.ro?'':`<button type="button" class="btn sm ghost ${u.removed?'':'danger'}" data-sa="${u.removed?'restore-unit':'rm-unit'}" data-n="${u.n}">${esc(u.removed?tx('restore'):tx('withdraw'))}</button>`}</td></tr>`).join('')}</tbody></table>`;
+}
+async function smpSaveLot(){
+  if(S.ro||!db) return;
+  const old=S.samples.find(x=>x.id===dlg.dataset.id); if(!old) return;
+  const {g}=smpFd();
+  if(!g('desc')) return formErr(tx('errDesc'));
+  const plrs=smpSplit(g('plrs')); if(!plrs.length) return formErr(tx('errPlr'));
+  const e=S.smp.edit, log=[];
+  const fields={desc:g('desc'),pn:g('pn'),phase:g('phase'),project:g('project'),received:g('received'),by:g('by'),loc:g('loc'),comments:g('comments')};
+  if(Object.keys(fields).some(k=>String(old[k]||'')!==fields[k])||plrs.join()!==(old.plrs||[]).join()) log.push(smpLog('log_edit'));
+  for(const u of e.units){ const o=(old.units||[]).find(x=>x.n===u.n), c=smpCode(e,u);
+    if(!o){log.push(smpLog('log_add',c)); continue;}
+    if(u.removed&&!o.removed) log.push(smpLog('log_rm',c));
+    else if(!u.removed&&o.removed) log.push(smpLog('log_back',c));
+    else if(u.state!==o.state) log.push(smpLog('log_state',c,{st:o.state},{st:u.state})); }
+  /* Removing a PLR from the reception drops its ticked tests. */
+  const keep=new Set(S.tests.filter(x=>plrs.includes(smpPlrKey(x.plr))).map(x=>x.id));
+  if(!fields.received&&e.units.some(u=>u.state!=='expected'&&!u.removed&&((old.units||[]).find(x=>x.n===u.n)||{}).state==='expected')) fields.received=iso(todayMs());
+  const patch={...fields,plrs,units:e.units.map(({n,state,serial,loc,note,removed,printed})=>({n,state,serial:String(serial||'').trim(),loc:String(loc||'').trim(),note:String(note||'').trim(),removed:!!removed,printed:!!printed})),
+    tests:(old.tests||[]).filter(id=>keep.has(id)),log:[...(old.log||[]),...log],updated:nowIso()};
+  try{await db.doc(`${COL.samples}/${old.id}`).update(patch); dlg.close(); toast(tx('saved',old.code));}catch(err){formErr(errMsg(err));}
+}
+async function smpDeleteLot(btn){
+  if(!btn.classList.contains('armed')){btn.classList.add('armed'); btn.textContent=tx('delArm'); return;}
+  const l=S.samples.find(x=>x.id===dlg.dataset.id); if(!l) return;
+  try{await db.doc(`${COL.samples}/${l.id}`).delete(); [...S.smp.sel].forEach(k=>{if(k.startsWith(l.id+':')) S.smp.sel.delete(k);}); dlg.close(); toast(tx('deleted',l.code));}catch(e){formErr(errMsg(e));}
+}
+/* Status changes from the table: one update per reception, all saved in the same commit. */
+async function smpSetStates(keys,state){
+  if(S.ro||!db) return;
+  const by=new Map(); keys.map(smpByKey).filter(Boolean).forEach(({l,u})=>{ if(!by.has(l)) by.set(l,[]); by.get(l).push(u.n); });
+  const jobs=[...by].map(([l,ns])=>{const log=[]; let arrived=false; const units=(l.units||[]).map(u=>{ if(!ns.includes(u.n)||u.removed||u.state===state) return u; if(u.state==='expected') arrived=true; log.push(smpLog('log_state',smpCode(l,u),{st:u.state},{st:state})); return {...u,state}; });
+    /* The first expected unit that arrives gives the reception its date. */
+    return log.length?db.doc(`${COL.samples}/${l.id}`).update({units,log:[...(l.log||[]),...log],...(arrived&&!l.received?{received:iso(todayMs())}:{}),updated:nowIso()}):null;}).filter(Boolean);
+  try{await Promise.all(jobs);}catch(e){toast(errMsg(e));}
+}
+
+/* ---------- Labels (DYMO LabelWriter 550) ----------
+   The browser prints them with @page set to the label size, one label per page: nothing to install. */
+const smpLblCfg=()=>{let c={}; try{c=JSON.parse(localStorage.getItem('tl.lbl')||'{}')||{};}catch(e){} return {size:'99012',code:'qr',plr:true,desc:true,proj:true,phase:true,date:true,...c};};
+function smpQr(text){
+  if(typeof qrcode!=='function') return `<div class="noqr">QR</div>`;
+  const q=qrcode(0,'M'); q.addData(text); q.make(); const n=q.getModuleCount(); let p='';
+  for(let r=0;r<n;r++) for(let c=0;c<n;c++) if(q.isDark(r,c)) p+=`M${c} ${r}h1v1h-1z`;
+  return `<svg viewBox="-1 -1 ${n+2} ${n+2}" shape-rendering="crispEdges" role="img" aria-label="QR"><rect x="-1" y="-1" width="${n+2}" height="${n+2}" fill="#fff"/><path d="${p}" fill="#000"/></svg>`;
+}
+function smpBarcodes(root){
+  root.querySelectorAll('svg[data-bc]').forEach(el=>{
+    if(typeof JsBarcode!=='function') return;
+    JsBarcode(el,el.dataset.bc,{format:'CODE128',displayValue:false,margin:0,height:60,width:2,background:'#ffffff'});
+    const w=parseFloat(el.getAttribute('width')), h=parseFloat(el.getAttribute('height'));
+    if(w&&h){el.setAttribute('viewBox',`0 0 ${w} ${h}`); el.removeAttribute('width'); el.removeAttribute('height'); el.setAttribute('preserveAspectRatio','none'); el.style.transform='';}
+  });
+}
+const smpUrl=code=>location.href.split('#')[0]+'#m='+code;
+function smpLabel(k,c){
+  const x=smpByKey(k); if(!x) return ''; const {l,u}=x, code=smpCode(l,u), sz=SMP_LABELS[c.size]||SMP_LABELS['99012'];
+  const qtps=smpLotTests(l).map(y=>y.qtp);
+  const l2=[(l.plrs||[]).join(' · '),qtps.length?qtps[0]+(qtps.length>1?` +${qtps.length-1}`:''):''].filter(Boolean).join(' · ');
+  const ft=[c.proj&&projectNo(l),c.phase&&l.phase,c.date&&l.received&&fmt(l.received)].filter(Boolean).join(' · ');
+  /* Code height that fits the text column: the QR takes a square of the label height, the barcode a strip at the bottom. */
+  const textW=sz.w-4.4-(c.code==='qr'?sz.h-3.2+2:0), fs=Math.min(sz.h*(c.code==='bar'?.13:.16),textW/(code.length*.62)).toFixed(2);
+  return `<div class="dlbl ${c.code==='bar'?'wbar':''} ${sz.h<=28?'sm':''}" style="width:${sz.w}mm;height:${sz.h}mm;--fs:${fs}mm">
+    ${c.code==='qr'?`<div class="qr">${smpQr(smpUrl(code))}</div>`:''}
+    <div class="tx"><b class="id">${esc(code)}</b>${c.plr&&l2?`<span class="l2">${esc(l2)}</span>`:''}${c.desc?`<span class="ds">${esc(l.desc)}</span>`:''}${ft?`<span class="ft">${esc(ft)}</span>`:''}</div>
+    ${c.code==='bar'?`<svg class="bc" data-bc="${esc(code)}"></svg>`:''}</div>`;
+}
+function smpOpenLabels(keys){
+  keys=keys.filter(smpByKey); S.smp.lb={keys,checked:new Set(keys)}; dlg.dataset.kind='smp-lb'; dlg.dataset.id='';
+  dlg.innerHTML=smpShell(tx('lb_eyebrow'),tx('lb_title',keys.length),`<div class="lb-grid"><div class="lb-side" id="smp-lb-side"></div><div><p class="eyebrow" style="margin-bottom:6px">${esc(tx('lb_preview'))}</p><div class="lb-prev" id="smp-lb-prev"></div><p class="note" style="margin-top:10px">${tx('lb_how')}</p></div></div>`,
+    `<span class="sp"></span><button type="button" class="btn ghost" data-act="close">${esc(tx('close'))}</button><button type="button" class="btn primary" data-sa="do-print">🖨 ${esc(tx('lb_print'))}</button>`);
+  if(!dlg.open) dlg.showModal(); smpLbSide(); smpLbPreview();
+}
+function smpLbSide(){
+  const c=smpLblCfg(), ck=(k,lab)=>`<label><input type="checkbox" data-lbc="${k}" ${c[k]?'checked':''}> ${esc(lab)}</label>`;
+  $('#smp-lb-side').innerHTML=`<div class="field"><span class="lbl">${esc(tx('lb_units'))} · <button type="button" class="link" data-sa="lb-all">${esc(tx('lb_all'))}</button> · <button type="button" class="link" data-sa="lb-none">${esc(tx('lb_noneSel'))}</button></span>
+      <div class="lb-list">${S.smp.lb.keys.map(k=>{const {l,u}=smpByKey(k); return `<label><input type="checkbox" data-lbk="${esc(k)}" ${S.smp.lb.checked.has(k)?'checked':''}> ${esc(smpCode(l,u))}${u.printed?' ✓':''}</label>`;}).join('')}</div></div>
+    ${fld('smp-lb-size',esc(tx('lb_size')),`<select id="smp-lb-size">${Object.entries(SMP_LABELS).map(([k,v])=>`<option value="${k}" ${c.size===k?'selected':''}>${esc(v.n)}</option>`).join('')}</select>`)}
+    <div class="field"><span class="lbl">${esc(tx('lb_code'))}</span><div class="checks" style="flex-direction:column;align-items:flex-start">${[['qr',tx('qr')],['bar',tx('bar')],['none',tx('noCode')]].map(([v,lab])=>`<label><input type="radio" name="smp-lb-code" value="${v}" ${c.code===v?'checked':''}> ${esc(lab)}</label>`).join('')}</div></div>
+    <div class="field"><span class="lbl">${esc(tx('lb_show'))}</span><div class="checks" style="flex-direction:column;align-items:flex-start">${ck('plr',tx('lb_plr'))}${ck('desc',tx('lb_desc'))}${ck('proj',tx('lb_proj'))}${ck('phase',tx('lb_phase'))}${ck('date',tx('lb_date'))}</div></div>`;
+}
+function smpLbPreview(){
+  const c=smpLblCfg(), keys=S.smp.lb.keys.filter(k=>S.smp.lb.checked.has(k)), p=$('#smp-lb-prev');
+  p.innerHTML=keys.length?keys.map(k=>smpLabel(k,c)).join(''):`<p class="note">${esc(tx('lb_empty'))}</p>`;
+  smpBarcodes(p);
+  const b=dlg.querySelector('[data-sa="do-print"]'); if(b) b.disabled=!keys.length;
+  const h=dlg.querySelector('.dlg-h h2'); if(h) h.textContent=tx('lb_title',keys.length);
+}
+function smpLbSet(k,v){const c=smpLblCfg(); c[k]=v; try{localStorage.setItem('tl.lbl',JSON.stringify(c));}catch(e){} smpLbPreview();}
+function smpPrint(){
+  const c=smpLblCfg(), keys=S.smp.lb.keys.filter(k=>S.smp.lb.checked.has(k)); if(!keys.length) return toast(tx('lb_empty'));
+  if((c.code==='qr'&&typeof qrcode!=='function')||(c.code==='bar'&&typeof JsBarcode!=='function')) toast(tx('lb_noLib'));
+  const sz=SMP_LABELS[c.size]||SMP_LABELS['99012'];
+  $('#smp-page-size').textContent=`@page{size:${sz.w}mm ${sz.h}mm;margin:0}`;
+  const area=$('#smp-print'); area.innerHTML=keys.map(k=>smpLabel(k,c)).join(''); smpBarcodes(area);
+  dlg.close();
+  setTimeout(()=>{
+    window.print(); area.innerHTML='';
+    toast(tx('lb_done',keys.length));
+    if(S.ro||!db) return;
+    /* Printed units stop counting as "labels to print". */
+    const by=new Map(); keys.map(smpByKey).filter(Boolean).forEach(({l,u})=>{ if(!by.has(l)) by.set(l,new Set()); by.get(l).add(u.n); });
+    Promise.all([...by].map(([l,ns])=>db.doc(`${COL.samples}/${l.id}`).update({units:(l.units||[]).map(u=>ns.has(u.n)?{...u,printed:true}:u),log:[...(l.log||[]),smpLog('log_print',ns.size)]}))).catch(e=>toast(errMsg(e)));
+  },60);
+}
+
+/* ---------- Samples events (data-sa, so they never reach the main handlers) ---------- */
+function smpOpenCode(code){
+  code=code.toUpperCase(); const base=code.match(/FLS-\d{5}/)[0], n=+(code.split('-')[2]||0);
+  const l=S.samples.find(x=>x.code===base); if(!l) return toast(tx('notFound',code));
+  if(S.view!=='samples'&&APP!=='occupancy'){S.view='samples'; render();}
+  smpOpenLot(l.id,n||null);
+}
+function smpFromHash(){const m=decodeURIComponent(location.hash).match(SMP_CODE_RE); if(m&&S.samples.length) smpOpenCode(m[0]);}
+window.addEventListener('hashchange',smpFromHash);
+document.addEventListener('click',ev=>{
+  if(ev.target.closest('input,select,textarea,label')) return;
+  const el=ev.target.closest('[data-sa]'); if(!el) return;
+  const a=el.dataset.sa, V=S.smp;
+  if(a==='receive') smpOpenReceive(el.dataset.plr||'');
+  else if(a==='lot') smpOpenLot(el.dataset.id);
+  else if(a==='tog'){ev.stopPropagation(); const id=el.dataset.id; V.collapsed.has(id)?V.collapsed.delete(id):V.collapsed.add(id); render();}
+  else if(a==='tog-all'){ if(V.collapsed.size) V.collapsed.clear(); else S.samples.forEach(l=>V.collapsed.add(l.id)); render();}
+  else if(a==='sv'){V.sv=el.dataset.v; try{localStorage.setItem('tl.smp.view',V.sv);}catch(e){} render();}
+  else if(a==='lang'){SMP_LANG=el.dataset.l; try{localStorage.setItem('tl.lang',SMP_LANG);}catch(e){} render();}
+  else if(a==='sst'){const s=el.dataset.s; V.sst.has(s)?V.sst.delete(s):V.sst.add(s); render();}
+  else if(a==='kpi'){const k=el.dataset.k;
+    if(k==='lbl') return smpOpenLabels(smpPending());
+    if(k==='miss'){V.sv='plr'; V.onlyMissing=true; V.sst=new Set(SMP_DEFAULT);}
+    else {V.sv='list'; V.onlyMissing=false; V.sst=new Set({inlab:SMP_DEFAULT.filter(s=>s!=='expected'),wait:['received','waiting'],test:['testing'],done:['tested']}[k]);}
+    render();}
+  else if(a==='labels-pending'){const keys=smpPending(); smpOpenLabels(keys.length?keys:[...V.sel]);}
+  else if(a==='print-sel') smpOpenLabels([...V.sel]);
+  else if(a==='clear-sel'){V.sel.clear(); render();}
+  else if(a==='qty'){const i=$('#smp-qty'); i.value=Math.max(1,(parseInt(i.value)||1)+ +el.dataset.d); V.rc.qtyTouched=true; smpRcResize(i.value);}
+  else if(a==='rc-save-print'){el.disabled=true; Promise.resolve(smpSaveReceive(true)).finally(()=>{if(el.isConnected) el.disabled=false;});}
+  else if(a==='add-unit'){const e=V.edit; e.units.push({n:Math.max(0,...e.units.map(u=>u.n))+1,state:'received',serial:'',loc:'',note:'',removed:false,printed:false}); smpLotUnits();}
+  else if(a==='rm-unit'||a==='restore-unit'){const u=V.edit.units.find(x=>x.n===+el.dataset.n); if(u){u.removed=a==='rm-unit'; smpLotUnits();}}
+  else if(a==='del') smpDeleteLot(el);
+  else if(a==='print-lot'){const l=S.samples.find(x=>x.id===dlg.dataset.id); if(l) smpOpenLabels(smpLive(l).map(u=>smpKey(l,u)));}
+  else if(a==='lb-all'){V.lb.checked=new Set(V.lb.keys); smpLbSide(); smpLbPreview();}
+  else if(a==='lb-none'){V.lb.checked.clear(); smpLbSide(); smpLbPreview();}
+  else if(a==='do-print') smpPrint();
+  else if(a==='gen') smpOpenGen(el.dataset.plr);
+  else if(a==='prop-mode'){const p=el.dataset.plr; V.prop[p]={...(V.prop[p]||{}),mode:el.dataset.m,qty:{}}; smpPropRerender();}
+  else if(a==='prop-ok'||a==='prop-ok-print'){el.disabled=true; Promise.resolve(smpValidate([el.dataset.plr],a==='prop-ok-print')).finally(()=>{if(el.isConnected) el.disabled=false;});}
+  else if(a==='prop-all'){ev.preventDefault(); el.disabled=true; Promise.resolve(smpValidate(smpProposals().map(P=>P.plr),false)).finally(()=>{if(el.isConnected) el.disabled=false;});}
+  else if(a==='prop-skip') smpSkip(el.dataset.plr);
+  else if(a==='recv-exp'){const g=smpGroups().find(x=>x.plr===el.dataset.plr); if(g&&g.exp.length){const n=g.exp.length; smpSetStates(g.exp,'received').then(()=>toast(tx('recvDone',n)));}}
+});
+document.addEventListener('input',ev=>{
+  const el=ev.target;
+  if(dlg.dataset.kind==='smp-rc'&&el.id==='f-plr') smpRcPlr();
+  else if(el.id==='smp-qty'){S.smp.rc.qtyTouched=true; smpRcResize(el.value);}
+  else if(el.dataset.rcu!=null) S.smp.rc.units[+el.dataset.rcu][el.dataset.f]=el.value;
+  else if(el.dataset.un&&el.dataset.f!=='state'){const u=S.smp.edit.units.find(x=>x.n===+el.dataset.un); if(u) u[el.dataset.f]=el.value;}
+});
+document.addEventListener('change',ev=>{
+  const el=ev.target, V=S.smp;
+  if(el.dataset.setunit) smpSetStates([el.dataset.setunit],el.value);
+  else if(el.dataset.sel){el.checked?V.sel.add(el.dataset.sel):V.sel.delete(el.dataset.sel); render();}
+  else if(el.dataset.sellot){const l=S.samples.find(x=>x.id===el.dataset.sellot); if(l) smpLive(l).forEach(u=>el.checked?V.sel.add(smpKey(l,u)):V.sel.delete(smpKey(l,u))); render();}
+  else if(el.id==='smp-sel-state'&&el.value){const n=V.sel.size; smpSetStates([...V.sel],el.value).then(()=>toast(tx('stateChanged',n)));}
+  else if(el.id==='smp-phase'){V.phase=el.value; render();}
+  else if(el.id==='smp-only-missing'){V.onlyMissing=el.checked; render();}
+  else if(el.dataset.un&&el.dataset.f==='state'){const u=V.edit.units.find(x=>x.n===+el.dataset.un); if(u){u.state=el.value; smpLotUnits();}}
+  else if(el.id==='smp-all-to'&&el.value){V.edit.units.forEach(u=>{if(!u.removed) u.state=el.value;}); el.value=''; smpLotUnits();}
+  else if(el.dataset.lbk){el.checked?V.lb.checked.add(el.dataset.lbk):V.lb.checked.delete(el.dataset.lbk); smpLbPreview();}
+  else if(el.dataset.lbc) smpLbSet(el.dataset.lbc,el.checked);
+  else if(el.dataset.pq){const [p,k]=el.dataset.pq.split('|'), st=V.prop[p]=V.prop[p]||{}; st.qty={...(st.qty||{}),[k]:Math.max(0,Math.min(200,parseInt(el.value)||0))}; smpPropRerender();}
+  else if(el.id==='smp-lb-size') smpLbSet('size',el.value);
+  else if(el.name==='smp-lb-code') smpLbSet('code',el.value);
+});
+/* A barcode or QR scanner types the code and Enter in the search box: open that sample at once. */
+document.addEventListener('keydown',ev=>{
+  if(ev.key!=='Enter'||ev.target.id!=='q'||S.view!=='samples') return; const m=String(ev.target.value).match(SMP_CODE_RE); if(!m) return;
+  ev.preventDefault(); S.q=''; render(); smpOpenCode(m[0]);
+});
 
 /* ---------- Events ---------- */
 function setView(v){S.view=v; S.q=''; try{localStorage.setItem(VIEW_KEY,v)}catch(e){} render(); window.scrollTo(0,0);}
@@ -1200,15 +1887,29 @@ window.addEventListener('hashchange',()=>{const h=location.hash.slice(1); if(VIE
 /* ---------- Storage: one JSON file in the private data repository Polinya-LAB/lab-data (folder ensayos/) ----------
    Reading ensayos.json needs the key (token) of an account with read access; saving needs write access;
    every save is a commit. The key is shared with the durability pool app (same site, same browser storage). */
-const APP_NAME=APP==='occupancy'?'Ocupación':'Control de ensayos';
+const APP_NAME=APP==='occupancy'?'Ocupación':APP==='samples'?'Muestras':'Control de ensayos';
 const REPO={owner:'Polinya-LAB',repo:'lab-data',branch:'main',path:'ensayos/ensayos.json'};
 const CAL_PATH='calibraciones/calibraciones.json';
 const API=`https://api.github.com/repos/${REPO.owner}/${REPO.repo}`;
 const RAW=`https://raw.githubusercontent.com/${REPO.owner}/${REPO.repo}/${REPO.branch}/${REPO.path}`;
-const TOKEN_KEY='pd-gh-token', DATA_COLS=['tests','personas','bancos','qtps','config'];
+const TOKEN_KEY='pd-gh-token', DATA_COLS=['tests','personas','bancos','qtps','config','muestras'];
 const GH={token:'',login:null,push:false,invalid:false,saving:false};
 try{GH.token=localStorage.getItem(TOKEN_KEY)||'';}catch(e){}
 const remote={data:null,sha:null,etag:null};
+/* Preview copy in new-projects: reads the real data from lab-data with the GitHub key but never writes to it; changes stay
+   in this page until it is reloaded. Without a key it can run on the example data of demo-data.js, kept in this browser.
+   Remove these lines (PREVIEW, DEMO and what uses them) in the copy that goes to management-tools. */
+const PREVIEW=false, DEMO_KEY=APP==='samples'?'smp.preview.demo':'ce.preview.demo', DEMO_DATA_KEY=DEMO_KEY+'.data';
+let DEMO=false; try{DEMO=!!window.CE_DEMO&&localStorage.getItem(DEMO_KEY)==='1';}catch(e){}
+function demoLoad(){let s=null; try{s=JSON.parse(localStorage.getItem(DEMO_DATA_KEY)||'null');}catch(e){} return normData(s||window.CE_DEMO());}
+function demoSave(){try{localStorage.setItem(DEMO_DATA_KEY,JSON.stringify(remote.data));}catch(e){}}
+async function setDemo(on,reset){
+  DEMO=!!on&&!!window.CE_DEMO; try{localStorage.setItem(DEMO_KEY,DEMO?'1':'0'); if(reset||!DEMO) localStorage.removeItem(DEMO_DATA_KEY);}catch(e){}
+  Object.assign(remote,{data:null,sha:null,etag:null}); S.imp=null; S.qimp=null; S.ro=true; if(dlg.open) dlg.close();
+  await refresh(); render(); toast(DEMO?(reset?'Example data reset.':'Preview with example data.'):'Example data closed.');
+}
+document.addEventListener('click',ev=>{const b=ev.target.closest('[data-pv]'); if(!b) return; const a=b.dataset.pv;
+  if(a==='demo-on') setDemo(true); else if(a==='demo-reset') setDemo(true,true); else if(a==='demo-off'){ setDemo(false); if(!GH.token) openGh(); }});
 let local=null, flushTimer=null, flushing=null;
 const pendingOps=[], subs=new Map();
 const clone=v=>v==null?v:JSON.parse(JSON.stringify(v));
@@ -1260,12 +1961,12 @@ function emitAll(){ if(!local) return; for(const [col,set] of subs) for(const fn
 function recompute(){ local=applyOps(clone(remote.data||emptyData()),pendingOps.map(p=>p.op)); emitAll(); }
 function commitMessage(ops){
   const label=o=>{const d={...((remote.data||{})[o.col]||{})[o.id],...(o.data||{})};
-    if(o.col==='tests') return `${d.plr||'—'} · ${d.qtp||'—'}`; if(o.col==='qtps') return d.code||o.id; if(o.col==='bancos'||o.col==='personas') return d.nombre||o.id; return o.id;};
+    if(o.col==='tests') return `${d.plr||'—'} · ${d.qtp||'—'}`; if(o.col==='qtps'||o.col==='muestras') return d.code||o.id; if(o.col==='bancos'||o.col==='personas') return d.nombre||o.id; return o.id;};
   if(ops.length===1){const o=ops[0], verb=o.op==='delete'?'delete':o.op==='set'&&!((remote.data||{})[o.col]||{})[o.id]?'add':'update';
     const old=((remote.data||{})[o.col]||{})[o.id]||{}, fields=o.op==='update'?Object.keys(o.data).filter(k=>!['updated','actualizado','imported'].includes(k)&&JSON.stringify(old[k]??'')!==JSON.stringify(o.data[k]??'')):[];
     return `${APP_NAME}: ${verb} ${label(o)}${fields.length?` (${fields.join(', ')})`:''}`;}
   const n={}; ops.forEach(o=>n[o.col]=(n[o.col]||0)+1);
-  const names={tests:'tests',personas:'people',bancos:'equipment',qtps:'QTPs',config:'settings'};
+  const names={tests:'tests',personas:'people',bancos:'equipment',qtps:'QTPs',config:'settings',muestras:'samples'};
   return `${APP_NAME}: ${ops.length} changes (${Object.entries(n).map(([c,k])=>`${k} ${names[c]||c}`).join(', ')})`;
 }
 async function commitOps(ops){
@@ -1282,6 +1983,7 @@ async function commitOps(ops){
 /* Writes show up at once on screen and are saved together, one commit per burst of changes. */
 function queueOp(op){
   return new Promise((res,rej)=>{
+    if(PREVIEW){ if(!remote.data) return rej({code:'not_granted'}); applyOps(remote.data,[op]); if(DEMO) demoSave(); recompute(); return res(); }
     if(!GH.token||!GH.push||GH.invalid) return rej({code:'not_granted'});
     pendingOps.push({op,res,rej}); recompute();
     clearTimeout(flushTimer); flushTimer=setTimeout(flushOps,700);
@@ -1308,10 +2010,12 @@ db={doc:docRef,collection:col=>({path:col,doc:id=>docRef(`${col}/${id||rid()}`),
 
 async function refresh(){
   if(pendingOps.length||flushing) return;
+  if(PREVIEW&&DEMO){ if(!remote.data) remote.data=demoLoad(); S.noDb=false; S.privateData=false; S.ro=false; recompute(); return; }
+  if(PREVIEW&&remote.data) return;
   try{
     const r=GH.token&&!GH.invalid?await fetchApi(true):await fetchRaw();
     if(r){Object.assign(remote,r); recompute();}
-    S.noDb=false; S.privateData=false;
+    S.noDb=false; S.privateData=false; if(PREVIEW) S.ro=false;
   }catch(err){
     if(err.code==='auth'){GH.invalid=true; GH.push=false; S.ro=true; return refresh();}
     if(!local){S.noDb=true; S.privateData=err.code==='private'; render();}
@@ -1324,7 +2028,7 @@ async function connectGh(t){
   if(!u.ok) throw httpError(u); if(!r.ok) throw httpError(r);
   const user=await u.json(), repo=await r.json();
   Object.assign(GH,{token:t,login:user.login,push:!!(repo.permissions&&repo.permissions.push),invalid:false});
-  S.ro=!GH.push;
+  S.ro=PREVIEW?!remote.data:!GH.push;
 }
 function disconnectGh(){Object.assign(GH,{token:'',login:null,push:false,invalid:false}); S.ro=true; try{localStorage.removeItem(TOKEN_KEY);}catch(e){} remote.etag=null; render(); toast('Disconnected from GitHub. This browser no longer has the key.');}
 function renderGh(){
@@ -1332,6 +2036,8 @@ function renderGh(){
   b.className='gh '+(GH.invalid?'bad':GH.saving?'busy':GH.login&&GH.push?'on':'');
   b.querySelector('span').textContent=GH.invalid?'GitHub key expired':GH.saving?'Saving…':GH.login?GH.login:'Connect GitHub';
   b.title=GH.login?(GH.push?'Connected with write access. Changes are saved as commits.':'Connected, but this account cannot edit the repository.'):'Connect GitHub to create and change tests';
+  if(PREVIEW&&DEMO){b.className='gh on'; b.querySelector('span').textContent='Example data'; b.title='Preview with example data: nothing is read from or sent to GitHub.';}
+  else if(PREVIEW&&GH.login){b.className='gh busy'; b.title='Preview: the data is read from GitHub, changes are not saved.';}
 }
 function openGh(){
   dlg.dataset.kind='gh'; dlg.dataset.id='';
@@ -1352,6 +2058,7 @@ async function saveGh(){
   const btn=dlg.querySelector('button[type="submit"]'); btn.disabled=true; btn.textContent='Checking…';
   try{
     await connectGh(t); try{localStorage.setItem(TOKEN_KEY,t);}catch(e){}
+    if(PREVIEW&&DEMO){DEMO=false; try{localStorage.setItem(DEMO_KEY,'0');}catch(e){} remote.data=null;}
     remote.etag=null; await refresh(); dlg.close(); render(); loadCal();
     toast(GH.push?`Connected as ${GH.login}. You can now edit.`:`Connected as ${GH.login}, but this account cannot edit the repository.`);
   }catch(err){ btn.disabled=false; btn.textContent='Connect'; formErr(err.code==='auth'?'That key is not valid or has expired.':err.code==='forbidden'?'That key cannot see the repository.':'Could not reach GitHub. Check your connection.'); }
@@ -1365,9 +2072,9 @@ render();
 (async()=>{
   let pending=false; const later=()=>{ if(pending) return; pending=true; requestAnimationFrame(()=>{pending=false; render(); if(dlg.open) liveHints();}); };
   const sub=(col,key)=>db.collection(col).onSnapshot(snap=>{S[key]=snap.docs.map(x=>({id:x.id,...x.data()})); S.loaded.add(key); later();});
-  sub(COL.tests,'tests'); sub(COL.people,'people'); sub(COL.equipment,'equipment'); sub(COL.qtps,'qtps');
+  sub(COL.tests,'tests'); sub(COL.people,'people'); sub(COL.equipment,'equipment'); sub(COL.qtps,'qtps'); sub(COL.samples,'samples');
   db.collection('config').onSnapshot(snap=>{S.cfg={}; snap.docs.forEach(x=>S.cfg[x.id]=x.data()); S.loaded.add('cfg'); later();});
-  if(GH.token){ try{await connectGh(GH.token);}catch(err){ if(err.code==='auth') GH.invalid=true; } }
-  await refresh(); render(); loadCal();
+  if(GH.token&&!(PREVIEW&&DEMO)){ try{await connectGh(GH.token);}catch(err){ if(err.code==='auth') GH.invalid=true; } }
+  await refresh(); render(); smpFromHash(); loadCal();
   let tick=0; setInterval(()=>{ if(document.hidden) return; refresh(); if(++tick%10===0&&GH.token) loadCal(); }, GH.token?30000:60000);
 })();

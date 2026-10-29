@@ -36,7 +36,7 @@ La interfaz está en inglés.
 
 - Es una página ([`control-ensayos/index.html`](control-ensayos/index.html)) con su código en `app.js` y `app.css`, que comparte con Ocupación.
 - Los datos están en [`ensayos/ensayos.json`](https://github.com/Polinya-LAB/lab-data/blob/main/ensayos/ensayos.json) del repositorio privado `lab-data`: ensayos (`tests`), personas (`personas`),
-  equipos (`bancos`), procedimientos (`qtps`) y ajustes de importación (`config`).
+  equipos (`bancos`), procedimientos (`qtps`), muestras (`muestras`, de la app [Muestras](#muestras)) y ajustes (`config`).
 - Los datos son privados: para consultarla, **Connect GitHub** con una cuenta con acceso de lectura a `lab-data`;
   para modificar, con acceso de escritura.
 - La app junta en un solo commit los cambios hechos en poco tiempo (por ejemplo una importación de ARAS). El
@@ -49,6 +49,27 @@ La interfaz está en inglés.
 - A cada equipo y a cada QTP le puedes asignar los instrumentos (FLE) del Plan de calibraciones que usa
   (pestañas **Equipment & team** y **QTP library**, al editar). La app los guarda en `bancos/<id>.instrumentos` y `qtps/<id>.instrumentos` como lista de ids de
   `calibraciones/calibraciones.json` → `equipment` (por ejemplo `eq-FLE-014`). Guarda ids en lugar de códigos porque hay códigos FLE repetidos.
+
+## Muestras
+
+Identificación de las muestras del laboratorio: cada PLR de ARAS recibe sus códigos `FLS-xxxxx` correlativos, con un sufijo
+`-1, -2…` por unidad física, y la app imprime sus etiquetas en la DYMO LabelWriter 550. La interfaz está en castellano, con botón ES / EN.
+
+**Abrir la aplicación:** https://polinya-lab.github.io/management-tools/muestras/
+
+- Usa los datos de Control de ensayos (`ensayos/ensayos.json` en `lab-data`, colección `muestras`) y su mismo código
+  ([`control-ensayos/app.js`](control-ensayos/app.js)); [`muestras/index.html`](muestras/index.html) elige las vistas *Muestras* e *Import ARAS*.
+- **Códigos por validar:** la app propone los códigos de cada PLR activo con piezas pedidas en ARAS que aún no tienen código:
+  un FLS para el PLR si sus líneas QTP comparten las piezas, o uno por línea si piden piezas distintas. Al validar, la app asigna
+  los números (contador en `config/samples`, sin reutilizar números) y las unidades quedan *Pendiente de recibir*. **Descartar**
+  aparta un PLR que no lleva muestra; el botón **Generar códigos** de cada PLR vuelve a proponer los que falten.
+- Al llegar la muestra, **Marcar recibidas** pasa sus unidades a *Recibida* con la fecha del día. **+ Recibir muestras** registra
+  a mano una muestra que no viene de ARAS.
+- **Etiquetas DYMO:** tamaños 99012, 99010, 11354 y 11352, con QR que abre la muestra en la app, código de barras Code 128 o sin código.
+  Se imprimen desde el navegador, sin instalar nada.
+- Se puede instalar en el PC desde Chrome o Edge (**Instalar app**) y se abre sin conexión; los datos los sigue leyendo de GitHub.
+- Control de ensayos muestra en el tablero el chip *📦 Muestras x/y* de cada PLR y, en la ficha de un ensayo, sus muestras.
+- Como Control de ensayos, hace falta **Connect GitHub** con acceso de lectura a `lab-data` para consultarla y de escritura para modificarla.
 
 ## Ocupación de equipos y técnicos
 
