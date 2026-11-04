@@ -1127,7 +1127,7 @@ async function setTech(id,techId){
 }
 
 /* ---------- Samples (muestras) ----------
-   Each reception of samples is one document in the collection "muestras": one FLS-xxxxx number per reception and
+   Each reception of samples is one document in the collection "muestras": one QTS-xxxxx number per reception and
    one suffix per physical unit (-1, -2…), which keeps its number when it is withdrawn. A reception is linked to one or
    more PLRs; its tests are the ARAS tests (PLR · QTP) of those PLRs, so an ARAS import updates them here too.
    Units whose codes come from an ARAS request start as "expected" and count as received once someone receives them.
@@ -1141,11 +1141,11 @@ const SMP_LABELS={
   '99010':{w:89,h:28,n:'99010 Standard Address · 89 × 28 mm'},
   '11354':{w:57,h:32,n:'11354 Multi-purpose · 57 × 32 mm'},
   '11352':{w:54,h:25,n:'11352 Return Address · 54 × 25 mm'}};
-const SMP_CODE_RE=/FLS-\d{5}(?:-\d+)?/i;
+const SMP_CODE_RE=/QTS-\d{5}(?:-\d+)?/i;
 const SMP_I18N={
 es:{
   tab:'Muestras', title:'Muestras',
-  search:'Buscar o escanear: FLS, PLR, QTP, proyecto, nº serie…',
+  search:'Buscar o escanear: QTS, PLR, QTP, proyecto, nº serie…',
   byPlr:'Por PLR', list:'Lista', lang:'Idioma',
   receive:'+ Recibir muestras', labels:n=>`Etiquetas${n?` · ${n} por imprimir`:''}`,
   k_inlab:'En el laboratorio', k_inlab_s:'unidades recibidas, sin devolver',
@@ -1165,7 +1165,7 @@ es:{
   noMatch:'Ninguna muestra cumple el filtro.', noPlr:'Ningún PLR cumple el filtro.',
   empty_h:'Aún no hay muestras ni ensayos', empty_p:'Importa el Excel de ARAS en Import ARAS: cada PLR aparecerá aquí, listo para recibir sus muestras. También puedes recibir muestras de un PLR escribiéndolo a mano.',
   c_sample:'Muestra', c_plr:'PLR · QTP', c_desc:'Descripción', c_proj:'Proyecto', c_phase:'Fase proyecto', c_state:'Estado', c_pn:'Part number', c_sn:'Nº serie', c_loc:'Ubicación', c_recv:'Recepción', c_com:'Comentarios',
-  several:'varios', expandAll:'Desplegar todo', collapseAll:'Contraer todo', listHelp:'Cada recepción (FLS-xxxxx) agrupa sus unidades (-1, -2…). El estado de cada unidad se cambia en la tabla; el resto, abriendo la recepción.',
+  several:'varios', expandAll:'Desplegar todo', collapseAll:'Contraer todo', listHelp:'Cada recepción (QTS-xxxxx) agrupa sus unidades (-1, -2…). El estado de cada unidad se cambia en la tabla; el resto, abriendo la recepción.',
   selN:n=>`${n} unidad${n===1?'':'es'} seleccionada${n===1?'':'s'}`, setState:'Cambiar estado a…', printSel:'Imprimir etiquetas', clearSel:'Quitar selección',
   stateChanged:n=>`Estado cambiado en ${n} unidad${n===1?'':'es'}.`,
   rc_eyebrow:'Recepción de muestras', rc_title:'Recibir muestras',
@@ -1192,11 +1192,11 @@ es:{
   lb_preview:'Vista previa a tamaño real',
   lb_how:'<b>En el cuadro de impresión:</b> impresora <b>DYMO LabelWriter 550</b>, tamaño de papel el de la etiqueta (p. ej. <i>99012 Large Address</i>), márgenes <b>ninguno</b>, escala <b>100 %</b> y sin encabezados ni pies de página. Sale una etiqueta por página.',
   lb_print:'Imprimir', lb_done:n=>`${n} etiqueta${n===1?'':'s'} enviada${n===1?'':'s'} a la impresora.`, lb_empty:'Marca al menos una unidad.', lb_noLib:'No se ha podido cargar la librería del código. Revisa la conexión.',
-  prop_h:n=>`Códigos por validar · ${n} PLR`, prop_help:'PLR activos con piezas pedidas en ARAS que aún no tienen código. Revisa la propuesta y valida: los números FLS se asignan al validar y las unidades quedan pendientes de recibir.',
+  prop_h:n=>`Códigos por validar · ${n} PLR`, prop_help:'PLR activos con piezas pedidas en ARAS que aún no tienen código. Revisa la propuesta y valida: los números QTS se asignan al validar y las unidades quedan pendientes de recibir.',
   prop_all:'Validar todos', prop_ok:'Validar', prop_okPrint:'Validar e imprimir etiquetas', prop_skip:'Descartar',
   prop_mode:'Piezas', prop_plr:'Las mismas para todo el PLR', prop_line:'Distintas por QTP',
   prop_code:'Código', prop_qtp:'Ensayos (QTP)', prop_units:'Unidades', prop_desc:'Descripción',
-  propDone:n=>`${n} código${n===1?'':'s'} FLS creado${n===1?'':'s'}.`, propNone:'No hay ninguna unidad que generar.',
+  propDone:n=>`${n} código${n===1?'':'s'} QTS creado${n===1?'':'s'}.`, propNone:'No hay ninguna unidad que generar.',
   propSkipped:p=>`${p} descartado. Puedes generar sus códigos más tarde desde su tarjeta.`,
   gen:'Generar códigos', gen_eyebrow:'Códigos de muestra desde ARAS', gen_title:p=>`Generar códigos · ${p}`,
   gen_help:n=>n?`Este PLR ya tiene ${n} unidad${n===1?'':'es'} con código. La propuesta cubre las piezas de ARAS que faltan; ajusta las unidades si hace falta.`:'La propuesta sale de las piezas pedidas en ARAS; ajusta las unidades si hace falta.',
@@ -1208,7 +1208,7 @@ es:{
 },
 en:{
   tab:'Samples', title:'Samples',
-  search:'Search or scan: FLS, PLR, QTP, project, serial no.…',
+  search:'Search or scan: QTS, PLR, QTP, project, serial no.…',
   byPlr:'By PLR', list:'List', lang:'Language',
   receive:'+ Receive samples', labels:n=>`Labels${n?` · ${n} to print`:''}`,
   k_inlab:'In the lab', k_inlab_s:'units received, not returned',
@@ -1228,7 +1228,7 @@ en:{
   noMatch:'No samples match the filter.', noPlr:'No PLRs match the filter.',
   empty_h:'No samples or tests yet', empty_p:'Import the ARAS export in Import ARAS: each PLR will show up here, ready to receive its samples. You can also receive samples for a PLR by typing it.',
   c_sample:'Sample', c_plr:'PLR · QTP', c_desc:'Description', c_proj:'Project', c_phase:'Project phase', c_state:'Status', c_pn:'Part number', c_sn:'Serial no.', c_loc:'Location', c_recv:'Received', c_com:'Comments',
-  several:'several', expandAll:'Expand all', collapseAll:'Collapse all', listHelp:'Each reception (FLS-xxxxx) groups its units (-1, -2…). Change the status of a unit in the table; everything else by opening the reception.',
+  several:'several', expandAll:'Expand all', collapseAll:'Collapse all', listHelp:'Each reception (QTS-xxxxx) groups its units (-1, -2…). Change the status of a unit in the table; everything else by opening the reception.',
   selN:n=>`${n} unit${n===1?'':'s'} selected`, setState:'Set status to…', printSel:'Print labels', clearSel:'Clear selection',
   stateChanged:n=>`Status changed on ${n} unit${n===1?'':'s'}.`,
   rc_eyebrow:'Sample reception', rc_title:'Receive samples',
@@ -1255,11 +1255,11 @@ en:{
   lb_preview:'Preview at real size',
   lb_how:'<b>In the print dialog:</b> printer <b>DYMO LabelWriter 550</b>, paper size of the label (e.g. <i>99012 Large Address</i>), margins <b>none</b>, scale <b>100%</b> and no headers or footers. One label per page.',
   lb_print:'Print', lb_done:n=>`${n} label${n===1?'':'s'} sent to the printer.`, lb_empty:'Tick at least one unit.', lb_noLib:'Could not load the code library. Check the connection.',
-  prop_h:n=>`Codes to validate · ${n} PLR${n===1?'':'s'}`, prop_help:'Active PLRs with pieces requested in ARAS that have no code yet. Check the proposal and validate: the FLS numbers are assigned when you validate, and the units wait to be received.',
+  prop_h:n=>`Codes to validate · ${n} PLR${n===1?'':'s'}`, prop_help:'Active PLRs with pieces requested in ARAS that have no code yet. Check the proposal and validate: the QTS numbers are assigned when you validate, and the units wait to be received.',
   prop_all:'Validate all', prop_ok:'Validate', prop_okPrint:'Validate and print labels', prop_skip:'Dismiss',
   prop_mode:'Pieces', prop_plr:'Same for the whole PLR', prop_line:'Different per QTP',
   prop_code:'Code', prop_qtp:'Tests (QTP)', prop_units:'Units', prop_desc:'Description',
-  propDone:n=>`${n} FLS code${n===1?'':'s'} created.`, propNone:'There are no units to create.',
+  propDone:n=>`${n} QTS code${n===1?'':'s'} created.`, propNone:'There are no units to create.',
   propSkipped:p=>`${p} dismissed. You can create its codes later from its card.`,
   gen:'Create codes', gen_eyebrow:'Sample codes from ARAS', gen_title:p=>`Create codes · ${p}`,
   gen_help:n=>n?`This PLR already has ${n} unit${n===1?'':'s'} with a code. The proposal covers the ARAS pieces still missing; change the units if needed.`:'The proposal comes from the pieces requested in ARAS; change the units if needed.',
@@ -1300,7 +1300,7 @@ function smpPieces(p){
 const smpRecv=p=>S.samples.filter(l=>(l.plrs||[]).includes(smpPlrKey(p))).reduce((a,l)=>a+smpIn(l).length,0);
 const smpNum=l=>+((String(l.code||'').match(/\d{5}/)||[0])[0]);
 const smpNextSeq=()=>Math.max(+((S.cfg.samples||{}).seq)||0,0,...S.samples.map(smpNum))+1;
-const smpFmtCode=n=>`FLS-${String(n).padStart(5,'0')}`;
+const smpFmtCode=n=>`QTS-${String(n).padStart(5,'0')}`;
 const smpLegacy=p=>/^FLT/i.test(p);
 const smpWho=id=>id?(personById(id)?.nombre||id):'';
 const smpLogTxt=e=>e.txt&&e.txt.k?tx(e.txt.k,...(e.txt.a||[]).map(x=>x&&x.st?smpSt(x.st):x)):String(e.txt||'');
@@ -1341,7 +1341,7 @@ const smpPending=()=>S.samples.flatMap(l=>smpLive(l).filter(u=>!u.printed).map(u
 /* ---------- Codes from the ARAS requests ----------
    Every active PLR with pieces in ARAS and no codes gets a proposal: one reception for the whole PLR when its QTP lines
    share the samples, or one per line when each line has its own pieces (the default when the lines ask for different
-   numbers of pieces). A proposal takes no number: the next free FLS numbers go to it when someone validates it. */
+   numbers of pieces). A proposal takes no number: the next free QTS numbers go to it when someone validates it. */
 const smpCfg=()=>S.cfg.samples||{};
 const smpSkipped=p=>!!(smpCfg().skip||{})[smpPlrKey(p)];
 const smpLines=p=>smpTestsOfPlr(p).filter(x=>ACTIVE.includes(x.status)&&x.status!=='Not approved'&&+x.pieces>0);
@@ -1734,7 +1734,7 @@ function smpPrint(){
 
 /* ---------- Samples events (data-sa, so they never reach the main handlers) ---------- */
 function smpOpenCode(code){
-  code=code.toUpperCase(); const base=code.match(/FLS-\d{5}/)[0], n=+(code.split('-')[2]||0);
+  code=code.toUpperCase(); const base=code.match(/QTS-\d{5}/)[0], n=+(code.split('-')[2]||0);
   const l=S.samples.find(x=>x.code===base); if(!l) return toast(tx('notFound',code));
   if(S.view!=='samples'&&APP!=='occupancy'){S.view='samples'; render();}
   smpOpenLot(l.id,n||null);

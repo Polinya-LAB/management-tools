@@ -52,7 +52,7 @@ La interfaz está en inglés.
 
 ## Muestras
 
-Identificación de las muestras del laboratorio: cada PLR de ARAS recibe sus códigos `FLS-xxxxx` correlativos, con un sufijo
+Identificación de las muestras del laboratorio: cada PLR de ARAS recibe sus códigos `QTS-xxxxx` correlativos, con un sufijo
 `-1, -2…` por unidad física, y la app imprime sus etiquetas en la DYMO LabelWriter 550. La interfaz está en castellano, con botón ES / EN.
 
 **Abrir la aplicación:** https://polinya-lab.github.io/management-tools/muestras/
@@ -60,7 +60,7 @@ Identificación de las muestras del laboratorio: cada PLR de ARAS recibe sus có
 - Usa los datos de Control de ensayos (`ensayos/ensayos.json` en `lab-data`, colección `muestras`) y su mismo código
   ([`control-ensayos/app.js`](control-ensayos/app.js)); [`muestras/index.html`](muestras/index.html) elige las vistas *Muestras* e *Import ARAS*.
 - **Códigos por validar:** la app propone los códigos de cada PLR activo con piezas pedidas en ARAS que aún no tienen código:
-  un FLS para el PLR si sus líneas QTP comparten las piezas, o uno por línea si piden piezas distintas. Al validar, la app asigna
+  un QTS para el PLR si sus líneas QTP comparten las piezas, o uno por línea si piden piezas distintas. Al validar, la app asigna
   los números (contador en `config/samples`, sin reutilizar números) y las unidades quedan *Pendiente de recibir*. **Descartar**
   aparta un PLR que no lleva muestra; el botón **Generar códigos** de cada PLR vuelve a proponer los que falten.
 - Al llegar la muestra, **Marcar recibidas** pasa sus unidades a *Recibida* con la fecha del día. **+ Recibir muestras** registra
