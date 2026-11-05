@@ -82,11 +82,27 @@ const enPagina = (page, fn, arg) => page.evaluate(async ([src, a]) => {
       assert.equal(await page.evaluate(() => window.LabAuth.sesion()), null);
     });
 
-    await check('verificar sin pedirCodigo antes → {code:"bad_code"} (el código solo vale tras pedirlo)', async () => {
-      const r = await enPagina(page, () => window.LabAuth.verificar('luis.ver@fluidra.com', '123456'));
+    await check('entrar con contraseña incorrecta → {code:"bad_credentials"} y sigue sin sesión', async () => {
+      const r = await enPagina(page, () => window.LabAuth.entrar('ana.ruiz@fluidra.com', 'no-es-la-clave'));
       assert.equal(r.ok, false);
-      assert.equal(r.error.code, 'bad_code');
+      assert.equal(r.error.code, 'bad_credentials');
       assert.equal(await page.evaluate(() => window.LabAuth.sesion()), null);
+    });
+
+    await check('entrar con un correo no dado de alta → {code:"bad_credentials"}', async () => {
+      const r = await enPagina(page, () => window.LabAuth.entrar('nadie@fluidra.com', 'clave-de-prueba-1234'));
+      assert.equal(r.ok, false);
+      assert.equal(r.error.code, 'bad_credentials');
+    });
+
+    await check('entrar con correo vacío o sin contraseña → {code:"bad_credentials"} sin llamar a Auth', async () => {
+      const antes = lab.logins.length;
+      for (const [e, p] of [['', 'clave-de-prueba-1234'], ['ana.ruiz@fluidra.com', ''], ['sin-arroba', 'clave-de-prueba-1234']]) {
+        const r = await enPagina(page, ([e, p]) => window.LabAuth.entrar(e, p), [e, p]);
+        assert.equal(r.ok, false);
+        assert.equal(r.error.code, 'bad_credentials');
+      }
+      assert.equal(lab.logins.length, antes);
     });
 
     await page.evaluate(() => {
@@ -94,33 +110,19 @@ const enPagina = (page, fn, arg) => page.evaluate(async ([src, a]) => {
       window.LabAuth.onCambio((s) => window.__cambios.push(s));
     });
 
-    await check("pedirCodigo('  Ana.Ruiz@Fluidra.com ') envía el correo normalizado con create_user:false", async () => {
-      const r = await enPagina(page, () => window.LabAuth.pedirCodigo('  Ana.Ruiz@Fluidra.com '));
+    await check("entrar('  ANA.Ruiz@Fluidra.com ', clave) → correo normalizado, sesión y aviso a onCambio", async () => {
+      const r = await enPagina(page, () => window.LabAuth.entrar('  ANA.Ruiz@Fluidra.com ', 'clave-de-prueba-1234'));
       assert.deepEqual(r, { ok: true, valor: undefined });
-      const ultima = lab.otps.at(-1);
-      assert.equal(ultima.email, 'ana.ruiz@fluidra.com');
-      assert.equal(ultima.create_user, false);
-    });
-
-    await check('pedirCodigo de un correo no dado de alta → {code:"not_allowed"}', async () => {
-      const r = await enPagina(page, () => window.LabAuth.pedirCodigo('nadie@fluidra.com'));
-      assert.equal(r.ok, false);
-      assert.equal(r.error.code, 'not_allowed');
-    });
-
-    await check('verificar con 000000 → {code:"bad_code"} y sigue sin sesión', async () => {
-      const r = await enPagina(page, () => window.LabAuth.verificar('ana.ruiz@fluidra.com', '000000'));
-      assert.equal(r.ok, false);
-      assert.equal(r.error.code, 'bad_code');
-      assert.equal(await page.evaluate(() => window.LabAuth.sesion()), null);
-    });
-
-    await check('verificar con 123456 → sesion() devuelve el correo en minúsculas y avisa a onCambio', async () => {
-      const r = await enPagina(page, () => window.LabAuth.verificar(' ANA.Ruiz@fluidra.com', ' 123456 '));
-      assert.equal(r.ok, true, JSON.stringify(r));
+      assert.equal(lab.logins.at(-1).email, 'ana.ruiz@fluidra.com');
       assert.deepEqual(await page.evaluate(() => window.LabAuth.sesion()), { email: 'ana.ruiz@fluidra.com' });
       assert.deepEqual(await page.evaluate(() => window.__cambios), [{ email: 'ana.ruiz@fluidra.com' }]);
       assert.ok(await page.evaluate(() => !!localStorage.getItem('lab-auth')), 'sesión guardada con storageKey lab-auth');
+      assert.equal(lab.otps.length, 0, 'no se pide ningún código');
+    });
+
+    await check('la contraseña no se guarda en localStorage', async () => {
+      const todo = await page.evaluate(() => JSON.stringify(Object.assign({}, localStorage)));
+      assert.ok(!todo.includes('clave-de-prueba-1234'));
     });
 
     await check('api() y cabeceras() dan acceso a la función github simulada (permisos reales)', async () => {
@@ -232,16 +234,19 @@ const enPagina = (page, fn, arg) => page.evaluate(async ([src, a]) => {
       assert.deepEqual(r, { h: { apikey: 'anon-test' }, st: 401 });
     });
 
-    await check('setUsuarios: un alta nueva puede pedir código', async () => {
-      lab.setUsuarios([...USUARIOS, { email: 'Nuevo@Fluidra.com', nombre: 'Nuevo', roles: {}, admin: false }]);
-      const r = await enPagina(page, () => window.LabAuth.pedirCodigo('nuevo@fluidra.com'));
+    await check('setUsuarios: un alta nueva entra con su contraseña (usuarios[].password)', async () => {
+      lab.setUsuarios([...USUARIOS, { email: 'Nuevo@Fluidra.com', nombre: 'Nuevo', roles: {}, admin: false, password: 'otra-clave-de-16c' }]);
+      const mal = await enPagina(page, () => window.LabAuth.entrar('nuevo@fluidra.com', 'clave-de-prueba-1234'));
+      assert.equal(mal.error && mal.error.code, 'bad_credentials');
+      const r = await enPagina(page, () => window.LabAuth.entrar('nuevo@fluidra.com', 'otra-clave-de-16c'));
       assert.equal(r.ok, true, JSON.stringify(r));
+      await enPagina(page, () => window.LabAuth.salir());
     });
 
     await check('ningún error de consola ni petición fuera de la simulación', async () => {
       assert.deepEqual(lab.bloqueadas, []);
       // Los 4xx esperados de fetch aparecen como "Failed to load resource"; cualquier otro error, no.
-      assert.deepEqual(errores.filter((e) => !/Failed to load resource: the server responded with a status of (40[13]|409|422)/.test(e)), []);
+      assert.deepEqual(errores.filter((e) => !/Failed to load resource: the server responded with a status of (40[013]|409|422)/.test(e)), []);
     });
     await ctx.close();
 
@@ -249,8 +254,7 @@ const enPagina = (page, fn, arg) => page.evaluate(async ([src, a]) => {
     await check('cabeceras() renueva el JWT si caduca (refresh_token)', async () => {
       const t = await abrir(browser, { expiresIn: 60 });
       try {
-        await enPagina(t.page, () => window.LabAuth.pedirCodigo('luis.ver@fluidra.com'));
-        const v = await enPagina(t.page, () => window.LabAuth.verificar('luis.ver@fluidra.com', '123456'));
+        const v = await enPagina(t.page, () => window.LabAuth.entrar('luis.ver@fluidra.com', 'clave-de-prueba-1234'));
         assert.equal(v.ok, true, JSON.stringify(v));
         const primero = t.lab.tokens.at(-1);
         const h = await t.page.evaluate(() => window.LabAuth.cabeceras());
@@ -264,13 +268,62 @@ const enPagina = (page, fn, arg) => page.evaluate(async ([src, a]) => {
     });
 
     // ---------- Errores de Auth con el formato de API 2024-01-01 ----------
-    await check('errores en formato 2024-01-01 también se traducen a not_allowed y bad_code', async () => {
+    await check('errores en formato 2024-01-01 también se traducen (bad_credentials; OTP: not_allowed y bad_code)', async () => {
       const t = await abrir(browser, { formatoErrores: '2024' });
       try {
+        const c = await enPagina(t.page, () => window.LabAuth.entrar('ana.ruiz@fluidra.com', 'no-es-la-clave'));
+        assert.equal(c.error && c.error.code, 'bad_credentials');
         const a = await enPagina(t.page, () => window.LabAuth.pedirCodigo('nadie@fluidra.com'));
         assert.equal(a.error && a.error.code, 'not_allowed');
         const b = await enPagina(t.page, () => window.LabAuth.verificar('ana.ruiz@fluidra.com', '999999'));
         assert.equal(b.error && b.error.code, 'bad_code');
+      } finally {
+        await t.ctx.close();
+      }
+    });
+
+    // ---------- entrar: demasiados intentos, servicio caído y sin red ----------
+    await check('entrar: 429 → rate; 500/503 → unavailable; sin red → unavailable', async () => {
+      const t = await abrir(browser);
+      try {
+        const casos = [[429, 'rate'], [500, 'unavailable'], [503, 'unavailable'], [0, 'unavailable']];
+        for (const [st, code] of casos) {
+          await t.ctx.route(/\/auth\/v1\/token\?grant_type=password/, (route) => {
+            if (route.request().method() === 'OPTIONS') return route.fallback();
+            if (!st) return route.abort('failed');
+            return route.fulfill({
+              status: st, contentType: 'application/json',
+              headers: { 'access-control-allow-origin': 'https://polinya-lab.github.io' },
+              body: JSON.stringify(st === 429 ? { code: 429, error_code: 'over_request_rate_limit', msg: 'Request rate limit reached' } : { code: st, msg: 'boom' }),
+            });
+          });
+          const r = await enPagina(t.page, () => window.LabAuth.entrar('ana.ruiz@fluidra.com', 'clave-de-prueba-1234'));
+          assert.equal(r.error && r.error.code, code, `${st}: ${JSON.stringify(r)}`);
+          await t.ctx.unroute(/\/auth\/v1\/token\?grant_type=password/);
+        }
+        assert.equal(await t.page.evaluate(() => window.LabAuth.sesion()), null);
+      } finally {
+        await t.ctx.close();
+      }
+    });
+
+    // ---------- pedirCodigo/verificar (obsoletos: las apps los usan hasta que pasen a entrar) ----------
+    await check('obsoleto: pedirCodigo + verificar siguen funcionando', async () => {
+      const t = await abrir(browser);
+      try {
+        const sin = await enPagina(t.page, () => window.LabAuth.verificar('luis.ver@fluidra.com', '123456'));
+        assert.equal(sin.error && sin.error.code, 'bad_code', 'el código solo vale tras pedirlo');
+        const p = await enPagina(t.page, () => window.LabAuth.pedirCodigo('  Luis.Ver@Fluidra.com '));
+        assert.deepEqual(p, { ok: true, valor: undefined });
+        assert.equal(t.lab.otps.at(-1).email, 'luis.ver@fluidra.com');
+        assert.equal(t.lab.otps.at(-1).create_user, false);
+        const n = await enPagina(t.page, () => window.LabAuth.pedirCodigo('nadie@fluidra.com'));
+        assert.equal(n.error && n.error.code, 'not_allowed');
+        const mal = await enPagina(t.page, () => window.LabAuth.verificar('luis.ver@fluidra.com', '000000'));
+        assert.equal(mal.error && mal.error.code, 'bad_code');
+        const v = await enPagina(t.page, () => window.LabAuth.verificar(' LUIS.ver@fluidra.com', ' 123456 '));
+        assert.equal(v.ok, true, JSON.stringify(v));
+        assert.deepEqual(await t.page.evaluate(() => window.LabAuth.sesion()), { email: 'luis.ver@fluidra.com' });
       } finally {
         await t.ctx.close();
       }

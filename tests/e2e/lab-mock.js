@@ -4,7 +4,9 @@
 //   - https://polinya-lab.github.io/management-tools/**  → ficheros de `mtDir` (acceso/config.js con la configuración de prueba)
 //   - CDN (cdnjs xlsx, jsDelivr qrcode-generator / jsbarcode / @supabase/supabase-js) → tests/node_modules
 //   - Google Fonts → CSS vacío
-//   - <supabaseUrl>/auth/v1/{otp,verify,token,user,logout} → Supabase Auth simulado (código de 6 dígitos)
+//   - <supabaseUrl>/auth/v1/{token,otp,verify,user,logout} → Supabase Auth simulado: correo + contraseña
+//     (grant_type=password; cada usuario tiene `password`, por defecto CLAVE_PRUEBA) y, hasta que las apps dejen de
+//     usarlo, el código de 6 dígitos (otp/verify)
 //   - <supabaseUrl>/functions/v1/github/**, /functions/v1/admin/** → los handlers REALES (supabase/functions/*/handler.ts,
 //     empaquetados con esbuild) con dependencias falsas: así las pruebas ejercitan la lógica de permisos de verdad
 //   - api.github.com y raw.githubusercontent.com → modo "clave de GitHub" sobre los mismos ficheros
@@ -21,6 +23,7 @@ const RAIZ = path.resolve(__dirname, '..', '..');
 const NODE_MODULES = path.resolve(__dirname, '..', 'node_modules');
 const PAGES = 'https://polinya-lab.github.io/management-tools/';
 const OWNER = 'Polinya-LAB';
+const CLAVE_PRUEBA = 'clave-de-prueba-1234'; // contraseña de los usuarios que no traen `password`
 
 const TIPOS = {
   '.html': 'text/html; charset=utf-8', '.js': 'text/javascript; charset=utf-8', '.mjs': 'text/javascript; charset=utf-8',
@@ -87,7 +90,7 @@ function leerFixtures(dirs) {
 
 /**
  * @param {import('playwright').BrowserContext} ctx
- * @param {{usuarios?: Array<{email:string,nombre:string,roles:object,admin:boolean}>, codigo?: string,
+ * @param {{usuarios?: Array<{email:string,nombre:string,roles:object,admin:boolean,password?:string}>, codigo?: string,
  *   supabaseUrl?: string, anonKey?: string, mtDir?: string, fixturesDir?: string, dataDirs?: Record<string,string>,
  *   github?: {login:string, push:boolean, token?:string}, rawPublico?: string[], expiresIn?: number,
  *   formatoErrores?: 'legacy'|'2024'}} opts
@@ -108,14 +111,20 @@ async function setupLab(ctx, opts = {}) {
 
   const store = leerFixtures(dataDirs);
   let usuarios = [];
+  const claves = new Map(); // email → contraseña (en Supabase vive en Auth, no en `acceso`)
   const setUsuarios = (lista) => {
-    usuarios = (lista || []).map((u) => ({ ...u, email: norm(u.email), roles: { ...(u.roles || {}) } }));
+    claves.clear();
+    usuarios = (lista || []).map(({ password, ...u }) => {
+      const email = norm(u.email);
+      claves.set(email, password ?? CLAVE_PRUEBA);
+      return { ...u, email, roles: { ...(u.roles || {}) } };
+    });
   };
   setUsuarios(opts.usuarios);
   const buscar = (email) => usuarios.find((u) => u.email === norm(email)) || null;
 
   const estado = {
-    puts: [], otps: [], verifies: [], tokens: [], logouts: [], bloqueadas: [], refrescos: 0,
+    puts: [], logins: [], otps: [], verifies: [], tokens: [], logouts: [], bloqueadas: [], refrescos: 0,
   };
   const VALIDEZ_CODIGO_MS = 600 * 1000; // el código vale 10 minutos desde que se pide
   const codigosPedidos = new Map(); // email → momento del último /otp aceptado
@@ -268,8 +277,20 @@ async function setupLab(ctx, opts = {}) {
     borrar: async (email) => {
       usuarios = usuarios.filter((u) => u.email !== norm(email));
     },
-    crearUsuarioAuth: async (email) => uuidDe(norm(email)),
-    borrarUsuarioAuth: async (email) => revocar(email),
+    crearUsuarioAuth: async (email, password) => {
+      claves.set(norm(email), password);
+      return uuidDe(norm(email));
+    },
+    borrarUsuarioAuth: async (email) => {
+      revocar(email);
+      claves.delete(norm(email));
+    },
+    // Como updateUserById: cambia la contraseña sin cerrar las sesiones abiertas.
+    ponerPassword: async (email, password) => {
+      if (!claves.has(norm(email))) return false;
+      claves.set(norm(email), password);
+      return true;
+    },
   });
 
   // ---------- Rutas (en Playwright gana la última registrada) ----------
@@ -372,6 +393,15 @@ async function setupLab(ctx, opts = {}) {
         body = req.postData() ? JSON.parse(req.postData()) : {};
       } catch { /* cuerpo vacío */ }
 
+      if (u.pathname === '/auth/v1/token' && metodo === 'POST' && u.searchParams.get('grant_type') === 'password') {
+        const email = norm(body.email);
+        estado.logins.push({ email: body.email }); // sin la contraseña
+        const clave = claves.get(email);
+        if (!body.email || !buscar(email) || clave === undefined || body.password !== clave) {
+          return route.fulfill(errorAuth(400, 'invalid_credentials', 'Invalid login credentials', origin));
+        }
+        return route.fulfill(json(200, nuevaSesion(email), corsAuth(origin)));
+      }
       if (u.pathname === '/auth/v1/otp' && metodo === 'POST') {
         estado.otps.push(body);
         // Registro libre desactivado: solo los usuarios dados de alta reciben código.
@@ -476,6 +506,7 @@ async function setupLab(ctx, opts = {}) {
 
   return {
     puts: estado.puts,
+    logins: estado.logins,
     otps: estado.otps,
     verifies: estado.verifies,
     tokens: estado.tokens,
@@ -486,10 +517,11 @@ async function setupLab(ctx, opts = {}) {
     },
     setUsuarios,
     usuarios: () => usuarios.map((u) => ({ ...u, roles: { ...u.roles } })),
+    claveDe: (email) => claves.get(norm(email)),
     revocar,
     datos,
     fijarDatos,
   };
 }
 
-module.exports = { setupLab };
+module.exports = { setupLab, CLAVE_PRUEBA };

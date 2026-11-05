@@ -1,5 +1,6 @@
-// Función `admin`: alta, cambio y baja de personas (tabla `acceso` + usuarios de Supabase Auth).
+// Función `admin`: alta, cambio y baja de personas (tabla `acceso` + usuarios de Supabase Auth) y su contraseña.
 // Solo para filas con `admin = true`. Sin red aquí: todo pasa por `AdminDeps`.
+// Las contraseñas solo pasan a Supabase Auth: nunca se guardan en `acceso`, ni se devuelven, ni se escriben en el log.
 
 import { type Acceso, type ClaveRol, PERMISOS, type Rol } from "../_shared/permisos.ts";
 import { corsHeaders, preflight } from "../_shared/cors.ts";
@@ -11,8 +12,26 @@ export interface AdminDeps {
   // `user_id` solo viene cuando se acaba de crear el usuario de Auth.
   guardar(a: Acceso & { user_id?: string }): Promise<void>;
   borrar(email: string): Promise<void>;
-  crearUsuarioAuth(email: string): Promise<string>;
+  // Idempotente: si el usuario de Auth ya existe, devuelve su id y le pone `password`.
+  crearUsuarioAuth(email: string, password: string): Promise<string>;
   borrarUsuarioAuth(email: string): Promise<void>;
+  // false si la persona no tiene usuario de Auth.
+  ponerPassword(email: string, password: string): Promise<boolean>;
+}
+
+export const MIN_PASSWORD = 12;
+// bcrypt (Supabase Auth) solo usa los primeros 72 bytes.
+const MAX_PASSWORD_BYTES = 72;
+
+// Motivo si no vale; null si vale. No recorta: los espacios forman parte de la contraseña.
+function motivoPassword(p: unknown): string | null {
+  if (typeof p !== "string" || p.length < MIN_PASSWORD) {
+    return `La contraseña debe tener al menos ${MIN_PASSWORD} caracteres`;
+  }
+  if (new TextEncoder().encode(p).length > MAX_PASSWORD_BYTES) {
+    return `La contraseña no puede pasar de ${MAX_PASSWORD_BYTES} bytes`;
+  }
+  return null;
 }
 
 const CLAVES_ROL = new Set<string>(Object.values(PERMISOS).map((p) => p.rol));
@@ -50,6 +69,17 @@ function validar(cuerpo: unknown): { ok: true; acceso: Acceso } | { ok: false; m
   return { ok: true, acceso: { email, nombre: cuerpo.nombre.trim(), roles, admin: cuerpo.admin } };
 }
 
+// Correo de un segmento de la ruta (codificado), normalizado; null si no vale.
+function correoDe(segmento: string): string | null {
+  let email: string;
+  try {
+    email = normalizarEmail(decodeURIComponent(segmento));
+  } catch {
+    return null;
+  }
+  return pareceCorreo(email) ? email : null;
+}
+
 export function crearHandlerAdmin(deps: AdminDeps): (req: Request) => Promise<Response> {
   return async (req: Request): Promise<Response> => {
     const origin = req.headers.get("origin");
@@ -75,12 +105,15 @@ export function crearHandlerAdmin(deps: AdminDeps): (req: Request) => Promise<Re
 async function atender(req: Request, deps: AdminDeps, responder: Responder): Promise<Response> {
   const error = (status: number, message: string) => responder(status, { message });
   const seg = new URL(req.url).pathname.split("/").slice(1);
-  if (seg[0] !== "admin" || seg[1] !== "usuarios" || seg.length > 3) return error(404, "Not Found");
-  const objetivo = seg[2]; // correo codificado, solo en DELETE
+  if (seg[0] !== "admin" || seg[1] !== "usuarios" || seg.length > 4) return error(404, "Not Found");
+  if (seg.length === 4 && (seg[3] !== "password" || !seg[2])) return error(404, "Not Found");
+  const objetivo = seg[2]; // correo codificado: DELETE /usuarios/<correo> y POST /usuarios/<correo>/password
   const esColeccion = seg.length === 2;
+  const esPassword = seg.length === 4;
 
   const metodo = req.method;
   if (metodo !== "GET" && metodo !== "POST" && metodo !== "DELETE") return error(405, "Método no permitido");
+  if (esPassword && metodo !== "POST") return error(405, "Método no permitido");
 
   // Sesión
   const m = /^Bearer\s+(\S+)$/i.exec(req.headers.get("authorization") ?? "");
@@ -108,26 +141,48 @@ async function atender(req: Request, deps: AdminDeps, responder: Responder): Pro
     const v = validar(cuerpo);
     if (!v.ok) return error(400, v.motivo);
     const a = v.acceso;
+    const password = (cuerpo as Record<string, unknown>).password;
+    if (password !== undefined) {
+      const motivo = motivoPassword(password);
+      if (motivo) return error(400, motivo);
+    }
     if (a.email === yo && !a.admin) return error(400, "No puedes quitarte el rol de administrador");
     const existente = await deps.acceso(a.email);
     if (existente) {
+      // Un solo camino para cambiar la contraseña: POST /usuarios/<correo>/password.
+      if (password !== undefined) return error(400, "Usa Nueva contraseña para cambiarla");
       await deps.guardar(a);
     } else {
-      const user_id = await deps.crearUsuarioAuth(a.email);
+      if (password === undefined) return error(400, motivoPassword(undefined)!);
+      const user_id = await deps.crearUsuarioAuth(a.email, password as string);
       await deps.guardar({ ...a, user_id });
+    }
+    return responder(200, { ok: true });
+  }
+
+  if (esPassword && metodo === "POST") {
+    const email = correoDe(objetivo);
+    if (email === null) return error(400, "Correo no válido");
+    let cuerpo: unknown;
+    try {
+      cuerpo = await req.json();
+    } catch {
+      return error(400, "JSON no válido");
+    }
+    if (!esObjeto(cuerpo)) return error(400, "Cuerpo no válido");
+    const motivo = motivoPassword(cuerpo.password);
+    if (motivo) return error(400, motivo);
+    if (!await deps.acceso(email)) return error(404, "Esa persona no está dada de alta");
+    if (!await deps.ponerPassword(email, cuerpo.password as string)) {
+      return error(409, "Esa persona no tiene usuario de acceso; dala de baja y vuelve a darla de alta");
     }
     return responder(200, { ok: true });
   }
 
   if (!esColeccion && metodo === "DELETE") {
     if (!objetivo) return error(404, "Not Found");
-    let email: string;
-    try {
-      email = normalizarEmail(decodeURIComponent(objetivo));
-    } catch {
-      return error(400, "Correo no válido");
-    }
-    if (!pareceCorreo(email)) return error(400, "Correo no válido");
+    const email = correoDe(objetivo);
+    if (email === null) return error(400, "Correo no válido");
     if (email === yo) return error(400, "No puedes borrarte a ti mismo");
     // Primero Auth: necesita el user_id guardado en la fila, que `borrar` elimina.
     await deps.borrarUsuarioAuth(email);

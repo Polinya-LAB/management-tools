@@ -12,6 +12,24 @@ const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPAB
 
 const norm = (email: string) => email.trim().toLowerCase();
 
+// Busca el usuario de Auth por correo, página a página (la API de administración no filtra por correo).
+async function idAuthPorCorreo(e: string): Promise<string | null> {
+  const porPagina = 200;
+  for (let page = 1;; page++) {
+    const { data: lista, error } = await supabase.auth.admin.listUsers({ page, perPage: porPagina });
+    if (error) throw error;
+    const u = lista.users.find((x) => x.email?.trim().toLowerCase() === e);
+    if (u) return u.id;
+    if (lista.users.length < porPagina) return null;
+  }
+}
+
+// La contraseña nunca va en el mensaje del error (que el handler escribe en el log).
+async function ponerPasswordPorId(id: string, password: string): Promise<void> {
+  const { error } = await supabase.auth.admin.updateUserById(id, { password });
+  if (error) throw new Error(`updateUserById: ${error.status ?? ""} ${error.code ?? ""} ${error.message}`);
+}
+
 const deps: AdminDeps = {
   async usuario(jwt) {
     // Sin sesión solo ante un error de autenticación; los demás errores se lanzan (→ 502, las apps reintentan).
@@ -41,22 +59,27 @@ const deps: AdminDeps = {
     if (error) throw error;
   },
   // Idempotente: si el usuario de Auth ya existe (p. ej. un POST anterior falló al guardar la fila),
-  // devuelve su id en vez de fallar.
-  async crearUsuarioAuth(email) {
+  // le pone la contraseña dada y devuelve su id en vez de fallar.
+  async crearUsuarioAuth(email, password) {
     const e = norm(email);
-    const { data, error } = await supabase.auth.admin.createUser({ email: e, email_confirm: true });
+    const { data, error } = await supabase.auth.admin.createUser({ email: e, password, email_confirm: true });
     if (!error && data.user) return data.user.id;
     const yaExiste = error?.code === "email_exists" || error?.code === "user_already_exists" ||
       /already (been )?registered|already exists/i.test(error?.message ?? "");
     if (!yaExiste) throw error ?? new Error("createUser sin usuario");
-    const porPagina = 200;
-    for (let page = 1;; page++) {
-      const { data: lista, error: e2 } = await supabase.auth.admin.listUsers({ page, perPage: porPagina });
-      if (e2) throw e2;
-      const u = lista.users.find((x) => x.email?.trim().toLowerCase() === e);
-      if (u) return u.id;
-      if (lista.users.length < porPagina) throw error;
-    }
+    const id = await idAuthPorCorreo(e);
+    if (!id) throw error;
+    await ponerPasswordPorId(id, password);
+    return id;
+  },
+  async ponerPassword(email, password) {
+    const e = norm(email);
+    const { data, error } = await supabase.from("acceso").select("user_id").eq("email", e).maybeSingle();
+    if (error) throw error;
+    const id = (data as { user_id: string | null } | null)?.user_id ?? await idAuthPorCorreo(e);
+    if (!id) return false;
+    await ponerPasswordPorId(id, password);
+    return true;
   },
   async borrarUsuarioAuth(email) {
     const { data, error } = await supabase

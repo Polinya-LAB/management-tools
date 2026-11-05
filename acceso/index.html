@@ -35,10 +35,11 @@ h2 { font-family: var(--f-display); font-size: 20px; font-weight: 600; margin: 0
 p { margin: 0 0 12px; }
 .muted { color: var(--muted); font-size: 14px; }
 label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
-input[type=email], input[type=text], select {
+input[type=email], input[type=text], input[type=password], select {
   font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; min-width: 0;
 }
-input[type=email], input[type=text] { width: 100%; }
+input[type=email], input[type=text], input[type=password] { width: 100%; }
+input.mono { font-family: var(--f-mono); font-size: 14px; }
 input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .field { margin-bottom: 12px; }
 .btn {
@@ -51,7 +52,7 @@ input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px s
 .btn:disabled { opacity: .55; cursor: default; }
 .hint { min-height: 1.4em; color: var(--bad); font-size: 14px; margin: 8px 0 0; }
 .actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
-.add { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: end; }
+.add { display: grid; grid-template-columns: 1fr 1fr 1fr auto; gap: 12px; align-items: end; }
 .tablewrap { overflow-x: auto; }
 table { border-collapse: collapse; width: 100%; font-size: 14px; }
 th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
@@ -65,8 +66,11 @@ tr.guardando { opacity: .6; }
   background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-size: 14px; z-index: 20;
 }
 #toast.err { background: var(--bad); color: #fff; }
-#confirmar { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 30; }
-#confirmar .card { max-width: 420px; width: 100%; }
+#confirmar, #clave { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 30; }
+#confirmar .card, #clave .card { max-width: 420px; width: 100%; }
+#clave-valor { display: block; font-family: var(--f-mono); font-size: 20px; letter-spacing: .04em; background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px; margin: 0 0 12px; word-break: break-all; user-select: all; }
+td.acc { white-space: nowrap; }
+td.acc .btn + .btn { margin-left: 6px; }
 .foot { font-size: 14px; }
 .foot a { color: var(--accent); }
 @media (max-width: 640px) { .add { grid-template-columns: 1fr; } }
@@ -103,9 +107,10 @@ tr.guardando { opacity: .6; }
       <form class="add" id="n-form" novalidate>
         <div><label for="n-mail">Correo</label><input id="n-mail" type="email" autocomplete="off" spellcheck="false"></div>
         <div><label for="n-nombre">Nombre</label><input id="n-nombre" type="text" autocomplete="off"></div>
+        <div><label for="n-pass">Contraseña</label><input id="n-pass" class="mono" type="text" autocomplete="off" spellcheck="false" autocapitalize="off" minlength="12"></div>
         <button type="submit" class="btn" id="n-add">Añadir</button>
       </form>
-      <p class="muted" style="margin:10px 0 0">La persona nueva empieza sin acceso a ninguna app; asígnale después el nivel de cada una.</p>
+      <p class="muted" style="margin:10px 0 0">La persona nueva empieza sin acceso a ninguna app; asígnale después el nivel de cada una. La contraseña viene generada; puedes escribir otra (al menos 12 caracteres).</p>
     </div>
     <div class="card tablewrap"><table id="tabla"></table></div>
   </section>
@@ -121,9 +126,18 @@ tr.guardando { opacity: .6; }
     <div class="actions"><button type="button" class="btn danger" id="c-si">Dar de baja</button><button type="button" class="btn ghost" id="c-no">Cancelar</button></div>
   </div>
 </div>
+<div id="clave" hidden role="dialog" aria-modal="true" aria-labelledby="k-titulo">
+  <div class="card">
+    <h2 id="k-titulo">Contraseña</h2>
+    <p id="clave-para"></p>
+    <code id="clave-valor"></code>
+    <p><b>Guárdala y dásela a la persona: no se vuelve a mostrar.</b></p>
+    <div class="actions"><button type="button" class="btn" id="clave-copiar">Copiar</button><button type="button" class="btn ghost" id="clave-cerrar">Hecho</button></div>
+  </div>
+</div>
 
 <script src="config.js"></script>
-<script src="lab-auth.js?v=20261107"></script>
+<script src="lab-auth.js?v=20261108"></script>
 <script>
 (function () {
   'use strict';
@@ -134,21 +148,33 @@ tr.guardando { opacity: .6; }
   ];
   var NIVELES = [['ninguno', '—'], ['ver', 'Ver'], ['editar', 'Editar']];
   var T = {
-    mail: 'Correo', help: 'Te enviaremos un código de 6 cifras. Solo pueden entrar los correos dados de alta por un administrador.',
-    send: 'Enviar código', sent: function (m) { return 'Te hemos enviado un código de 6 cifras a <b>' + esc(m) + '</b>. Vale 10 minutos.'; },
-    code: 'Código', enter: 'Entrar', other: 'Usar otro correo',
-    eMail: 'Escribe un correo válido.', eReg: 'Ese correo no está dado de alta. Pídeselo a un administrador.',
-    eRate: 'Has pedido demasiados códigos. Espera unos minutos y vuelve a intentarlo.', eNet: 'No se pudo conectar. Comprueba la conexión y vuelve a intentarlo.',
-    eCode: 'Escribe el código de 6 cifras.', eBad: 'El código no es correcto o ha caducado.',
-    expired: 'Tu sesión ha caducado. Vuelve a entrar.'
+    mail: 'Correo', pass: 'Contraseña', help: 'La contraseña te la da un administrador.', enter: 'Entrar',
+    eVacio: 'Escribe tu correo y tu contraseña.', eBad: 'Correo o contraseña incorrectos.',
+    eRate: 'Demasiados intentos. Espera unos minutos y vuelve a intentarlo.', eNet: 'No se pudo conectar. Comprueba la conexión y vuelve a intentarlo.',
+    expired: 'Tu sesión ha caducado. Vuelve a entrar.',
+    eCorta: 'La contraseña debe tener al menos 12 caracteres.'
   };
+  var MIN_CLAVE = 12;
+  // Contraseñas generadas: 16 caracteres de letras y números sin los que se confunden (0 O 1 l I).
+  var ALFABETO = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
+  function generarClave() {
+    var limite = 256 - (256 % ALFABETO.length); // sin sesgo: se descartan los bytes por encima del último múltiplo
+    var out = '';
+    while (out.length < 16) {
+      var b = new Uint8Array(32);
+      crypto.getRandomValues(b);
+      for (var i = 0; i < b.length && out.length < 16; i++) if (b[i] < limite) out += ALFABETO[b[i] % ALFABETO.length];
+    }
+    return out;
+  }
+  window.__generarClave = generarClave; // para las pruebas
   function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 
   var yo = null;         // {email} de la sesión
   var lista = [];        // personas tal como las tiene el servidor
   var aviso = '';        // texto fijo sobre el formulario de entrada (sesión caducada)
-  var paso = 'email', dirCorreo = '', verificado = '';
+  var dirCorreo = '';     // último correo escrito en el formulario de entrada
 
   function vista(cual) {
     ['no-config', 'login', 'denegado', 'fallo', 'admin'].forEach(function (id) { $(id).hidden = id !== cual; });
@@ -161,47 +187,59 @@ tr.guardando { opacity: .6; }
     clearTimeout(tt); tt = setTimeout(function () { t.hidden = true; }, mal ? 6000 : 2500);
   }
 
-  /* ---------- Entrar con el correo ---------- */
+  /* ---------- Entrar con correo y contraseña ---------- */
   function pintarLogin() {
-    var h = '<h2>Entrar con tu correo</h2>' + (aviso ? '<p class="muted">' + esc(aviso) + '</p>' : '')
-      + '<form id="a-form" novalidate>';
-    if (paso === 'code') {
-      h += '<p>' + T.sent(dirCorreo) + '</p><div class="field"><label for="a-code">' + T.code + '</label>'
-        + '<input id="a-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456" spellcheck="false"></div>'
-        + '<div class="actions"><button type="submit" class="btn" id="a-go">' + T.enter + '</button><button type="button" class="btn ghost" id="a-back">' + T.other + '</button></div>';
-    } else {
-      h += '<div class="field"><label for="a-mail">' + T.mail + '</label><input id="a-mail" type="email" autocomplete="email" spellcheck="false" value="' + esc(dirCorreo) + '"></div>'
-        + '<p class="muted">' + T.help + '</p><div class="actions"><button type="submit" class="btn" id="a-go">' + T.send + '</button></div>';
-    }
-    $('login').innerHTML = h + '<p class="hint" id="a-hint" role="alert"></p></form>';
-    $('a-form').addEventListener('submit', function (e) { e.preventDefault(); paso === 'code' ? validar() : pedir(); });
-    var b = $('a-back'); if (b) b.addEventListener('click', function () { paso = 'email'; verificado = ''; pintarLogin(); });
-    ($('a-code') || $('a-mail')).focus();
+    $('login').innerHTML = '<h2>Entrar con tu correo</h2>' + (aviso ? '<p class="muted">' + esc(aviso) + '</p>' : '')
+      + '<form id="a-form" novalidate>'
+      + '<div class="field"><label for="a-mail">' + T.mail + '</label><input id="a-mail" type="email" autocomplete="username" spellcheck="false" value="' + esc(dirCorreo) + '"></div>'
+      + '<div class="field"><label for="a-pass">' + T.pass + '</label><input id="a-pass" type="password" autocomplete="current-password"></div>'
+      + '<p class="muted">' + T.help + '</p><div class="actions"><button type="submit" class="btn" id="a-go">' + T.enter + '</button></div>'
+      + '<p class="hint" id="a-hint" role="alert"></p></form>';
+    $('a-form').addEventListener('submit', function (e) { e.preventDefault(); entrar(); });
+    (dirCorreo ? $('a-pass') : $('a-mail')).focus();
     vista('login');
   }
   function pista(m) { $('a-hint').textContent = m || ''; }
   function ocupado(si) { var b = $('a-go'); if (b) b.disabled = si; }
-  function pedir() {
-    var email = $('a-mail').value.trim().toLowerCase();
-    if (!email) return pista(T.eMail);
+  function entrar() {
+    var email = $('a-mail').value.trim().toLowerCase(), clave = $('a-pass').value;
+    if (!email || !clave) return pista(T.eVacio);
+    dirCorreo = email;
     ocupado(true); pista('');
-    LA.pedirCodigo(email).then(function () { dirCorreo = email; verificado = ''; paso = 'code'; pintarLogin(); }, function (err) {
-      ocupado(false);
-      pista(T[err && err.code === 'not_allowed' ? 'eReg' : err && err.code === 'bad_email' ? 'eMail' : err && err.code === 'rate' ? 'eRate' : 'eNet']);
-    });
-  }
-  function validar() {
-    var codigo = ($('a-code').value || '').trim();
-    if (!codigo) return pista(T.eCode);
-    ocupado(true); pista('');
-    LA.verificar(dirCorreo, codigo).then(function () { return LA.sesion(); }).then(function (s) {
-      yo = s; aviso = ''; paso = 'email'; return cargar();
+    LA.entrar(email, clave).then(function () { return LA.sesion(); }).then(function (s) {
+      yo = s; aviso = ''; return cargar();
     }, function (err) {
       ocupado(false);
-      pista(err && err.code === 'bad_code' ? T.eBad : T.eNet);
+      var code = err && err.code;
+      pista(code === 'bad_credentials' ? T.eBad : code === 'rate' ? T.eRate : T.eNet);
+      if (code === 'bad_credentials') { $('a-pass').value = ''; $('a-pass').focus(); }
     });
   }
-  function aEntrar(msg) { yo = null; lista = []; aviso = msg || ''; paso = 'email'; verificado = ''; pintarLogin(); }
+  function aEntrar(msg) { cerrarClave(); yo = null; lista = []; aviso = msg || ''; pintarLogin(); }
+
+  /* ---------- Contraseña: se enseña una vez ---------- */
+  function mostrarClave(email, clave) {
+    $('clave-para').textContent = 'Contraseña de ' + email + ':';
+    $('clave-valor').textContent = clave;
+    $('clave-copiar').textContent = 'Copiar';
+    $('clave').hidden = false; $('clave-copiar').focus();
+  }
+  function cerrarClave() {
+    $('clave').hidden = true; $('clave-valor').textContent = ''; $('clave-para').textContent = '';
+  }
+  $('clave-cerrar').addEventListener('click', cerrarClave);
+  $('clave').addEventListener('keydown', function (e) { if (e.key === 'Escape') cerrarClave(); });
+  $('clave-copiar').addEventListener('click', function () {
+    var v = $('clave-valor').textContent, b = $('clave-copiar');
+    function hecho() { b.textContent = 'Copiada'; }
+    function aMano() { // sin API del portapapeles: se selecciona para copiarla con Ctrl+C
+      var r = document.createRange(); r.selectNodeContents($('clave-valor'));
+      var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
+      try { if (document.execCommand('copy')) return hecho(); } catch (e) { /* sin execCommand */ }
+      b.textContent = 'Selecciónala y cópiala';
+    }
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(v).then(hecho, aMano); else aMano();
+  });
 
   /* ---------- Llamadas a la función admin ---------- */
   function llamar(metodo, ruta, cuerpo) {
@@ -241,7 +279,8 @@ tr.guardando { opacity: .6; }
         h += '</select></td>';
       });
       h += '<td class="c"><input type="checkbox" data-admin aria-label="Administrador — ' + esc(u.nombre) + '"' + (u.admin ? ' checked' : '') + (propio ? ' disabled' : '') + '></td>'
-        + '<td>' + (propio ? '' : '<button type="button" class="btn danger small" data-baja>Dar de baja</button>') + '</td></tr>';
+        + '<td class="acc"><button type="button" class="btn ghost small" data-clave>Nueva contraseña</button>'
+        + (propio ? '' : '<button type="button" class="btn danger small" data-baja>Dar de baja</button>') + '</td></tr>';
     });
     (destino || $('tabla')).innerHTML = h + '</tbody>';
   }
@@ -284,36 +323,62 @@ tr.guardando { opacity: .6; }
     var tr = e.target.closest('tr[data-email]');
     if (tr && (e.target.matches('select[data-rol]') || e.target.matches('[data-admin]'))) guardarFila(tr);
   });
-  $('tabla').addEventListener('click', function (e) {
-    var b = e.target.closest('[data-baja]'); if (!b) return;
-    var email = b.closest('tr').dataset.email;
+  function confirmar(accion, email) {
     var u = lista.filter(function (x) { return x.email === email; })[0];
-    $('c-texto').textContent = '¿Dar de baja a ' + u.nombre + ' (' + u.email + ')? Ya no podrá entrar en ninguna app.';
-    $('confirmar').dataset.email = email; $('confirmar').hidden = false; $('c-no').focus();
+    if (!u) return;
+    var baja = accion === 'baja';
+    $('c-titulo').textContent = baja ? 'Dar de baja' : 'Nueva contraseña';
+    $('c-texto').textContent = baja
+      ? '¿Dar de baja a ' + u.nombre + ' (' + u.email + ')? Ya no podrá entrar en ninguna app.'
+      : '¿Generar una contraseña nueva para ' + u.nombre + ' (' + u.email + ')? La actual dejará de valer.';
+    $('c-si').textContent = baja ? 'Dar de baja' : 'Generar';
+    $('c-si').className = baja ? 'btn danger' : 'btn';
+    $('confirmar').dataset.email = email; $('confirmar').dataset.accion = accion;
+    $('confirmar').hidden = false; $('c-no').focus();
+  }
+  $('tabla').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-baja], [data-clave]'); if (!b) return;
+    confirmar(b.hasAttribute('data-baja') ? 'baja' : 'clave', b.closest('tr').dataset.email);
   });
   $('c-no').addEventListener('click', function () { $('confirmar').hidden = true; });
   $('confirmar').addEventListener('keydown', function (e) { if (e.key === 'Escape') $('confirmar').hidden = true; });
-  $('c-si').addEventListener('click', function () {
-    var email = $('confirmar').dataset.email; $('confirmar').hidden = true;
+  function darDeBaja(email) {
     llamar('DELETE', '/usuarios/' + encodeURIComponent(email)).then(function () {
       lista = lista.filter(function (u) { return u.email !== email; });
       var tr = filaDe(email); if (tr) tr.remove();
       toast('Dada de baja');
     }, errorLlamada);
+  }
+  function nuevaClave(email) {
+    var tr = filaDe(email);
+    if (!tr || tr.classList.contains('guardando')) return;
+    var clave = generarClave();
+    bloquear(tr, true);
+    llamar('POST', '/usuarios/' + encodeURIComponent(email) + '/password', { password: clave }).then(function () {
+      bloquear(tr, false); mostrarClave(email, clave);
+    }, function (e) {
+      bloquear(tr, false); errorLlamada(e);
+    });
+  }
+  $('c-si').addEventListener('click', function () {
+    var email = $('confirmar').dataset.email, accion = $('confirmar').dataset.accion; $('confirmar').hidden = true;
+    if (accion === 'baja') darDeBaja(email); else nuevaClave(email);
   });
   $('n-form').addEventListener('submit', function (e) {
     e.preventDefault();
-    var email = $('n-mail').value.trim().toLowerCase(), nombre = $('n-nombre').value.trim();
+    var email = $('n-mail').value.trim().toLowerCase(), nombre = $('n-nombre').value.trim(), clave = $('n-pass').value;
     if (lista.some(function (u) { return u.email === email; })) { toast('Esa persona ya está dada de alta', true); return; }
+    if (clave.length < MIN_CLAVE) { toast(T.eCorta, true); $('n-pass').focus(); return; }
     var roles = {}; ROLES.forEach(function (r) { roles[r[0]] = 'ninguno'; });
-    var cuerpo = { email: email, nombre: nombre, roles: roles, admin: false };
+    var cuerpo = { email: email, nombre: nombre, roles: roles, admin: false }; // sin la contraseña: así queda en `lista`
     $('n-add').disabled = true;
-    llamar('POST', '/usuarios', cuerpo).then(function () {
+    llamar('POST', '/usuarios', Object.assign({ password: clave }, cuerpo)).then(function () {
       $('n-add').disabled = false;
       var i = -1; lista.forEach(function (u, k) { if (u.email === email) i = k; });
       if (i >= 0) lista[i] = cuerpo; else lista.push(cuerpo);
       lista.sort(function (a, b) { return a.nombre.localeCompare(b.nombre, 'es'); });
-      pintarTabla(); $('n-mail').value = ''; $('n-nombre').value = ''; toast('Guardado');
+      pintarTabla(); $('n-mail').value = ''; $('n-nombre').value = ''; $('n-pass').value = generarClave();
+      toast('Guardado'); mostrarClave(email, clave);
     }, function (err) { $('n-add').disabled = false; errorLlamada(err); });
   });
 
@@ -323,6 +388,7 @@ tr.guardando { opacity: .6; }
   $('denegado').querySelector('button').addEventListener('click', salir);
   $('fallo-reintentar').addEventListener('click', cargar);
 
+  $('n-pass').value = generarClave();
   if (!LA || !LA.activo) { vista('no-config'); return; }
   LA.listo.then(function () { return LA.sesion(); }).then(function (s) {
     if (!s) return aEntrar('');

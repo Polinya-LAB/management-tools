@@ -7,9 +7,14 @@
      listo                      Promise<void>: se resuelve cuando el cliente está listo (o enseguida si no está activo);
                                 nunca se rechaza (si supabase-js no carga, los métodos fallan con {code:'unavailable'})
      sesion()                   Promise<{email}|null>
-     pedirCodigo(email)         Promise<void>; normaliza el correo (espacios y mayúsculas). Errores {code}:
-                                'not_allowed' (no dado de alta), 'bad_email', 'rate' (demasiados envíos), 'error'
-     verificar(email, codigo)   Promise<void>; errores {code}: 'bad_code' (código incorrecto o caducado), 'bad_email', 'error'
+     entrar(email, password)    Promise<void>; entra con correo y contraseña (la asigna un administrador en acceso/).
+                                Normaliza el correo (espacios y mayúsculas); la contraseña va tal cual. Errores {code}:
+                                'bad_credentials' (correo o contraseña incorrectos, o persona no dada de alta),
+                                'rate' (demasiados intentos, 429), 'unavailable' (sin red o error 5xx de Supabase)
+     pedirCodigo(email)         OBSOLETO (código por correo; se quita cuando las apps usen entrar). Promise<void>; errores
+                                {code}: 'not_allowed' (no dado de alta), 'bad_email', 'rate' (demasiados envíos), 'error'
+     verificar(email, codigo)   OBSOLETO, como pedirCodigo. Promise<void>; errores {code}: 'bad_code' (código incorrecto
+                                o caducado), 'bad_email', 'error'
      salir()                    Promise<void>
      api(app)                   string: `${url}/functions/v1/github/${app}`
      apiAdmin()                 string: `${url}/functions/v1/admin`
@@ -107,6 +112,30 @@
     return sesionActual().then(deSesion, function () { return null; });
   }
 
+  function entrar(email, password) {
+    var e = normalizar(email);
+    var p = typeof password === 'string' ? password : '';
+    // Sin correo con forma de correo o sin contraseña no hay nada que comprobar: mismo error que unas credenciales malas.
+    if (!pareceCorreo(e) || !p) return Promise.reject(err('bad_credentials', 'Correo o contraseña incorrectos'));
+    return conCliente().then(function (c) {
+      return c.auth.signInWithPassword({ email: e, password: p });
+    }).then(function (r) {
+      if (!r.error) {
+        if (!r.data || !r.data.session) throw err('unavailable', 'Sin sesión');
+        avisar(r.data.session);
+        return;
+      }
+      var st = r.error.status;
+      var msg = r.error.message || '';
+      if (st === 429 || /rate_limit/.test(codigoDe(r.error))) throw err('rate', msg);
+      // Sin red (status 0 o sin status), 5xx o una respuesta que no se entiende: el servicio no está disponible.
+      if (!st || st >= 500) throw err('unavailable', msg);
+      // GoTrue: 400 invalid_credentials "Invalid login credentials"; cualquier otro 4xx tampoco deja entrar.
+      throw err('bad_credentials', msg);
+    });
+  }
+
+  // OBSOLETO: código por correo. Se mantiene sin cambios hasta que las apps usen entrar().
   function pedirCodigo(email) {
     var e = normalizar(email);
     if (!pareceCorreo(e)) return Promise.reject(err('bad_email', 'Correo no válido'));
@@ -188,8 +217,9 @@
     activo: activo,
     listo: listo,
     sesion: sesion,
-    pedirCodigo: pedirCodigo,
-    verificar: verificar,
+    entrar: entrar,
+    pedirCodigo: pedirCodigo, // obsoleto
+    verificar: verificar, // obsoleto
     salir: salir,
     api: api,
     apiAdmin: apiAdmin,
