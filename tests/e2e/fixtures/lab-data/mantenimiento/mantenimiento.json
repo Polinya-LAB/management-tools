@@ -1,0 +1,67 @@
+{
+ "updated": "2026-10-01T08:00:00.000Z",
+ "source": "demo",
+ "pending": 0,
+ "sources": {
+  "plan": {
+   "spId": "",
+   "size": 0,
+   "modified": "2026-10-01T08:00:00.000Z",
+   "sheet": "Plan",
+   "revDate": "2026-01-01",
+   "url": "https://example.invalid/plan.xlsx"
+  }
+ },
+ "folders": {},
+ "plan": [
+  {
+   "id": "mp-demo-1",
+   "equipment": "Banco demo 1",
+   "equipmentIds": [
+    "eq-DEMO-001"
+   ],
+   "actions": [
+    "Revisión general",
+    "Limpieza"
+   ],
+   "last": "2026-01",
+   "next": "2027-01",
+   "components": "",
+   "provider": "Proveedor Demo",
+   "periodicity": "Anual",
+   "periodMonths": 12,
+   "contract": ""
+  },
+  {
+   "id": "mp-demo-2",
+   "equipment": "Caudalímetro demo",
+   "equipmentIds": [
+    "eq-DEMO-003"
+   ],
+   "actions": [
+    "Revisión"
+   ],
+   "last": "2026-04",
+   "next": "2026-10",
+   "components": "",
+   "provider": "Interno",
+   "periodicity": "Semestral",
+   "periodMonths": 6,
+   "contract": ""
+  }
+ ],
+ "corrective": [
+  {
+   "code": "AC-DEMO-1",
+   "equipmentId": "eq-DEMO-001",
+   "problemDate": "2026-02-10",
+   "problem": "Fuga inventada",
+   "fixDate": "2026-02-12",
+   "action": "Cambio de junta",
+   "rootCause": "Desgaste",
+   "preventive": ""
+  }
+ ],
+ "documents": [],
+ "unmatched": []
+}

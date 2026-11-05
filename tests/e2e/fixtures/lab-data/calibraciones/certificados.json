@@ -1,0 +1,38 @@
+{
+ "updated": "2026-10-01T08:00:00.000Z",
+ "source": "demo",
+ "pending": 0,
+ "folders": {
+  "DEMO-001": {
+   "size": 1
+  },
+  "DEMO-003": {
+   "size": 0
+  }
+ },
+ "certificates": {
+  "cert-demo-1": {
+   "code": "DEMO-001",
+   "equipmentId": "eq-DEMO-001",
+   "matchNote": "",
+   "file": "CERT-DEMO-1.pdf",
+   "path": "Demo/DEMO-001/CERT-DEMO-1.pdf",
+   "url": "https://example.invalid/cert-demo-1.pdf",
+   "spId": "",
+   "size": 1000,
+   "modified": "2026-10-01T08:00:00.000Z",
+   "certRef": "CERT-DEMO-1",
+   "lab": "LAB DEMO",
+   "accreditation": "",
+   "calDate": "2026-03-04",
+   "issueDate": "2026-03-06",
+   "item": "Manómetro demo",
+   "verdict": "",
+   "zonesN": 0,
+   "points": [],
+   "notes": "",
+   "read": "2026-10-01T08:00:00.000Z"
+  }
+ },
+ "unfiled": []
+}

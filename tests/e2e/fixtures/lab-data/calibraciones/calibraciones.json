@@ -1,0 +1,158 @@
+{
+ "equipment": {
+  "eq-DEMO-001": {
+   "code": "DEMO-001",
+   "group": "Demo",
+   "description": "Manómetro demo",
+   "brand": "Marca Demo",
+   "model": "M-1",
+   "serial": "SN-DEMO-001",
+   "state": "In use",
+   "calMode": "Periodic",
+   "periodMonths": 12,
+   "lastCal": "2026-03",
+   "nextOverride": "",
+   "actionType": "",
+   "location": "Lab demo",
+   "duration": "",
+   "lab": "LAB DEMO",
+   "enac": "",
+   "price": "",
+   "points": [
+    {
+     "range": "0-10 bar",
+     "points": "0, 5, 10",
+     "tolerance": "±0,1 bar",
+     "detail": ""
+    }
+   ],
+   "maint": {
+    "required": false,
+    "periodMonths": "",
+    "last": "",
+    "provider": "",
+    "notes": ""
+   },
+   "certUrl": "",
+   "notes": "",
+   "src": "",
+   "importNotes": [],
+   "updated": "2026-10-01T08:00:00.000Z"
+  },
+  "eq-DEMO-002": {
+   "code": "DEMO-002",
+   "group": "Demo",
+   "description": "Termopar demo",
+   "brand": "Marca Demo",
+   "model": "M-1",
+   "serial": "SN-DEMO-002",
+   "state": "In use",
+   "calMode": "Before use",
+   "periodMonths": "",
+   "lastCal": "",
+   "nextOverride": "",
+   "actionType": "",
+   "location": "Lab demo",
+   "duration": "",
+   "lab": "LAB DEMO",
+   "enac": "",
+   "price": "",
+   "points": [],
+   "maint": {
+    "required": false,
+    "periodMonths": "",
+    "last": "",
+    "provider": "",
+    "notes": ""
+   },
+   "certUrl": "",
+   "notes": "",
+   "src": "",
+   "importNotes": [],
+   "updated": "2026-10-01T08:00:00.000Z"
+  },
+  "eq-DEMO-003": {
+   "code": "DEMO-003",
+   "group": "Demo",
+   "description": "Caudalímetro demo",
+   "brand": "Marca Demo",
+   "model": "M-1",
+   "serial": "SN-DEMO-003",
+   "state": "In use",
+   "calMode": "Periodic",
+   "periodMonths": 12,
+   "lastCal": "2025-09",
+   "nextOverride": "",
+   "actionType": "",
+   "location": "Lab demo",
+   "duration": "",
+   "lab": "LAB DEMO",
+   "enac": "",
+   "price": "",
+   "points": [],
+   "maint": {
+    "required": false,
+    "periodMonths": "",
+    "last": "",
+    "provider": "",
+    "notes": ""
+   },
+   "certUrl": "",
+   "notes": "",
+   "src": "",
+   "importNotes": [],
+   "updated": "2026-10-01T08:00:00.000Z"
+  }
+ },
+ "calibrations": {
+  "cal-DEMO-001-2026-03": {
+   "equipmentId": "eq-DEMO-001",
+   "month": "2026-03",
+   "status": "Done",
+   "lab": "LAB DEMO",
+   "cost": "",
+   "certificate": true,
+   "inTolerance": "Yes",
+   "label": true,
+   "certRef": "CERT-DEMO-1",
+   "notes": "",
+   "updated": "2026-10-01T08:00:00.000Z",
+   "source": ""
+  },
+  "cal-DEMO-003-2025-09": {
+   "equipmentId": "eq-DEMO-003",
+   "month": "2025-09",
+   "status": "Done",
+   "lab": "LAB DEMO",
+   "cost": "",
+   "certificate": true,
+   "inTolerance": "Yes",
+   "label": true,
+   "certRef": "",
+   "notes": "",
+   "updated": "2026-10-01T08:00:00.000Z",
+   "source": ""
+  }
+ },
+ "evaluations": {
+  "ev-DEMO-001-2026-03-05": {
+   "equipmentId": "eq-DEMO-001",
+   "date": "2026-03-05",
+   "setpoint": 5,
+   "obtained": 5.02,
+   "unit": "bar",
+   "uncertainty": 0.01,
+   "tu": 0.1,
+   "error": null,
+   "relatedTest": "",
+   "rule": "",
+   "by": "Técnico Demo Uno",
+   "conformityExcel": "",
+   "notes": "",
+   "src": "",
+   "updated": "2026-10-01T08:00:00.000Z"
+  }
+ },
+ "maintenance": {},
+ "config": {}
+}

@@ -1,0 +1,88 @@
+{
+ "config": {
+  "piscina": {
+   "avisoDias": 7
+  }
+ },
+ "hotboxes": {
+  "hb-01": {
+   "nombre": "Hotbox demo 1",
+   "desde": 1,
+   "hasta": 4
+  },
+  "hb-02": {
+   "nombre": "Hotbox demo 2",
+   "desde": 5,
+   "hasta": 8
+  }
+ },
+ "bombas": {
+  "bd-001": {
+   "estado": "activa",
+   "fabricante": "Motor Demo",
+   "fase": 1,
+   "fechaInicio": "2026-09-01",
+   "fechaFin": "2027-03-01",
+   "fechaRetirada": null,
+   "notas": "",
+   "numSerie": "SN-DEMO-1",
+   "origen": "Demo",
+   "petaca": 1,
+   "posicion": 1,
+   "potencia": 750,
+   "proyecto": "Proyecto Demo Piscina",
+   "referencia": "REF-DEMO-1",
+   "tipo": "Velocidad fija",
+   "unidad": "W"
+  },
+  "bd-002": {
+   "estado": "activa",
+   "fabricante": "Motor Demo",
+   "fase": 1,
+   "fechaInicio": "2026-09-01",
+   "fechaFin": "2027-03-01",
+   "fechaRetirada": null,
+   "notas": "",
+   "numSerie": "SN-DEMO-2",
+   "origen": "Demo",
+   "petaca": 2,
+   "posicion": 2,
+   "potencia": 750,
+   "proyecto": "Proyecto Demo Piscina",
+   "referencia": "REF-DEMO-2",
+   "tipo": "Velocidad fija",
+   "unidad": "W"
+  },
+  "bd-003": {
+   "estado": "finalizada",
+   "fabricante": "Motor Demo",
+   "fase": 1,
+   "fechaInicio": "2026-09-01",
+   "fechaFin": "2027-03-01",
+   "fechaRetirada": "2026-10-01",
+   "notas": "",
+   "numSerie": "SN-DEMO-6",
+   "origen": "Demo",
+   "petaca": 1,
+   "posicion": 6,
+   "potencia": 750,
+   "proyecto": "Proyecto Demo Piscina",
+   "referencia": "REF-DEMO-6",
+   "tipo": "Velocidad fija",
+   "unidad": "W"
+  }
+ },
+ "observaciones": {
+  "o-demo-1": {
+   "bombaId": "bd-001",
+   "conexion": "",
+   "creado": "2026-10-01T08:00:00.000Z",
+   "fecha": "2026-10-10",
+   "numSerie": "SN-DEMO-1",
+   "posicion": 1,
+   "proyecto": "Proyecto Demo Piscina",
+   "referencia": "REF-DEMO-1",
+   "texto": "Observación inventada"
+  }
+ }
+}

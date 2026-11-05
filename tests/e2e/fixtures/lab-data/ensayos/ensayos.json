@@ -1,0 +1,286 @@
+{
+ "tests": {
+  "t-demo-001": {
+   "plr": "PLR900001",
+   "qtp": "QTP9001",
+   "title": "Bomba demo A - resistencia",
+   "project": "Proyecto Demo Uno",
+   "requester": "Persona Ficticia",
+   "status": "In progress",
+   "category": "Pumps",
+   "priority": "Medium",
+   "source": "Manual",
+   "equipmentId": "b-demo-01",
+   "techId": "p-demo-01",
+   "start": "2026-10-05",
+   "end": "2026-11-20",
+   "requestedDue": "2026-11-30",
+   "agreedDue": "",
+   "durVal": "1000",
+   "durUnit": "Hours",
+   "pieces": 2,
+   "sequence": 1,
+   "progress": 40,
+   "result": "",
+   "comments": "",
+   "labNotes": "",
+   "requestNote": "",
+   "holdReason": "",
+   "flexible": false,
+   "continuous": "",
+   "techHours": "",
+   "closedAt": "",
+   "created": "2026-10-01T08:00:00.000Z",
+   "updated": "2026-10-01T08:00:00.000Z"
+  },
+  "t-demo-002": {
+   "plr": "PLR900002",
+   "qtp": "QTP9002",
+   "title": "Válvula demo B - ciclos",
+   "project": "Proyecto Demo Dos",
+   "requester": "Otra Persona",
+   "status": "Queued",
+   "category": "Valves",
+   "priority": "Medium",
+   "source": "Manual",
+   "equipmentId": "",
+   "techId": "",
+   "start": "",
+   "end": "",
+   "requestedDue": "2026-12-15",
+   "agreedDue": "",
+   "durVal": "",
+   "durUnit": "",
+   "pieces": 1,
+   "sequence": 2,
+   "progress": 0,
+   "result": "",
+   "comments": "",
+   "labNotes": "",
+   "requestNote": "",
+   "holdReason": "",
+   "flexible": true,
+   "continuous": "",
+   "techHours": "",
+   "closedAt": "",
+   "created": "2026-10-01T08:00:00.000Z",
+   "updated": "2026-10-01T08:00:00.000Z"
+  },
+  "t-demo-003": {
+   "plr": "PLR900003",
+   "qtp": "QTP9001",
+   "title": "Bomba demo C - resistencia",
+   "project": "Proyecto Demo Uno",
+   "requester": "Persona Ficticia",
+   "status": "Completed",
+   "category": "Pumps",
+   "priority": "Medium",
+   "source": "Manual",
+   "equipmentId": "b-demo-01",
+   "techId": "p-demo-02",
+   "start": "2026-08-01",
+   "end": "2026-09-10",
+   "requestedDue": "2026-09-15",
+   "agreedDue": "",
+   "durVal": "500",
+   "durUnit": "Hours",
+   "pieces": 1,
+   "sequence": 3,
+   "progress": 100,
+   "result": "Pass",
+   "comments": "",
+   "labNotes": "",
+   "requestNote": "",
+   "holdReason": "",
+   "flexible": false,
+   "continuous": "",
+   "techHours": "",
+   "closedAt": "2026-09-10",
+   "created": "2026-10-01T08:00:00.000Z",
+   "updated": "2026-10-01T08:00:00.000Z"
+  }
+ },
+ "personas": {
+  "p-demo-01": {
+   "nombre": "Técnico Demo Uno",
+   "rol": "Técnico de ensayos",
+   "horasSemana": 40,
+   "habilitaciones": [
+    "QTP9001"
+   ],
+   "actualizado": "2026-10-01T08:00:00.000Z"
+  },
+  "p-demo-02": {
+   "nombre": "Ingeniera Demo Dos",
+   "rol": "Ingeniero de ensayos",
+   "horasSemana": 40,
+   "habilitaciones": [],
+   "actualizado": "2026-10-01T08:00:00.000Z"
+  }
+ },
+ "bancos": {
+  "b-demo-01": {
+   "nombre": "Banco demo 1",
+   "nombreAras": "DEMO BENCH 1",
+   "descripcion": "Banco inventado para pruebas",
+   "capacidad": 2,
+   "estado": "Operational",
+   "proximaCalibracion": "",
+   "instrumentos": [
+    "eq-DEMO-001"
+   ],
+   "actualizado": "2026-10-01T08:00:00.000Z"
+  },
+  "b-demo-02": {
+   "nombre": "Banco demo 2",
+   "nombreAras": "DEMO BENCH 2",
+   "descripcion": "Otro banco inventado",
+   "capacidad": 1,
+   "estado": "Operational",
+   "proximaCalibracion": "",
+   "instrumentos": [],
+   "actualizado": "2026-10-01T08:00:00.000Z"
+  }
+ },
+ "qtps": {
+  "QTP9001": {
+   "code": "QTP9001",
+   "name": "Resistencia demo",
+   "testType": "Endurance",
+   "standard": "",
+   "equipmentId": "b-demo-01",
+   "continuous": true,
+   "durVal": 1000,
+   "durUnit": "Hours",
+   "techHours": 4,
+   "cyclesPerDay": "",
+   "notes": "",
+   "durBasis": "",
+   "techBasis": "",
+   "profile": "",
+   "setupH": "",
+   "dailyH": "",
+   "reviewEvery": "",
+   "reviewUnit": "",
+   "reviewH": "",
+   "teardownH": "",
+   "actualizado": "2026-10-01T08:00:00.000Z"
+  },
+  "QTP9002": {
+   "code": "QTP9002",
+   "name": "Ciclos demo",
+   "testType": "Cycles",
+   "standard": "",
+   "equipmentId": "",
+   "continuous": false,
+   "durVal": 2,
+   "durUnit": "Days",
+   "techHours": 2,
+   "cyclesPerDay": "",
+   "notes": "",
+   "durBasis": "",
+   "techBasis": "",
+   "profile": "",
+   "setupH": "",
+   "dailyH": "",
+   "reviewEvery": "",
+   "reviewUnit": "",
+   "reviewH": "",
+   "teardownH": "",
+   "actualizado": "2026-10-01T08:00:00.000Z"
+  }
+ },
+ "config": {
+  "importAras": {
+   "map": {},
+   "eqMap": {},
+   "lastFile": "",
+   "date": "",
+   "includeClosed": false
+  },
+  "samples": {
+   "seq": 2,
+   "updated": "2026-10-01T08:00:00.000Z",
+   "skip": {}
+  }
+ },
+ "muestras": {
+  "m-demo-001": {
+   "code": "QTS-00001",
+   "plrs": [
+    "PLR900001"
+   ],
+   "tests": [
+    "t-demo-001"
+   ],
+   "desc": "Bomba demo A",
+   "pn": "",
+   "phase": "DV",
+   "project": "Proyecto Demo Uno",
+   "received": "2026-10-02",
+   "by": "Técnico Demo Uno",
+   "loc": "",
+   "comments": "",
+   "units": [
+    {
+     "n": 1,
+     "state": "",
+     "serial": "",
+     "loc": "",
+     "note": "",
+     "removed": false,
+     "printed": false
+    },
+    {
+     "n": 2,
+     "state": "",
+     "serial": "",
+     "loc": "",
+     "note": "",
+     "removed": false,
+     "printed": false
+    }
+   ],
+   "log": [
+    {
+     "at": "2026-10-01T08:00:00.000Z",
+     "by": "Técnico Demo Uno",
+     "txt": "Recibida"
+    }
+   ],
+   "created": "2026-10-01T08:00:00.000Z",
+   "updated": "2026-10-01T08:00:00.000Z"
+  },
+  "m-demo-002": {
+   "code": "QTS-00002",
+   "plrs": [
+    "PLR900002"
+   ],
+   "tests": [
+    "t-demo-002"
+   ],
+   "desc": "Válvula demo B",
+   "pn": "",
+   "phase": "PV",
+   "project": "Proyecto Demo Dos",
+   "received": "2026-10-03",
+   "by": "Ingeniera Demo Dos",
+   "loc": "",
+   "comments": "",
+   "units": [
+    {
+     "n": 1,
+     "state": "",
+     "serial": "",
+     "loc": "",
+     "note": "",
+     "removed": false,
+     "printed": false
+    }
+   ],
+   "log": [],
+   "created": "2026-10-01T08:00:00.000Z",
+   "updated": "2026-10-01T08:00:00.000Z"
+  }
+ }
+}

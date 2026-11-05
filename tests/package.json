@@ -1,0 +1,12 @@
+{
+  "name": "management-tools-tests",
+  "private": true,
+  "description": "Pruebas de navegador (Playwright) de las apps de management-tools",
+  "devDependencies": {
+    "@supabase/supabase-js": "2.49.4",
+    "esbuild": "0.24.0",
+    "jsbarcode": "3.11.6",
+    "qrcode-generator": "1.4.4",
+    "xlsx": "0.18.5"
+  }
+}

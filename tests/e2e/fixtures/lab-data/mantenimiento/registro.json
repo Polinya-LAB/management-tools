@@ -1,0 +1,29 @@
+{
+ "records": {
+  "r-demo-1": {
+   "planId": "mp-demo-1",
+   "equipment": "Banco demo 1",
+   "status": "Done",
+   "month": "2026-01",
+   "date": "2026-01-20",
+   "by": "Técnico Demo Uno",
+   "provider": "Proveedor Demo",
+   "notes": "",
+   "docUrl": "",
+   "updated": "2026-10-01T08:00:00.000Z"
+  },
+  "r-demo-2": {
+   "planId": "mp-demo-2",
+   "equipment": "Caudalímetro demo",
+   "status": "Planned",
+   "month": "2026-10",
+   "date": "",
+   "by": "",
+   "provider": "Interno",
+   "notes": "",
+   "docUrl": "",
+   "updated": "2026-10-01T08:00:00.000Z"
+  }
+ },
+ "config": {}
+}
