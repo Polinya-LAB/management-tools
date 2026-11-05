@@ -1153,11 +1153,13 @@ const SMP=['expected','received','waiting','testing','tested','stored','returned
 const SMP_CLS={expected:'exp',received:'plan',waiting:'cola',testing:'curso',tested:'inf',stored:'cerr',returned:'endu',scrapped:'canc'};
 const SMP_DEFAULT=['expected','received','waiting','testing','tested','stored'];
 const SMP_PHASES=['Feasibility','MSL','ESL','Pilot','Production','N/A'];
+/* Sizes in mm per label: qr = side of the QR; id, l2 (PLR · QTP), ds (description) and ft (footer) = font sizes.
+   The QR stays readable (about 0.4 mm per module at 17 mm) and leaves at least 30 mm of width for the text. */
 const SMP_LABELS={
-  '99012':{w:89,h:36,n:'99012 Large Address · 89 × 36 mm'},
-  '99010':{w:89,h:28,n:'99010 Standard Address · 89 × 28 mm'},
-  '11354':{w:57,h:32,n:'11354 Multi-purpose · 57 × 32 mm'},
-  '11352':{w:54,h:25,n:'11352 Return Address · 54 × 25 mm'}};
+  '99012':{w:89,h:36,n:'99012 Large Address · 89 × 36 mm',qr:28,id:5.6,l2:3.2,ds:3.6,ft:2.9},
+  '99010':{w:89,h:28,n:'99010 Standard Address · 89 × 28 mm',qr:22,id:5,l2:2.9,ds:3.2,ft:2.6},
+  '11354':{w:57,h:32,n:'11354 Multi-purpose · 57 × 32 mm',qr:19,id:4.2,l2:2.3,ds:3,ft:2.4},
+  '11352':{w:54,h:25,n:'11352 Return Address · 54 × 25 mm',qr:17,id:3.9,l2:2.2,ds:2.7,ft:2.2}};
 const SMP_CODE_RE=/QTS-\d{5}(?:-\d+)?/i;
 const SMP_I18N={
 es:{
@@ -1735,9 +1737,9 @@ function smpLabel(k,c){
   const qtps=smpLotTests(l).map(y=>y.qtp);
   const l2=[(l.plrs||[]).join(' · '),qtps.length?qtps[0]+(qtps.length>1?` +${qtps.length-1}`:''):''].filter(Boolean).join(' · ');
   const ft=[c.proj&&projectNo(l),c.phase&&l.phase,c.date&&l.received&&fmt(l.received)].filter(Boolean).join(' · ');
-  /* Code height that fits the text column: the QR takes a square of the label height, the barcode a strip at the bottom. */
-  const textW=sz.w-4.4-(c.code==='qr'?sz.h-3.2+2:0), fs=Math.min(sz.h*(c.code==='bar'?.13:.16),textW/(code.length*.62)).toFixed(2);
-  return `<div class="dlbl ${c.code==='bar'?'wbar':''} ${sz.h<=28?'sm':''}" style="width:${sz.w}mm;height:${sz.h}mm;--fs:${fs}mm">
+  /* The code shrinks only if it would not fit the text column next to the QR (the barcode takes a strip at the bottom instead). */
+  const textW=sz.w-4.4-(c.code==='qr'?sz.qr+2:0), kfit=Math.min(1,textW/(code.length*.62)/sz.id), f=v=>(v*kfit).toFixed(2)+'mm';
+  return `<div class="dlbl ${c.code==='bar'?'wbar':''} ${sz.h<=28?'sm':''}" style="width:${sz.w}mm;height:${sz.h}mm;--qr:${sz.qr}mm;--fs:${f(sz.id)};--fs-l2:${f(sz.l2)};--fs-ds:${f(sz.ds)};--fs-ft:${f(sz.ft)}">
     ${c.code==='qr'?`<div class="qr">${smpQr(smpQrUrl(l,code))}</div>`:''}
     <div class="tx"><b class="id">${esc(code)}</b>${c.plr&&l2?`<span class="l2">${esc(l2)}</span>`:''}${c.desc?`<span class="ds">${esc(l.desc)}</span>`:''}${ft?`<span class="ft">${esc(ft)}</span>`:''}</div>
     ${c.code==='bar'?`<svg class="bc" data-bc="${esc(code)}"></svg>`:''}</div>`;

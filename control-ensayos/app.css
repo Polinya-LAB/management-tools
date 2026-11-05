@@ -402,14 +402,14 @@ details summary{cursor:pointer;font-weight:600;font-size:14px}
 .lb-list label{display:flex;gap:8px;align-items:center;font-size:13px;font-family:var(--f-mono)}
 .lb-prev{display:flex;flex-wrap:wrap;gap:10px;align-content:start;background:var(--surface-2);padding:12px;border-radius:var(--r);overflow:auto;max-height:440px}
 .dlbl{flex:none;background:#fff;color:#000;display:flex;gap:2mm;padding:1.6mm 2.2mm;box-sizing:border-box;overflow:hidden;font-family:var(--f-body);border-radius:2.5mm;box-shadow:0 1px 3px rgba(0,0,0,.25)}
-.dlbl .qr{flex:none;height:100%;aspect-ratio:1/1}
+.dlbl .qr{flex:none;width:var(--qr,26mm);height:var(--qr,26mm);align-self:center}
 .dlbl .qr svg{width:100%;height:100%;display:block}
 .dlbl .tx{display:flex;flex-direction:column;justify-content:center;gap:.5mm;min-width:0;flex:1;line-height:1.12}
 /* --fs (set per label size) = height of the sample code; the other lines scale from it */
 .dlbl .id{font-family:var(--f-mono);font-weight:700;font-size:var(--fs,4.4mm);letter-spacing:-.02em;white-space:nowrap}
-.dlbl .l2{font-family:var(--f-mono);font-size:calc(var(--fs,4.4mm)*.58);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.dlbl .ds{font-size:calc(var(--fs,4.4mm)*.66);font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
-.dlbl .ft{font-size:calc(var(--fs,4.4mm)*.54);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dlbl .l2{font-family:var(--f-mono);font-size:var(--fs-l2,2.6mm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dlbl .ds{font-size:var(--fs-ds,3mm);font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.dlbl .ft{font-size:var(--fs-ft,2.4mm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dlbl.sm .ds{-webkit-line-clamp:1}
 .dlbl.wbar{flex-direction:column;gap:.8mm}
 .dlbl.wbar .tx{flex:1 1 auto;justify-content:flex-start}
