@@ -360,6 +360,8 @@ main{grid-template-columns:minmax(0,1fr)}  /* the sheet's wide tables scroll ins
 <script>/* Local test mode (development only): opened as a file or with ?local, the page loads local-data.js, which is not in the
    repository, and keeps changes in this browser instead of saving them to GitHub. */
 if(location.protocol==='file:'||/[?&]local\b/.test(location.search)) document.write('<script src="local-data.js"><\/script>');</script>
+<script src="../acceso/config.js"></script>
+<script src="../acceso/lab-auth.js?v=20261106"></script>
 <script>
 /* ---------- Constants ---------- */
 const GROUPS=['Test equipment','Auxiliary equipment'];
@@ -546,13 +548,18 @@ function render(){
   let banner='';
   if(PREVIEW&&DATA) banner=`<div class="banner no-print"><b>Preview version.</b> It shows the real data from <span class="mono">lab-data</span>, but changes are not saved to GitHub: they stay in this page until you reload it.</div>`;
   else if(LOCAL) banner=`<div class="banner no-print"><b>Local test mode.</b> The data comes from <span class="mono">local-data.js</span>, which is not in the repository; changes stay in this browser and are never sent to GitHub. <button class="link" data-act="local-reset">Reset the test data</button></div>`;
+  else if(byMail()&&GH.noAccess) banner=`<div class="banner crit"><b>${ta('au_noapp')}</b></div>`;
+  else if(byMail()&&GH.expired) banner=`<div class="banner crit">${ta('au_expired')} <button class="link" data-act="gh">${ta('au_again')}</button></div>`;
+  else if(S.noDb&&LA&&!GH.login&&S.privateData) banner=`<div class="banner crit"><b>${ta('au_private')}</b> <button class="link" data-act="gh">${ta('au_btn')}</button></div>`;
   else if(S.noDb) banner=S.privateData
     ? (GH.login
       ? `<div class="banner crit"><b>Your account ${esc(GH.login)} cannot see the calibration data.</b> Ask the owner to add you to the private repository <span class="mono">${REPO.owner}/${REPO.repo}</span>.</div>`
       : `<div class="banner crit"><b>The calibration data is private.</b> Press <button class="link" data-act="gh">Connect GitHub</button> with an account that has access to see it.</div>`)
     : `<div class="banner crit"><b>Could not load the calibration data from GitHub.</b> Check your connection and reload the page.</div>`;
   else if(GH.invalid) banner=`<div class="banner crit">Your GitHub key is no longer valid or has expired. <button class="link" data-act="gh">Connect GitHub</button> and paste a new one.</div>`;
-  else if(GH.login&&!GH.push) banner=`<div class="banner">Your GitHub account <b>${esc(GH.login)}</b> cannot edit this repository. Ask to be added as a collaborator with the Write role.</div>`;
+  else if(!byMail()&&GH.login&&!GH.push) banner=`<div class="banner">Your GitHub account <b>${esc(GH.login)}</b> cannot edit this repository. Ask to be added as a collaborator with the Write role.</div>`;
+  else if(byMail()&&GH.login&&!GH.push) banner=`<div class="banner">${ta('au_ro',esc(GH.login))}</div>`;
+  else if(S.ro&&LA&&!GH.login) banner=`<div class="banner">${ta('au_ro_out')} <button class="link" data-act="gh">${ta('au_btn')}</button></div>`;
   else if(S.ro) banner=`<div class="banner">Read-only. To register or change calibrations, <button class="link" data-act="gh">connect GitHub</button> with an account that has write access to the repository.</div>`;
   renderGh();
   if(!DATA){$('#tabs').innerHTML=''; $('#view').innerHTML=banner+(S.noDb?'':'<div class="empty"><h3>Loading calibration data…</h3></div>'); return;}
@@ -1396,11 +1403,42 @@ function deleteFromDialog(btn){
    Same as Control de ensayos: reading calibraciones.json needs the key (token) of an account with read access; saving needs
    write access; the app saves changes made close together as one commit. The key is shared with the other lab apps (same site, same browser storage). */
 const REPO={owner:'Polinya-LAB',repo:'lab-data',branch:'main',path:'calibraciones/calibraciones.json'};
-const API=`https://api.github.com/repos/${REPO.owner}/${REPO.repo}`;
+const GH_API=`https://api.github.com/repos/${REPO.owner}/${REPO.repo}`;
+/* Email sign-in (acceso/lab-auth.js): with an email session the data goes through the lab's Supabase function, which
+   checks the person's role in this app; with a GitHub key, straight to api.github.com as before. Without the Supabase
+   configuration (LabAuth.activo false) only the key exists, exactly as before. */
+const LA=window.LabAuth&&window.LabAuth.activo?window.LabAuth:null;
+const APP_ID='calibraciones';
+const AU={au_btn:'Sign in', au_btn_t:'Sign in with your email to view and change the data', au_eyebrow:'Access', au_title:'Sign in with your email',
+  au_mail:'Email', au_help:'We will send you a 6-digit code. Only emails registered by an administrator can sign in.',
+  au_send:'Send code', au_sent:m=>`We sent a 6-digit code to <b>${m}</b>. It is valid for 10 minutes.`, au_code:'Code', au_enter:'Sign in',
+  au_other:'Use another email', au_wait:'Checking…', au_key:'Use a GitHub key', au_cancel:'Cancel', au_close:'Close', au_signout:'Sign out',
+  au_as:(n,m)=>`Signed in as <b>${n}</b> (${m}).`, au_in:n=>`Signed in as ${n}.`, au_edit:'You can edit.', au_view:'You can only view.',
+  au_none:'You don\'t have access to this app.', au_noapp:'You don\'t have access to this app. Ask an administrator.',
+  au_again:'Sign in again', au_expired:'Your session has expired.', au_saving:'Saving…', au_out:'Signed out. This browser no longer has your session.',
+  au_private:'The calibration data is private.', au_ro:n=>`<b>${n}</b>: you can view the data but cannot change it. Ask an administrator for edit access.`,
+  au_ro_out:'Read-only. To make changes,',
+  au_e_mail:'Enter a valid email address.', au_e_reg:'This email is not registered. Ask an administrator.', au_e_rate:'Too many codes requested. Wait a few minutes and try again.',
+  au_e_net:'Could not connect. Check your connection and try again.',
+  au_e_sess:'Your session could not be started. Request a new code and try again.', au_e_busy:'The lab service is limiting requests. Wait a minute and try again.',
+  au_e_down:'The code is correct, but the lab service is not responding right now. Try again in a moment; the app also retries on its own.', au_e_code:'Enter the 6-digit code.', au_e_bad:'The code is not correct or has expired.',
+  au_e_save:'Your session has expired and the change was not saved. Sign in again and repeat it.', au_e_perm:'You cannot change data: your account does not have edit access to this app. Ask an administrator.'};
+const ta=(k,...a)=>{const v=AU[k]??k; return typeof v==='function'?v(...a):v;};
+const mailRepo=app=>`${LA.api(app)}/repos/${REPO.owner}/${REPO.repo}`;
+/* The API base follows the mode, so an email session always targets the function and a key always api.github.com. */
+const apiBase=()=>GH.modo==='correo'?mailRepo(APP_ID):GH_API;
 const RAW=`https://raw.githubusercontent.com/${REPO.owner}/${REPO.repo}/${REPO.branch}/${REPO.path}`;
 const TOKEN_KEY='pd-gh-token';
-const GH={token:'',login:null,push:false,invalid:false,saving:false};
+/* modo: 'correo' (email session), 'clave' (GitHub key) or null. With 'correo': email, noAccess (no role in this app)
+   and expired (the function answered 401). */
+const GH={token:'',login:null,push:false,invalid:false,saving:false,modo:null,email:'',noAccess:false,expired:false};
 try{GH.token=localStorage.getItem(TOKEN_KEY)||'';}catch(e){}
+if(GH.token) GH.modo='clave';
+const byMail=()=>GH.modo==='correo';
+let mailBusy=false; // own sign-in/sign-out in progress: LabAuth.onCambio is not a session loss
+/* Data can be read through the API (key or email session); otherwise the anonymous raw file (key mode only). */
+const viaApi=()=>byMail()?!GH.expired&&!GH.noAccess:!!GH.token&&!GH.invalid;
+const canWrite=()=>GH.push&&(byMail()?!GH.expired&&!GH.noAccess:!!GH.token&&!GH.invalid);
 S.ro=true;
 const remote={data:null,sha:null,etag:null};
 let flushTimer=null, flushing=null;
@@ -1414,18 +1452,23 @@ const emptyData=()=>Object.fromEntries(COLS.map(c=>[c,{}]));
 const normData=x=>{const o=emptyData(); for(const c of COLS) if(x&&x[c]&&typeof x[c]==='object') o[c]=x[c]; return o;};
 const b64encode=str=>{const bytes=new TextEncoder().encode(str); let bin=''; for(let i=0;i<bytes.length;i+=0x8000) bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+0x8000)); return btoa(bin);};
 const b64decode=b=>new TextDecoder().decode(Uint8Array.from(atob(b.replace(/\s/g,'')),c=>c.charCodeAt(0)));
-const ghFetch=(url,opts={})=>fetch(url,{cache:'no-store',...opts,headers:{Accept:'application/vnd.github+json',...(GH.token?{Authorization:`Bearer ${GH.token}`}:{}),...(opts.headers||{})}});
+/* Credentials only for their own service: the email session for the lab's function, the key for api.github.com. */
+const ghAuth=async url=>LA&&url.startsWith(LA.api(APP_ID).replace(/[^/]+$/,''))?await LA.cabeceras():url.startsWith('https://api.github.com/')&&GH.token?{Authorization:`Bearer ${GH.token}`}:{};
+const ghFetch=async(url,opts={})=>fetch(url,{cache:'no-store',...opts,headers:{Accept:'application/vnd.github+json',...await ghAuth(url),...(opts.headers||{})}});
 const httpError=res=>{const limited=res.status===429||(res.status===403&&res.headers.get('x-ratelimit-remaining')==='0'); return {code:res.status===401?'auth':limited?'rate':(res.status===403||res.status===404)?'forbidden':'unavailable',status:res.status};};
-function errMsg(e){const c=e&&e.code; if(c==='not_granted'||c==='forbidden') return 'You cannot change data: connect GitHub with an account that has write access to the repository.'; if(c==='auth') return 'Your GitHub key is no longer valid. Connect GitHub again with a new key.'; if(c==='conflict') return 'Someone else saved at the same time. Your change was not saved; try again.'; if(c==='rate') return 'GitHub is limiting requests right now. Wait a minute and try again.'; if(c==='unavailable') return 'Could not reach GitHub. Check your connection and try again.'; return 'Could not save: '+(e&&e.message||e)}
+function errMsg(e){const c=e&&e.code;
+  if(byMail()&&(c==='auth'||c==='not_granted'&&GH.expired)) return ta('au_e_save');
+  if(byMail()&&(c==='not_granted'||c==='forbidden')) return ta('au_e_perm');
+  if(c==='not_granted'||c==='forbidden') return 'You cannot change data: connect GitHub with an account that has write access to the repository.'; if(c==='auth') return 'Your GitHub key is no longer valid. Connect GitHub again with a new key.'; if(c==='conflict') return 'Someone else saved at the same time. Your change was not saved; try again.'; if(c==='rate') return 'GitHub is limiting requests right now. Wait a minute and try again.'; if(c==='unavailable') return 'Could not reach GitHub. Check your connection and try again.'; return 'Could not save: '+(e&&e.message||e)}
 
 async function fetchApi(useEtag){
-  const res=await ghFetch(`${API}/contents/${REPO.path}?ref=${REPO.branch}`,useEtag&&remote.etag?{headers:{'If-None-Match':remote.etag}}:{});
+  const res=await ghFetch(`${apiBase()}/contents/${REPO.path}?ref=${REPO.branch}`,useEtag&&remote.etag?{headers:{'If-None-Match':remote.etag}}:{});
   if(res.status===304) return null;
   if(res.status===404) throw {code:'private',status:404};
   if(!res.ok) throw httpError(res);
   const j=await res.json(); let text;
   if(j.content) text=b64decode(j.content);
-  else{const blob=await ghFetch(`${API}/git/blobs/${j.sha}`); if(!blob.ok) throw httpError(blob); text=b64decode((await blob.json()).content);}
+  else{const blob=await ghFetch(`${apiBase()}/git/blobs/${j.sha}`); if(!blob.ok) throw httpError(blob); text=b64decode((await blob.json()).content);}
   return {data:normData(JSON.parse(text)),sha:j.sha,etag:res.headers.get('etag')};
 }
 async function fetchRaw(){
@@ -1446,12 +1489,12 @@ function applyOps(data,ops){
 let CERTS={}; const certsRemote={etag:null};
 async function loadCerts(){
   if(LOCAL){CERTS=window.CAL_LOCAL_CERTS||{}; return;}
-  if(!GH.token||GH.invalid) return;
+  if(!viaApi()) return;
   try{
-    const res=await ghFetch(`${API}/contents/calibraciones/certificados.json?ref=${REPO.branch}`,certsRemote.etag?{headers:{'If-None-Match':certsRemote.etag}}:{});
+    const res=await ghFetch(`${apiBase()}/contents/calibraciones/certificados.json?ref=${REPO.branch}`,certsRemote.etag?{headers:{'If-None-Match':certsRemote.etag}}:{});
     if(res.status===304||!res.ok) return;
     const j=await res.json(); let text=j.content?b64decode(j.content):null;
-    if(text==null){const blob=await ghFetch(`${API}/git/blobs/${j.sha}`); if(!blob.ok) return; text=b64decode((await blob.json()).content);}
+    if(text==null){const blob=await ghFetch(`${apiBase()}/git/blobs/${j.sha}`); if(!blob.ok) return; text=b64decode((await blob.json()).content);}
     CERTS=(JSON.parse(text)||{}).certificates||{}; certsRemote.etag=res.headers.get('etag');
   }catch(e){}
 }
@@ -1471,7 +1514,7 @@ async function commitOps(ops){
   for(let i=0;i<4;i++){
     const cur=await fetchApi(false), next=applyOps(clone(cur.data),ops);
     const body={message:commitMessage(ops),branch:REPO.branch,content:b64encode(JSON.stringify(next,null,1)+'\n')}; if(cur.sha) body.sha=cur.sha;
-    const res=await ghFetch(`${API}/contents/${REPO.path}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const res=await ghFetch(`${apiBase()}/contents/${REPO.path}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(res.ok){const j=await res.json(); Object.assign(remote,{data:next,sha:j.content.sha,etag:null}); return;}
     if(res.status!==409&&res.status!==422) throw httpError(res);
     await new Promise(r=>setTimeout(r,500+Math.random()*800));
@@ -1483,7 +1526,7 @@ function save(ops,msg){
   if(!ops.length) return true;
   if(LOCAL){applyOps(remote.data,ops); try{localStorage.setItem(LS_LOCAL,JSON.stringify(remote.data));}catch(e){} recompute(); render(); if(msg) toast(msg); return true;}
   if(PREVIEW){applyOps(remote.data,ops); recompute(); render(); if(msg) toast(msg+' (preview: not saved to GitHub)'); return true;}
-  if(S.ro||!GH.push||GH.invalid){toast(errMsg({code:'not_granted'})); return null;}
+  if(S.ro||!canWrite()){toast(errMsg({code:'not_granted'})); return null;}
   pendingOps.push(ops); recompute(); render(); if(msg) toast(msg);
   clearTimeout(flushTimer); flushTimer=setTimeout(flushOps,700);
   return true;
@@ -1495,7 +1538,7 @@ async function flushOps(){
   GH.saving=true; renderGh();
   flushing=(async()=>{
     try{await commitOps(batch.flat());}
-    catch(err){ if(err.code==='auth'){GH.invalid=true; GH.push=false; S.ro=true;} toast(errMsg(err)); }
+    catch(err){ if(err.code==='auth'){ if(byMail()) mailExpired(); else {GH.invalid=true; GH.push=false; S.ro=true;} } toast(errMsg(err)); }
     finally{flushing=null; GH.saving=!!pendingOps.length; recompute(); render();}
   })();
   return flushing;
@@ -1506,30 +1549,65 @@ async function refresh(){
     await loadCerts(); recompute(); render(); return;
   }
   if(pendingOps.length||flushing||(PREVIEW&&remote.data)) return;
+  /* Email session not connected yet (the function failed at boot or after the code): try again here, on every poll. */
+  if(byMail()&&!GH.login&&!GH.expired){
+    try{await connectMail(GH.email); render();}
+    catch(err){ if(err.code==='auth') mailExpired(); if(!DATA){S.noDb=true; S.privateData=err.code==='auth';} render(); return; }
+  }
+  /* Email session without a role in this app, or expired: no reading; what is on screen stays. */
+  if(byMail()&&!viaApi()){ if(!DATA){S.noDb=true; S.privateData=true;} render(); return; }
   try{
-    const r=GH.token&&!GH.invalid?await fetchApi(true):await fetchRaw();
+    const r=viaApi()?await fetchApi(true):await fetchRaw();
     const n0=Object.keys(CERTS).length, e0=certsRemote.etag; await loadCerts();
     if(!r&&(certsRemote.etag!==e0||Object.keys(CERTS).length!==n0)) render();
     if(r){Object.assign(remote,r); if(PREVIEW) S.ro=false; recompute(); render();}
     S.noDb=false; S.privateData=false;
   }catch(err){
+    if(err.code==='auth'&&byMail()){mailExpired(); if(!DATA){S.noDb=true; S.privateData=true;} render(); return;}
     if(err.code==='auth'){GH.invalid=true; GH.push=false; S.ro=true; return refresh();}
     if(!DATA){S.noDb=true; S.privateData=err.code==='private'||err.code==='forbidden'; render();}
   }
 }
 async function connectGh(t){
   const h={Accept:'application/vnd.github+json',Authorization:`Bearer ${t}`};
-  const [u,r]=await Promise.all([fetch('https://api.github.com/user',{headers:h,cache:'no-store'}),fetch(API,{headers:h,cache:'no-store'})]);
+  const [u,r]=await Promise.all([fetch('https://api.github.com/user',{headers:h,cache:'no-store'}),fetch(GH_API,{headers:h,cache:'no-store'})]);
   if(u.status===401||r.status===401) throw {code:'auth'};
   if(!u.ok) throw httpError(u); if(!r.ok) throw httpError(r);
   const user=await u.json(), repo=await r.json();
-  Object.assign(GH,{token:t,login:user.login,push:!!(repo.permissions&&repo.permissions.push),invalid:false});
+  Object.assign(GH,{token:t,login:user.login,push:!!(repo.permissions&&repo.permissions.push),invalid:false,modo:'clave',email:'',noAccess:false,expired:false});
   S.ro=PREVIEW?!remote.data:!GH.push;
 }
-function disconnectGh(){Object.assign(GH,{token:'',login:null,push:false,invalid:false}); S.ro=true; try{localStorage.removeItem(TOKEN_KEY);}catch(e){} remote.etag=null; dlg.close(); render(); toast('Disconnected from GitHub. This browser no longer has the key.');}
+/* Email session: the function answers GET /user with the person's name and GET /repos with push = edit role in this app,
+   or 403 when the person has no role in it (then no data is read). */
+async function connectMail(email){
+  const h={Accept:'application/vnd.github+json',...await LA.cabeceras()}, get=url=>fetch(url,{headers:h,cache:'no-store'}).catch(()=>{throw {code:'unavailable'};});
+  const [u,r]=await Promise.all([get(`${LA.api(APP_ID)}/user`),get(mailRepo(APP_ID))]);
+  if(u.status===401||r.status===401) throw {code:'auth'};
+  if(!u.ok&&u.status!==403) throw httpError(u); if(!r.ok&&r.status!==403) throw httpError(r);
+  const user=u.ok?await u.json():{}, repo=r.ok?await r.json():{};
+  Object.assign(GH,{modo:'correo',email,login:user.login||email,push:!!(repo.permissions&&repo.permissions.push),invalid:false,noAccess:!r.ok,expired:false});
+  S.ro=PREVIEW?!remote.data:!GH.push;
+}
+/* The function answered 401 (session expired, or the person was removed): what is on screen stays, read-only,
+   and the header button offers to sign in again. */
+function mailExpired(){GH.expired=true; GH.push=false; S.ro=true; renderGh();}
+async function mailSignOut(){
+  mailBusy=true; try{await LA.salir();}catch(e){} mailBusy=false;
+  Object.assign(GH,{modo:null,email:'',login:null,push:false,noAccess:false,expired:false}); S.ro=true; remote.etag=null;
+  if(GH.token){GH.modo='clave'; try{await connectGh(GH.token);}catch(err){ if(err.code==='auth') GH.invalid=true; } await refresh();}
+  render(); toast(ta('au_out'));
+}
+function disconnectGh(){Object.assign(GH,{token:'',login:null,push:false,invalid:false,modo:null}); S.ro=true; try{localStorage.removeItem(TOKEN_KEY);}catch(e){} remote.etag=null; dlg.close(); render(); toast('Disconnected from GitHub. This browser no longer has the key.');}
 function renderGh(){
   const b=$('#btn-gh'); if(!b) return;
   if(LOCAL){b.className='gh on'; b.querySelector('span').textContent='Local test data'; b.title='Local test mode: nothing is sent to GitHub.'; document.body.classList.remove('ro'); return;}
+  if(LA&&GH.modo!=='clave'){
+    b.className='gh '+(GH.expired?'bad':GH.saving?'busy':GH.login&&GH.push?'on':'');
+    b.querySelector('span').textContent=GH.expired?ta('au_again'):GH.saving?ta('au_saving'):GH.login||(byMail()&&GH.email)||ta('au_btn');
+    b.title=GH.expired?ta('au_expired'):GH.login?`${GH.email} · ${ta(GH.noAccess?'au_none':GH.push?'au_edit':'au_view')}`:ta('au_btn_t');
+    document.body.classList.toggle('ro',!!S.ro);
+    return;
+  }
   b.className='gh '+(GH.invalid?'bad':GH.saving?'busy':GH.login&&GH.push?'on':'');
   b.querySelector('span').textContent=GH.invalid?'GitHub key expired':GH.saving?'Saving…':GH.login?GH.login:'Connect GitHub';
   if(PREVIEW&&GH.login) b.className='gh busy';
@@ -1538,23 +1616,74 @@ function renderGh(){
 }
 function openGh(){
   dlg.dataset.kind='gh'; dlg.dataset.id=''; dlg.classList.add('narrow');
+  if(LA) return openMail();
   const body=`${GH.login?`<p class="note">Connected as <b>${esc(GH.login)}</b>${GH.push?' with write access.':', but this account cannot edit the repository.'}</p>`:''}
   <ol class="guide">
     <li>Create an access key in GitHub: <a href="https://github.com/settings/tokens/new?scopes=repo&amp;description=Laboratorio%20Polinya" target="_blank" rel="noopener">open the form</a>. The <span class="mono">repo</span> permission is already ticked (needed because the lab data is private); choose an expiry and press <i>Generate token</i>.</li>
     <li>Copy the key and paste it here.</li>
   </ol>
-  <div class="field"><label for="gh-token">Access key (token)</label><input id="gh-token" type="password" placeholder="ghp_…" autocomplete="off" spellcheck="false"></div>
-  <p class="note">The key is kept only in this browser and is shared with the other lab apps. Your GitHub account must have access to the data repository <span class="mono">${REPO.owner}/${REPO.repo}</span>: Read to view, Write to edit. Every change is saved as a commit, so the history shows who changed what.</p>`;
+  ${keyFields()}`;
   dlg.innerHTML=`<form class="dlg-form" id="dlg-form" novalidate><header class="dlg-h"><div><p class="eyebrow">Access</p><h2>Connect GitHub</h2></div><button type="button" class="icon-btn" data-act="close" aria-label="Close">×</button></header>
   <div class="dlg-body">${body}<div id="f-err" class="form-err" hidden></div></div>
   <footer class="dlg-f">${GH.token?'<button type="button" class="btn ghost danger" data-act="gh-off">Disconnect</button>':''}<span class="sp"></span><button type="button" class="btn ghost" data-act="close">Cancel</button><button class="btn primary gh-ok" type="submit">Connect</button></footer></form>`;
   if(!dlg.open) dlg.showModal(); $('#gh-token').focus();
 }
-async function saveGh(){
+const keyFields=()=>`<div class="field"><label for="gh-token">Access key (token)</label><input id="gh-token" type="password" placeholder="ghp_…" autocomplete="off" spellcheck="false"></div>
+  <p class="note">The key is kept only in this browser and is shared with the other lab apps. Your GitHub account must have access to the data repository <span class="mono">${REPO.owner}/${REPO.repo}</span>: Read to view, Write to edit. Every change is saved as a commit, so the history shows who changed what.</p>`;
+/* With email sign-in configured: "Sign in with your email" first (email → 6-digit code), "Use a GitHub key" below. */
+function openMail(step){
+  const signed=byMail()&&GH.login&&!GH.expired, keyOn=GH.modo==='clave'&&GH.login;
+  step=step||(signed?'':'email'); dlg.dataset.step=step; dlg.classList.add('narrow');
+  const mail=signed
+    ?`<p class="note">${ta('au_as',esc(GH.login),esc(GH.email))} ${ta(GH.noAccess?'au_none':GH.push?'au_edit':'au_view')}</p>`
+    :`<section class="gh-mail"><h3>${ta('au_title')}</h3>${GH.expired?`<p class="note">${ta('au_expired')}</p>`:''}
+    ${step==='code'
+      ?`<p class="note">${ta('au_sent',esc(dlg.dataset.email||''))}</p><div class="field"><label for="gh-code">${ta('au_code')}</label><input id="gh-code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456" spellcheck="false"></div><p><button type="button" class="link" data-act="gh-mail-back">${ta('au_other')}</button></p>`
+      :`<div class="field"><label for="gh-mail">${ta('au_mail')}</label><input id="gh-mail" type="email" autocomplete="email" spellcheck="false" value="${esc(dlg.dataset.email||GH.email||'')}"></div><p class="note">${ta('au_help')}</p>`}</section>`;
+  const key=signed?'':`<details class="manual gh-key" ${keyOn?'open':''}><summary>${ta('au_key')}</summary>
+    ${keyOn?`<p class="note">Connected as <b>${esc(GH.login)}</b>${GH.push?' with write access.':', but this account cannot edit the repository.'}</p>`:''}
+    <ol class="guide"><li>Create an access key in GitHub: <a href="https://github.com/settings/tokens/new?scopes=repo&amp;description=Laboratorio%20Polinya" target="_blank" rel="noopener">open the form</a>. The <span class="mono">repo</span> permission is already ticked (needed because the lab data is private); choose an expiry and press <i>Generate token</i>.</li><li>Copy the key and paste it here.</li></ol>
+    ${keyFields()}<p>${keyOn?'<button type="button" class="btn ghost danger" data-act="gh-off">Disconnect</button> ':''}<button type="button" class="btn" data-act="gh-key">Connect</button></p></details>`;
+  const main=signed?'':`<button class="btn primary" type="submit">${ta(step==='code'?'au_enter':'au_send')}</button>`;
+  dlg.innerHTML=`<form class="dlg-form" id="dlg-form" novalidate><header class="dlg-h"><div><p class="eyebrow">${ta('au_eyebrow')}</p><h2>${ta('au_btn')}</h2></div><button type="button" class="icon-btn" data-act="close" aria-label="Close">×</button></header>
+  <div class="dlg-body">${mail}${key}<div id="f-err" class="form-err" hidden></div></div>
+  <footer class="dlg-f">${signed?`<button type="button" class="btn ghost danger" data-act="gh-out">${ta('au_signout')}</button>`:''}<span class="sp"></span><button type="button" class="btn ghost" data-act="close">${ta(signed?'au_close':'au_cancel')}</button>${main}</footer></form>`;
+  if(!dlg.open) dlg.showModal(); const f=$('#gh-code')||$('#gh-mail'); if(f) f.focus();
+}
+async function saveMail(){
+  const btn=dlg.querySelector('button[type="submit"]'); if(!btn) return;
+  const label=btn.textContent, busy=on=>{btn.disabled=on; btn.textContent=on?ta('au_wait'):label;};
+  if(dlg.dataset.step==='code'){
+    const email=dlg.dataset.email, code=($('#gh-code').value||'').trim(); if(!code) return formErr(ta('au_e_code'));
+    busy(true); let phase='code';
+    try{
+      mailBusy=true;
+      if(dlg.dataset.verified!==email){ await LA.verificar(email,code); dlg.dataset.verified=email; }
+      /* From here the session exists: stay in email mode, so the polling retries if the function fails now. */
+      phase='connect'; Object.assign(GH,{modo:'correo',email,login:null,push:false,noAccess:false,expired:false}); S.ro=true;
+      await connectMail(email);
+      remote.etag=null; await refresh(); dlg.close(); render();
+      toast(GH.noAccess?ta('au_none'):`${ta('au_in',GH.login)} ${ta(GH.push?'au_edit':'au_view')}`);
+    }catch(err){ busy(false); const c=err&&err.code;
+      if(phase==='code') formErr(ta(c==='bad_code'?'au_e_bad':'au_e_net'));
+      else if(c==='auth'){ mailExpired(); render(); dlg.dataset.verified=''; openMail('email'); formErr(ta('au_e_sess')); }
+      else { render(); formErr(ta(c==='forbidden'?'au_none':c==='rate'?'au_e_busy':'au_e_down')); }
+    }
+    finally{mailBusy=false;}
+    return;
+  }
+  const email=($('#gh-mail').value||'').trim().toLowerCase(); if(!email) return formErr(ta('au_e_mail'));
+  busy(true);
+  try{ await LA.pedirCodigo(email); dlg.dataset.email=email; dlg.dataset.verified=''; openMail('code'); }
+  catch(err){ busy(false); formErr(ta(err.code==='not_allowed'?'au_e_reg':err.code==='bad_email'?'au_e_mail':err.code==='rate'?'au_e_rate':'au_e_net')); }
+}
+function saveGh(){ return LA&&document.activeElement!==$('#gh-token')?saveMail():saveKey(); }
+async function saveKey(){
   const t=($('#gh-token').value||'').trim(); if(!t) return formErr('Paste the access key.');
-  const btn=dlg.querySelector('button[type="submit"]'); btn.disabled=true; btn.textContent='Checking…';
+  const btn=LA?dlg.querySelector('[data-act="gh-key"]'):dlg.querySelector('button[type="submit"]'); btn.disabled=true; btn.textContent='Checking…';
   try{
     await connectGh(t); try{localStorage.setItem(TOKEN_KEY,t);}catch(e){}
+    if(LA){ dlg.dataset.step=''; if(await LA.sesion()){mailBusy=true; try{await LA.salir();}catch(e){} mailBusy=false;} }
     remote.etag=null; S.noDb=false; await refresh(); dlg.close(); render();
     toast(GH.push?`Connected as ${GH.login}. You can now edit.`:`Connected as ${GH.login}, but this account cannot edit the repository.`);
   }catch(err){ btn.disabled=false; btn.textContent='Connect'; formErr(err.code==='auth'?'That key is not valid or has expired.':err.code==='forbidden'?'That key cannot see the repository.':'Could not reach GitHub. Check your connection.'); }
@@ -1607,6 +1736,9 @@ document.addEventListener('click',async ev=>{
   else if(a==='res-add'){$('#res-list').insertAdjacentHTML('beforeend',resRow({q:'T'})); $('#res-list').lastElementChild.querySelector('input').focus();}
   else if(a==='res-del') t.closest('.res-row').remove();
   else if(a==='gh-off') disconnectGh();
+  else if(a==='gh-out'){dlg.close(); mailSignOut();}
+  else if(a==='gh-key') saveKey();
+  else if(a==='gh-mail-back') openMail('email');
 });
 document.addEventListener('input',ev=>{
   if(ev.target.id==='q'){S.q=ev.target.value; const pos=ev.target.selectionStart; render(); const q=$('#q'); if(q){q.focus(); try{q.setSelectionRange(pos,pos)}catch(e){}}}
@@ -1631,9 +1763,15 @@ window.addEventListener('hashchange',()=>{const h=location.hash.slice(1); if(VIE
 /* ---------- Boot ---------- */
 render();
 (async()=>{
-  if(GH.token&&!LOCAL){ try{await connectGh(GH.token);}catch(err){ if(err.code==='auth') GH.invalid=true; } }
+  if(LA&&!LOCAL){ await LA.listo; const s=await LA.sesion();
+    if(s){ GH.modo='correo'; GH.email=s.email; try{await connectMail(s.email);}catch(err){ if(err.code==='auth') mailExpired(); } }
+    /* Signed out in another tab, or the session could not be renewed: same as a 401. */
+    LA.onCambio(x=>{ if(!x&&byMail()&&!mailBusy&&!GH.expired){mailExpired(); render();} }); }
+  if(GH.modo==='clave'&&GH.token&&!LOCAL){ try{await connectGh(GH.token);}catch(err){ if(err.code==='auth') GH.invalid=true; } }
   await refresh(); render();
-  setInterval(()=>{ if(!document.hidden&&!dlg.open) refresh(); }, GH.token?30000:60000);
+  /* Polling: 30 s with a GitHub key, 60 s with an email session (free plan limits), only while the tab is visible. */
+  const every=LA?()=>byMail()?60000:GH.token?30000:60000:(ms=>()=>ms)(GH.token?30000:60000);
+  const poll=()=>setTimeout(()=>{ if(!document.hidden&&!dlg.open) refresh(); poll(); }, every()); poll();
 })();
 </script>
 </body>
