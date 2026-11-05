@@ -144,6 +144,18 @@ const texto = (page) => page.evaluate(() => document.body.innerText);
         assert.equal(u.admin, false);
         assert.equal(await page.inputValue('#n-mail'), '');
       });
+      await check('añadir un correo que ya existe (otras mayúsculas y espacios): se rechaza, no se envía nada y no se tocan sus roles', async () => {
+        const antes = peticiones.length;
+        await page.fill('#n-mail', '  ANA.Ruiz@Fluidra.com ');
+        await page.fill('#n-nombre', 'Otra Ana');
+        await page.click('#n-add');
+        await toast(page, /Esa persona ya está dada de alta/);
+        assert.equal(peticiones.slice(antes).filter((p) => p.method === 'POST').length, 0);
+        const u = usuario(lab, 'ana.ruiz@fluidra.com');
+        assert.equal(u.nombre, 'Ana Ruiz');
+        assert.equal(u.roles.piscina, 'editar');
+        await page.fill('#n-mail', ''); await page.fill('#n-nombre', '');
+      });
       await check('error 400 (correo no válido): se muestra el mensaje de la función y no se añade la fila', async () => {
         await page.fill('#n-mail', 'no-es-un-correo');
         await page.fill('#n-nombre', 'Persona Rara');

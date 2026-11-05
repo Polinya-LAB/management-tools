@@ -123,7 +123,7 @@ tr.guardando { opacity: .6; }
 </div>
 
 <script src="config.js"></script>
-<script src="lab-auth.js"></script>
+<script src="lab-auth.js?v=20261106"></script>
 <script>
 (function () {
   'use strict';
@@ -227,7 +227,7 @@ tr.guardando { opacity: .6; }
   }
 
   /* ---------- Tabla ---------- */
-  function pintarTabla() {
+  function pintarTabla(destino) {
     var h = '<thead><tr><th>Nombre</th><th>Correo</th>';
     ROLES.forEach(function (r) { h += '<th>' + esc(r[1]) + '</th>'; });
     h += '<th>Administrador</th><th></th></tr></thead><tbody>';
@@ -243,7 +243,7 @@ tr.guardando { opacity: .6; }
       h += '<td class="c"><input type="checkbox" data-admin aria-label="Administrador — ' + esc(u.nombre) + '"' + (u.admin ? ' checked' : '') + (propio ? ' disabled' : '') + '></td>'
         + '<td>' + (propio ? '' : '<button type="button" class="btn danger small" data-baja>Dar de baja</button>') + '</td></tr>';
     });
-    $('tabla').innerHTML = h + '</tbody>';
+    (destino || $('tabla')).innerHTML = h + '</tbody>';
   }
   function filaDe(email) { return Array.prototype.filter.call($('tabla').querySelectorAll('tr[data-email]'), function (tr) { return tr.dataset.email === email; })[0]; }
   function leerFila(tr, base) {
@@ -255,15 +255,28 @@ tr.guardando { opacity: .6; }
     if (e.status === 401) { aEntrar(T.expired); return; }
     toast(e.message || 'No se pudo guardar', true);
   }
+  function bloquear(tr, si) {
+    tr.classList.toggle('guardando', si);
+    Array.prototype.forEach.call(tr.querySelectorAll('select, input, button'), function (c) {
+      if (si) { c.dataset.antes = c.disabled ? '1' : ''; c.disabled = true; } else { c.disabled = c.dataset.antes === '1'; delete c.dataset.antes; }
+    });
+  }
+  function pintarFila(email) {
+    var tr = filaDe(email), u = lista.filter(function (x) { return x.email === email; })[0];
+    if (!tr || !u) return;
+    var t = document.createElement('table'); pintarTabla(t); // genera el HTML con el mismo código
+    var nueva = Array.prototype.filter.call(t.querySelectorAll('tr[data-email]'), function (r) { return r.dataset.email === email; })[0];
+    if (nueva) tr.replaceWith(nueva);
+  }
   function guardarFila(tr) {
     var base = lista.filter(function (u) { return u.email === tr.dataset.email; })[0];
-    if (!base) return;
+    if (!base || tr.classList.contains('guardando')) return;
     var cuerpo = leerFila(tr, base);
-    tr.classList.add('guardando');
+    bloquear(tr, true);
     llamar('POST', '/usuarios', cuerpo).then(function () {
-      Object.assign(base, cuerpo); tr.classList.remove('guardando'); toast('Guardado');
+      Object.assign(base, cuerpo); bloquear(tr, false); toast('Guardado');
     }, function (e) {
-      if (e.status !== 401) { tr.classList.remove('guardando'); pintarTabla(); }
+      if (e.status !== 401) pintarFila(base.email);
       errorLlamada(e);
     });
   }
@@ -291,6 +304,7 @@ tr.guardando { opacity: .6; }
   $('n-form').addEventListener('submit', function (e) {
     e.preventDefault();
     var email = $('n-mail').value.trim().toLowerCase(), nombre = $('n-nombre').value.trim();
+    if (lista.some(function (u) { return u.email === email; })) { toast('Esa persona ya está dada de alta', true); return; }
     var roles = {}; ROLES.forEach(function (r) { roles[r[0]] = 'ninguno'; });
     var cuerpo = { email: email, nombre: nombre, roles: roles, admin: false };
     $('n-add').disabled = true;
