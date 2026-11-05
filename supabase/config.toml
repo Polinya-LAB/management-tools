@@ -1,0 +1,14 @@
+project_id = "laboratorio"
+
+[functions.github]
+verify_jwt = false
+
+[functions.admin]
+verify_jwt = false
+
+[auth]
+enable_signup = false
+
+[auth.email]
+otp_length = 6
+otp_expiry = 600
