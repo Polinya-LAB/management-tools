@@ -2203,9 +2203,10 @@ async function saveMail(){
   const label=btn.textContent, busy=on=>{btn.disabled=on; btn.textContent=on?ta('au_wait'):label;};
   const email=($('#gh-mail').value||'').trim().toLowerCase();
   if(!/^[^@\s]+@[^@\s]+$/.test(email)) return formErr(ta('au_e_mail'));
+  busy(true); // before any await, so a second Enter does not start another sign-in
   const s=!password&&dlg.dataset.verified===email?await LA.sesion():null, again=!!s&&s.email===email;
-  if(!password&&!again) return formErr(ta('au_e_pass'));
-  dlg.dataset.email=email; busy(true); let phase='login';
+  if(!password&&!again){ busy(false); return formErr(ta('au_e_pass')); }
+  dlg.dataset.email=email; let phase='login';
   try{
     mailBusy=true;
     if(!again){ dlg.dataset.verified=''; await LA.entrar(email,password); dlg.dataset.verified=email; }
@@ -2213,7 +2214,7 @@ async function saveMail(){
     phase='connect'; Object.assign(GH,{modo:'correo',email,login:null,push:false,pushEnsayos:false,noAccess:false,expired:false}); S.ro=true;
     await connectMail(email);
     if(PREVIEW&&DEMO){DEMO=false; try{localStorage.setItem(DEMO_KEY,'0');}catch(e){} remote.data=null;}
-    dlg.dataset.verified=''; remote.etag=null; await refresh(); dlg.close(); render(); loadCal();
+    remote.etag=null; await refresh(); dlg.dataset.verified=''; dlg.close(); render(); loadCal();
     toast(GH.noAccess?ta('au_none'):`${ta('au_in',GH.login)} ${ta(GH.push?'au_edit':'au_view')}`);
   }catch(err){ busy(false); const c=err&&err.code;
     if(phase==='login') formErr(ta(c==='bad_credentials'?'au_e_cred':c==='rate'?'au_e_rate':'au_e_net'));

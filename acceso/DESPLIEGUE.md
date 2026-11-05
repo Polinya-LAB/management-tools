@@ -51,20 +51,27 @@ La función `github` escribe en los repositorios con una clave propia, que vive 
 
 ## 4. Tabla y funciones (CLI de Supabase)
 
+La tabla y el secreto también se pueden crear desde el panel de Supabase; la CLI hace falta para desplegar las funciones.
+
 ```sh
 npx supabase@2 login
 npx supabase@2 link --project-ref <PROJECT_REF>
-npx supabase@2 secrets set GITHUB_TOKEN=github_pat_xxxxxxxx
-npx supabase@2 db push
-npx supabase@2 functions deploy github
-npx supabase@2 functions deploy admin
+npx supabase@2 secrets set GITHUB_TOKEN=github_pat_xxxxxxxx   # sáltalo si el secreto ya está puesto
+npx supabase@2 db push                                       # sáltalo si la tabla ya existe (ver abajo)
+npx supabase@2 functions deploy github --no-verify-jwt
+npx supabase@2 functions deploy admin --no-verify-jwt
 ```
 
 - `login` abre el navegador para autorizar la CLI. `link` pide la contraseña de la base de datos.
-- `db push` aplica `supabase/migrations/20261105000000_acceso.sql` (tabla `acceso`, con RLS y sin políticas: solo las
-  funciones la leen, con la clave de servicio).
-- Las dos funciones usan `verify_jwt = false` (`supabase/config.toml`) porque validan ellas mismas la sesión con
-  `auth.getUser`. No añadas `--no-verify-jwt` ni lo quites: la CLI lee el ajuste del `config.toml`.
+- **Secreto:** si `GITHUB_TOKEN` ya aparece en *Edge Functions → Secrets* (puesto desde el panel), no ejecutes
+  `secrets set`.
+- **Tabla:** `db push` aplica `supabase/migrations/20261105000000_acceso.sql` (tabla `acceso`, con RLS y sin políticas:
+  solo las funciones la leen, con la clave de servicio). Si ya creaste la tabla en el *SQL Editor* con ese mismo SQL,
+  no ejecutes `db push` (fallaría porque la tabla existe). Si quieres que la CLI la dé por aplicada, para que un
+  `db push` futuro no intente crearla otra vez:
+  `npx supabase@2 migration repair --status applied 20261105000000`.
+- **Funciones:** las dos validan ellas mismas la sesión con `auth.getUser`, así que se despliegan sin la comprobación de
+  JWT de Supabase: `--no-verify-jwt`, lo mismo que `verify_jwt = false` en `supabase/config.toml`.
 
 Comprobaciones tras el despliegue:
 

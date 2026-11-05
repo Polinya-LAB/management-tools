@@ -79,7 +79,8 @@ async function entrar(page, email, nombre) {
   assert.ok(await page.locator('#ov-gh').getByText('Entrar con tu correo').first().isVisible());
   await page.fill('#gh-mail', email);
   await page.fill('#gh-pass', CLAVE_PRUEBA);
-  await page.press('#gh-pass', 'Enter');
+  assert.ok(await page.isVisible('#gh-save'), 'botón de entrar visible');
+  await page.click('#gh-save'); // con el ratón, como la mayoría
   await page.waitForFunction((n) => document.querySelector('#btn-gh-label').textContent === n && document.querySelector('#ov-gh').hidden, nombre);
 }
 const botonNueva = (page) => page.evaluate(() => !document.querySelector('#btn-new').hidden && document.querySelector('#btn-new').offsetParent !== null);
@@ -122,6 +123,7 @@ const enviarSinPermiso = (page) => page.evaluate(() => {
         assert.ok(a && b && a.y < b.y);
         assert.equal(await page.getAttribute('#gh-pass', 'type'), 'password');
         assert.equal(await page.locator('#gh-save').textContent(), 'Entrar');
+        assert.ok(await page.isVisible('#gh-save'), 'el botón Entrar se ve antes de entrar');
         assert.ok(await page.locator('#ov-gh').getByText('¿Has olvidado la contraseña? Pídesela a un administrador.').isVisible());
         assert.equal(await page.locator('#gh-code').count(), 0, 'sin paso de código');
         await page.fill('#gh-mail', 'nadie@fluidra.com');

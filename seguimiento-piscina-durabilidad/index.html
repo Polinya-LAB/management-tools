@@ -2021,9 +2021,10 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
     const label = btn.textContent, busy = on => { btn.disabled = on; btn.textContent = on ? ta('wait') : label; };
     const email = (F('gh-mail').value || '').trim().toLowerCase();
     if (!/^[^@\s]+@[^@\s]+$/.test(email)) return gmHint(ta('eMail'));
+    busy(true); // antes de cualquier await, para que un segundo Intro no empiece otra entrada
     const ses = !password && mailVerified === email ? await LA.sesion() : null, again = !!ses && ses.email === email;
-    if (!password && !again) return gmHint(ta('ePass'));
-    mailAddr = email; busy(true); let phase = 'login';
+    if (!password && !again) { busy(false); return gmHint(ta('ePass')); }
+    mailAddr = email; let phase = 'login';
     try {
       mailBusy = true;
       if (!again) { mailVerified = ''; await LA.entrar(email, password); mailVerified = email; }

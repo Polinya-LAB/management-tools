@@ -98,7 +98,8 @@ async function entrar(page, email, nombre, es = false) {
   assert.ok(await page.locator('#dlg').getByText(es ? 'Entrar con tu correo' : 'Sign in with your email').isVisible());
   await page.fill('#gh-mail', email);
   await page.fill('#gh-pass', CLAVE_PRUEBA);
-  await page.press('#gh-pass', 'Enter');
+  assert.ok(await page.isVisible('#dlg button[type="submit"]'), 'botón de entrar visible');
+  await page.click('#dlg button[type="submit"]'); // con el ratón, como la mayoría
   await page.waitForFunction((n) => document.querySelector('#btn-gh span').textContent === n && !document.querySelector('#dlg').open, nombre);
 }
 
@@ -123,6 +124,7 @@ async function entrar(page, email, nombre, es = false) {
         assert.equal(await page.getAttribute('#gh-pass', 'type'), 'password');
         assert.equal(await page.getAttribute('#gh-pass', 'autocomplete'), 'current-password');
         assert.equal(await page.locator('#dlg button[type="submit"]').textContent(), 'Sign in');
+        assert.ok(await page.isVisible('#dlg button[type="submit"]'), 'el botón Sign in se ve antes de entrar');
         assert.ok(await page.locator('#dlg').getByText('Forgot your password? Ask an administrator.').isVisible());
         assert.equal(await page.locator('#gh-code').count(), 0, 'sin paso de código');
         await page.click('#dlg [data-act="close"]');
@@ -220,6 +222,7 @@ async function entrar(page, email, nombre, es = false) {
         await page.waitForSelector('#gh-mail');
         assert.ok(await page.locator('#dlg').getByText('¿Has olvidado la contraseña? Pídesela a un administrador.').isVisible());
         assert.equal(await page.locator('#dlg button[type="submit"]').textContent(), 'Entrar');
+        assert.ok(await page.isVisible('#dlg button[type="submit"]'));
         await page.fill('#gh-mail', 'marta.m@fluidra.com');
         await page.fill('#gh-pass', 'no-es-la-clave-1234');
         await page.press('#gh-pass', 'Enter');

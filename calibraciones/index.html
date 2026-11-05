@@ -1658,7 +1658,7 @@ function openMail(){
     ${keyOn?`<p class="note">Connected as <b>${esc(GH.login)}</b>${GH.push?' with write access.':', but this account cannot edit the repository.'}</p>`:''}
     <ol class="guide"><li>Create an access key in GitHub: <a href="https://github.com/settings/tokens/new?scopes=repo&amp;description=Laboratorio%20Polinya" target="_blank" rel="noopener">open the form</a>. The <span class="mono">repo</span> permission is already ticked (needed because the lab data is private); choose an expiry and press <i>Generate token</i>.</li><li>Copy the key and paste it here.</li></ol>
     ${keyFields()}<p>${keyOn?'<button type="button" class="btn ghost danger" data-act="gh-off">Disconnect</button> ':''}<button type="button" class="btn" data-act="gh-key">Connect</button></p></details>`;
-  const main=signed?'':`<button class="btn primary" type="submit">${ta('au_enter')}</button>`;
+  const main=signed?'':`<button class="btn primary gh-ok" type="submit">${ta('au_enter')}</button>`;
   dlg.innerHTML=`<form class="dlg-form" id="dlg-form" novalidate><header class="dlg-h"><div><p class="eyebrow">${ta('au_eyebrow')}</p><h2>${ta('au_btn')}</h2></div><button type="button" class="icon-btn" data-act="close" aria-label="Close">×</button></header>
   <div class="dlg-body">${mail}${key}<div id="f-err" class="form-err" hidden></div></div>
   <footer class="dlg-f">${signed?`<button type="button" class="btn ghost danger" data-act="gh-out">${ta('au_signout')}</button>`:''}<span class="sp"></span><button type="button" class="btn ghost" data-act="close">${ta(signed?'au_close':'au_cancel')}</button>${main}</footer></form>`;
@@ -1673,9 +1673,10 @@ async function saveMail(){
   const label=btn.textContent, busy=on=>{btn.disabled=on; btn.textContent=on?ta('au_wait'):label;};
   const email=($('#gh-mail').value||'').trim().toLowerCase();
   if(!/^[^@\s]+@[^@\s]+$/.test(email)) return formErr(ta('au_e_mail'));
+  busy(true); // before any await, so a second Enter does not start another sign-in
   const s=!password&&dlg.dataset.verified===email?await LA.sesion():null, again=!!s&&s.email===email;
-  if(!password&&!again) return formErr(ta('au_e_pass'));
-  dlg.dataset.email=email; busy(true); let phase='login';
+  if(!password&&!again){ busy(false); return formErr(ta('au_e_pass')); }
+  dlg.dataset.email=email; let phase='login';
   try{
     mailBusy=true;
     if(!again){ dlg.dataset.verified=''; await LA.entrar(email,password); dlg.dataset.verified=email; }

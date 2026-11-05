@@ -77,7 +77,8 @@ async function entrar(page, email, nombre) {
   assert.ok(await page.locator('#dlg').getByText('Sign in with your email').isVisible());
   await page.fill('#gh-mail', email);
   await page.fill('#gh-pass', CLAVE_PRUEBA);
-  await page.press('#gh-pass', 'Enter');
+  assert.ok(await page.isVisible('#dlg button[type="submit"]'), 'botón de entrar visible');
+  await page.click('#dlg button[type="submit"]'); // con el ratón, como la mayoría
   await page.waitForFunction((n) => document.querySelector('#btn-gh span').textContent === n && !document.querySelector('#dlg').open, nombre);
 }
 const botonesEdicion = (page) => page.evaluate(() =>
@@ -106,6 +107,7 @@ async function registrarPlan(page) {
         assert.ok(a && b && a.y < b.y);
         assert.equal(await page.getAttribute('#gh-pass', 'type'), 'password');
         assert.equal(await page.locator('#dlg button[type="submit"]').textContent(), 'Sign in');
+        assert.ok(await page.isVisible('#dlg button[type="submit"]'), 'el botón Sign in se ve antes de entrar');
         assert.ok(await page.locator('#dlg').getByText('Forgot your password? Ask an administrator.').isVisible());
         assert.equal(await page.locator('#gh-code').count(), 0, 'sin paso de código');
         await page.fill('#gh-mail', 'nadie@fluidra.com');
