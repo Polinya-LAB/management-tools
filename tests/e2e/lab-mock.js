@@ -117,6 +117,8 @@ async function setupLab(ctx, opts = {}) {
   const estado = {
     puts: [], otps: [], verifies: [], tokens: [], logouts: [], bloqueadas: [], refrescos: 0,
   };
+  const VALIDEZ_CODIGO_MS = 600 * 1000; // el código vale 10 minutos desde que se pide
+  const codigosPedidos = new Map(); // email → momento del último /otp aceptado
   const sesiones = new Map(); // session_id → {email, revocada}
   const refreshes = new Map(); // refresh_token → session_id (solo el vigente)
 
@@ -289,10 +291,9 @@ async function setupLab(ctx, opts = {}) {
     }
     if (pj.version !== ver) return route.fulfill({ status: 404, body: `${pkg}@${ver} no instalado (hay ${pj.version})` });
     const base = path.join(NODE_MODULES, pkg);
-    let full = path.resolve(base, fichero);
+    // Solo ficheros que existen en el paquete: una URL equivocada da 404 también en las pruebas.
+    const full = path.resolve(base, fichero);
     if (!full.startsWith(base + path.sep)) return route.fulfill({ status: 404, body: 'Not Found' });
-    // jsDelivr minimiza al vuelo: "x.min.js" existe aunque el paquete solo traiga "x.js".
-    if (!fs.existsSync(full) && /\.min\.js$/.test(full)) full = full.replace(/\.min\.js$/, '.js');
     if (!fs.existsSync(full) || !fs.statSync(full).isFile()) return route.fulfill({ status: 404, body: 'Not Found' });
     return route.fulfill({
       status: 200, contentType: tipo(full), body: fs.readFileSync(full), headers: { 'access-control-allow-origin': '*' },
@@ -377,6 +378,7 @@ async function setupLab(ctx, opts = {}) {
         if (!body.email || !buscar(body.email) || body.email !== norm(body.email) || body.create_user !== false) {
           return route.fulfill(errorAuth(422, 'otp_disabled', 'Signups not allowed for otp', origin));
         }
+        codigosPedidos.set(body.email, Date.now());
         return route.fulfill(json(200, {}, corsAuth(origin)));
       }
       if (u.pathname === '/auth/v1/verify' && metodo === 'POST') {
@@ -385,9 +387,12 @@ async function setupLab(ctx, opts = {}) {
           return route.fulfill(errorAuth(400, 'validation_failed', 'Verify requires a verification type', origin));
         }
         const email = norm(body.email);
-        if (!buscar(email) || String(body.token) !== codigo) {
+        const pedido = codigosPedidos.get(email);
+        const vigente = pedido !== undefined && Date.now() - pedido <= VALIDEZ_CODIGO_MS;
+        if (!buscar(email) || !vigente || String(body.token) !== codigo) {
           return route.fulfill(errorAuth(403, 'otp_expired', 'Token has expired or is invalid', origin));
         }
+        codigosPedidos.delete(email); // de un solo uso
         return route.fulfill(json(200, nuevaSesion(email), corsAuth(origin)));
       }
       if (u.pathname === '/auth/v1/token' && metodo === 'POST' && u.searchParams.get('grant_type') === 'refresh_token') {

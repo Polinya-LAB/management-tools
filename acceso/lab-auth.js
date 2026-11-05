@@ -21,7 +21,7 @@
    tiene en pantalla; LabAuth no decide eso. */
 (function () {
   'use strict';
-  var SDK = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js';
+  var SDK = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js';
   var cfg = window.LAB_SUPABASE || {};
   var url = String(cfg.url || '').trim().replace(/\/+$/, '');
   var anonKey = String(cfg.anonKey || '').trim();

@@ -62,10 +62,17 @@ const enPagina = (page, fn, arg) => page.evaluate(async ([src, a]) => {
         url: window.LAB_SUPABASE.url, activo: window.LabAuth.activo, sdk: typeof (window.supabase && window.supabase.createClient),
       }));
       assert.deepEqual(r, { url: 'https://lab-test.supabase.co', activo: true, sdk: 'function' });
-      assert.ok(peticiones.includes('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.min.js'));
+      assert.ok(peticiones.includes('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js'));
     });
 
     await check('sin sesión: sesion() === null', async () => {
+      assert.equal(await page.evaluate(() => window.LabAuth.sesion()), null);
+    });
+
+    await check('verificar sin pedirCodigo antes → {code:"bad_code"} (el código solo vale tras pedirlo)', async () => {
+      const r = await enPagina(page, () => window.LabAuth.verificar('luis.ver@fluidra.com', '123456'));
+      assert.equal(r.ok, false);
+      assert.equal(r.error.code, 'bad_code');
       assert.equal(await page.evaluate(() => window.LabAuth.sesion()), null);
     });
 
