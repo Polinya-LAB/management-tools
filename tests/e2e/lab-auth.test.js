@@ -117,7 +117,6 @@ const enPagina = (page, fn, arg) => page.evaluate(async ([src, a]) => {
       assert.deepEqual(await page.evaluate(() => window.LabAuth.sesion()), { email: 'ana.ruiz@fluidra.com' });
       assert.deepEqual(await page.evaluate(() => window.__cambios), [{ email: 'ana.ruiz@fluidra.com' }]);
       assert.ok(await page.evaluate(() => !!localStorage.getItem('lab-auth')), 'sesión guardada con storageKey lab-auth');
-      assert.equal(lab.otps.length, 0, 'no se pide ningún código');
     });
 
     await check('la contraseña no se guarda en localStorage', async () => {
@@ -268,15 +267,13 @@ const enPagina = (page, fn, arg) => page.evaluate(async ([src, a]) => {
     });
 
     // ---------- Errores de Auth con el formato de API 2024-01-01 ----------
-    await check('errores en formato 2024-01-01 también se traducen (bad_credentials; OTP: not_allowed y bad_code)', async () => {
+    await check('errores en formato 2024-01-01 también se traducen (bad_credentials)', async () => {
       const t = await abrir(browser, { formatoErrores: '2024' });
       try {
         const c = await enPagina(t.page, () => window.LabAuth.entrar('ana.ruiz@fluidra.com', 'no-es-la-clave'));
         assert.equal(c.error && c.error.code, 'bad_credentials');
-        const a = await enPagina(t.page, () => window.LabAuth.pedirCodigo('nadie@fluidra.com'));
-        assert.equal(a.error && a.error.code, 'not_allowed');
-        const b = await enPagina(t.page, () => window.LabAuth.verificar('ana.ruiz@fluidra.com', '999999'));
-        assert.equal(b.error && b.error.code, 'bad_code');
+        const n = await enPagina(t.page, () => window.LabAuth.entrar('nadie@fluidra.com', 'clave-de-prueba-1234'));
+        assert.equal(n.error && n.error.code, 'bad_credentials');
       } finally {
         await t.ctx.close();
       }
@@ -307,23 +304,14 @@ const enPagina = (page, fn, arg) => page.evaluate(async ([src, a]) => {
       }
     });
 
-    // ---------- pedirCodigo/verificar (obsoletos: las apps los usan hasta que pasen a entrar) ----------
-    await check('obsoleto: pedirCodigo + verificar siguen funcionando', async () => {
+    // ---------- El código por correo ya no existe ----------
+    await check('pedirCodigo y verificar ya no existen; LabAuth está congelado', async () => {
       const t = await abrir(browser);
       try {
-        const sin = await enPagina(t.page, () => window.LabAuth.verificar('luis.ver@fluidra.com', '123456'));
-        assert.equal(sin.error && sin.error.code, 'bad_code', 'el código solo vale tras pedirlo');
-        const p = await enPagina(t.page, () => window.LabAuth.pedirCodigo('  Luis.Ver@Fluidra.com '));
-        assert.deepEqual(p, { ok: true, valor: undefined });
-        assert.equal(t.lab.otps.at(-1).email, 'luis.ver@fluidra.com');
-        assert.equal(t.lab.otps.at(-1).create_user, false);
-        const n = await enPagina(t.page, () => window.LabAuth.pedirCodigo('nadie@fluidra.com'));
-        assert.equal(n.error && n.error.code, 'not_allowed');
-        const mal = await enPagina(t.page, () => window.LabAuth.verificar('luis.ver@fluidra.com', '000000'));
-        assert.equal(mal.error && mal.error.code, 'bad_code');
-        const v = await enPagina(t.page, () => window.LabAuth.verificar(' LUIS.ver@fluidra.com', ' 123456 '));
-        assert.equal(v.ok, true, JSON.stringify(v));
-        assert.deepEqual(await t.page.evaluate(() => window.LabAuth.sesion()), { email: 'luis.ver@fluidra.com' });
+        const r = await t.page.evaluate(() => ({
+          p: typeof window.LabAuth.pedirCodigo, v: typeof window.LabAuth.verificar, frozen: Object.isFrozen(window.LabAuth),
+        }));
+        assert.deepEqual(r, { p: 'undefined', v: 'undefined', frozen: true });
       } finally {
         await t.ctx.close();
       }

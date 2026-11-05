@@ -1162,18 +1162,17 @@ const SMP_CODE_RE=/QTS-\d{5}(?:-\d+)?/i;
 const SMP_I18N={
 es:{
   au_btn:'Entrar', au_btn_t:'Entra con tu correo para ver y cambiar los datos', au_eyebrow:'Acceso', au_title:'Entrar con tu correo',
-  au_mail:'Correo', au_help:'Te enviaremos un código de 6 cifras. Solo pueden entrar los correos dados de alta por un administrador.',
-  au_send:'Enviar código', au_sent:m=>`Hemos enviado un código de 6 cifras a <b>${m}</b>. Vale 10 minutos.`, au_code:'Código', au_enter:'Entrar',
-  au_other:'Usar otro correo', au_wait:'Comprobando…', au_key:'Usar una clave de GitHub', au_cancel:'Cancelar', au_close:'Cerrar', au_signout:'Salir',
+  au_mail:'Correo', au_pass:'Contraseña', au_enter:'Entrar',
+  au_forgot:'¿Has olvidado la contraseña? Pídesela a un administrador.', au_wait:'Comprobando…', au_key:'Usar una clave de GitHub', au_cancel:'Cancelar', au_close:'Cerrar', au_signout:'Salir',
   au_as:(n,m)=>`Has entrado como <b>${n}</b> (${m}).`, au_in:n=>`Has entrado como ${n}.`, au_edit:'Puedes editar.', au_view:'Solo puedes consultar.',
   au_none:'No tienes acceso a esta app.', au_noapp:'No tienes acceso a esta app. Pídeselo a un administrador.',
   au_again:'Vuelve a entrar', au_expired:'Tu sesión ha caducado.', au_saving:'Guardando…', au_out:'Has salido. Este navegador ya no tiene tu sesión.',
   au_private:'Los datos del laboratorio son privados.', au_ro:n=>`<b>${n}</b>: puedes consultar los datos, pero no cambiarlos. Pide permiso de edición a un administrador.`,
   au_ro_out:'Solo lectura. Para hacer cambios,',
-  au_e_mail:'Escribe un correo válido.', au_e_reg:'Este correo no está dado de alta. Pídeselo a un administrador.', au_e_rate:'Demasiados códigos pedidos. Espera unos minutos y vuelve a probar.',
+  au_e_mail:'Escribe un correo válido.', au_e_pass:'Escribe tu contraseña.', au_e_cred:'Correo o contraseña incorrectos.', au_e_rate:'Demasiados intentos. Espera unos minutos y vuelve a probar.',
   au_e_net:'No se ha podido conectar. Revisa la conexión y vuelve a probar.',
-  au_e_sess:'No se ha podido abrir la sesión. Pide un código nuevo y vuelve a probar.', au_e_busy:'El servicio del laboratorio está limitando las peticiones. Espera un minuto y vuelve a probar.',
-  au_e_down:'El código es correcto, pero el servicio del laboratorio no responde ahora. Vuelve a probar en un momento; la app lo reintenta sola.', au_e_code:'Escribe el código de 6 cifras.', au_e_bad:'El código no es correcto o ha caducado.',
+  au_e_sess:'No se ha podido abrir la sesión. Vuelve a entrar.', au_e_busy:'El servicio del laboratorio está limitando las peticiones. Espera un minuto y vuelve a probar.',
+  au_e_down:'La contraseña es correcta, pero el servicio del laboratorio no responde ahora. Vuelve a probar en un momento; la app lo reintenta sola.',
   au_e_save:'Tu sesión ha caducado y el cambio no se ha guardado. Vuelve a entrar y repítelo.', au_e_perm:'No puedes cambiar datos: tu cuenta no tiene permiso de edición en esta app. Pídeselo a un administrador.',
   tab:'Muestras', title:'Muestras',
   search:'Buscar o escanear: QTS, PLR, QTP, proyecto, nº serie…',
@@ -1239,18 +1238,17 @@ es:{
 },
 en:{
   au_btn:'Sign in', au_btn_t:'Sign in with your email to view and change the data', au_eyebrow:'Access', au_title:'Sign in with your email',
-  au_mail:'Email', au_help:'We will send you a 6-digit code. Only emails registered by an administrator can sign in.',
-  au_send:'Send code', au_sent:m=>`We sent a 6-digit code to <b>${m}</b>. It is valid for 10 minutes.`, au_code:'Code', au_enter:'Sign in',
-  au_other:'Use another email', au_wait:'Checking…', au_key:'Use a GitHub key', au_cancel:'Cancel', au_close:'Close', au_signout:'Sign out',
+  au_mail:'Email', au_pass:'Password', au_enter:'Sign in',
+  au_forgot:'Forgot your password? Ask an administrator.', au_wait:'Checking…', au_key:'Use a GitHub key', au_cancel:'Cancel', au_close:'Close', au_signout:'Sign out',
   au_as:(n,m)=>`Signed in as <b>${n}</b> (${m}).`, au_in:n=>`Signed in as ${n}.`, au_edit:'You can edit.', au_view:'You can only view.',
   au_none:'You don\'t have access to this app.', au_noapp:'You don\'t have access to this app. Ask an administrator.',
   au_again:'Sign in again', au_expired:'Your session has expired.', au_saving:'Saving…', au_out:'Signed out. This browser no longer has your session.',
   au_private:'The lab data is private.', au_ro:n=>`<b>${n}</b>: you can view the data but cannot change it. Ask an administrator for edit access.`,
   au_ro_out:'Read-only. To make changes,',
-  au_e_mail:'Enter a valid email address.', au_e_reg:'This email is not registered. Ask an administrator.', au_e_rate:'Too many codes requested. Wait a few minutes and try again.',
+  au_e_mail:'Enter a valid email address.', au_e_pass:'Enter your password.', au_e_cred:'Wrong email or password.', au_e_rate:'Too many attempts. Wait a few minutes and try again.',
   au_e_net:'Could not connect. Check your connection and try again.',
-  au_e_sess:'Your session could not be started. Request a new code and try again.', au_e_busy:'The lab service is limiting requests. Wait a minute and try again.',
-  au_e_down:'The code is correct, but the lab service is not responding right now. Try again in a moment; the app also retries on its own.', au_e_code:'Enter the 6-digit code.', au_e_bad:'The code is not correct or has expired.',
+  au_e_sess:'Your session could not be started. Sign in again.', au_e_busy:'The lab service is limiting requests. Wait a minute and try again.',
+  au_e_down:'Your password is correct, but the lab service is not responding right now. Try again in a moment; the app also retries on its own.',
   au_e_save:'Your session has expired and the change was not saved. Sign in again and repeat it.', au_e_perm:'You cannot change data: your account does not have edit access to this app. Ask an administrator.',
   tab:'Samples', title:'Samples',
   search:'Search or scan: QTS, PLR, QTP, project, serial no.…',
@@ -1883,7 +1881,6 @@ document.addEventListener('click',ev=>{
   else if(a==='gh-off'){disconnectGh(); dlg.close();}
   else if(a==='gh-out'){dlg.close(); mailSignOut();}
   else if(a==='gh-key') saveKey();
-  else if(a==='gh-mail-back') openMail('email');
   else if(a==='sort'){const st=S.sort[t.dataset.table]; if(st.k===t.dataset.k) st.dir=-st.dir; else {st.k=t.dataset.k; st.dir=1;} render();}
   else if(a==='qst'){const s=t.dataset.s; S.qst=S.qst.includes(s)?S.qst.filter(x=>x!==s):[...S.qst,s]; try{localStorage.setItem('tl.qst',JSON.stringify(S.qst))}catch(e){} render();}
   else if(a==='occ-nav'){const dd=+t.dataset.d; S.occ.start=dd===0?mondayOf(todayMs()):(S.occ.start??mondayOf(todayMs()))+dd*7*DAY; render();}
@@ -2086,7 +2083,7 @@ async function refresh(){
   if(pendingOps.length||flushing) return;
   if(PREVIEW&&DEMO){ if(!remote.data) remote.data=demoLoad(); S.noDb=false; S.privateData=false; S.ro=false; recompute(); return; }
   if(PREVIEW&&remote.data) return;
-  /* Email session not connected yet (the function failed at boot or after the code): try again here, on every poll. */
+  /* Email session not connected yet (the function failed at boot or right after signing in): try again here, on every poll. */
   if(byMail()&&!GH.login&&!GH.expired){
     try{await connectMail(GH.email); render(); loadCal();}
     catch(err){ if(err.code==='auth') mailExpired(); if(!local){S.noDb=true; S.privateData=err.code==='auth';} render(); return; }
@@ -2126,7 +2123,7 @@ async function connectMail(email){
 }
 /* The function answered 401 (session expired, or the person was removed): what is on screen stays, read-only,
    and the header button offers to sign in again. */
-function mailExpired(){GH.expired=true; GH.push=false; S.ro=true; renderGh();}
+function mailExpired(){dlg.dataset.verified=''; GH.expired=true; GH.push=false; S.ro=true; renderGh();}
 async function mailSignOut(){
   mailBusy=true; try{await LA.salir();}catch(e){} mailBusy=false;
   Object.assign(GH,{modo:null,email:'',login:null,push:false,pushEnsayos:false,noAccess:false,expired:false}); S.ro=true; remote.etag=null;
@@ -2178,53 +2175,52 @@ function openGh(){
 }
 const keyFields=()=>`<div class="field"><label for="gh-token">Access key (token)</label><input id="gh-token" type="password" placeholder="ghp_…" autocomplete="off" spellcheck="false"></div>
   <p class="note">The key is kept only in this browser and is shared with the durability pool app. Your GitHub account must have access to the data repository <span class="mono">${REPO.owner}/${REPO.repo}</span>: Read to view, Write to edit. Every change is saved as a commit, so the history shows who changed what.</p>`;
-/* With email sign-in configured: "Sign in with your email" first (email → 6-digit code), "Use a GitHub key" below. */
-function openMail(step){
+/* With email sign-in configured: "Sign in with your email" first (email + password, one step), "Use a GitHub key" below. */
+function openMail(){
   const signed=byMail()&&GH.login&&!GH.expired, keyOn=GH.modo==='clave'&&GH.login;
-  step=step||(signed?'':'email'); dlg.dataset.step=step;
   const mail=signed
     ?`<p class="note">${ta('au_as',esc(GH.login),esc(GH.email))} ${ta(GH.noAccess?'au_none':GH.push?'au_edit':'au_view')}</p>`
     :`<section class="gh-mail"><h3>${ta('au_title')}</h3>${GH.expired?`<p class="note">${ta('au_expired')}</p>`:''}
-    ${step==='code'
-      ?`<p class="note">${ta('au_sent',esc(dlg.dataset.email||''))}</p><div class="field"><label for="gh-code">${ta('au_code')}</label><input id="gh-code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456" spellcheck="false"></div><p><button type="button" class="link" data-act="gh-mail-back">${ta('au_other')}</button></p>`
-      :`<div class="field"><label for="gh-mail">${ta('au_mail')}</label><input id="gh-mail" type="email" autocomplete="email" spellcheck="false" value="${esc(dlg.dataset.email||GH.email||'')}"></div><p class="note">${ta('au_help')}</p>`}</section>`;
+    <div class="field"><label for="gh-mail">${ta('au_mail')}</label><input id="gh-mail" type="email" autocomplete="username" spellcheck="false" value="${esc(dlg.dataset.email||GH.email||'')}"></div>
+    <div class="field"><label for="gh-pass">${ta('au_pass')}</label><input id="gh-pass" type="password" autocomplete="current-password" spellcheck="false"></div>
+    <p class="note">${ta('au_forgot')}</p></section>`;
   const key=signed?'':`<details class="gh-key" ${keyOn?'open':''}><summary>${ta('au_key')}</summary>
     ${keyOn?`<p class="note">Connected as <b>${esc(GH.login)}</b>${GH.push?' with write access.':', but this account cannot edit the repository.'}</p>`:''}
     <ol class="steps-plain"><li>Create an access key in GitHub: <a href="https://github.com/settings/tokens/new?scopes=repo&amp;description=Laboratorio%20Polinya" target="_blank" rel="noopener">open the form</a>. The <span class="mono">repo</span> permission is already ticked (needed because the lab data is private); choose an expiry and press <i>Generate token</i>.</li><li>Copy the key and paste it here.</li></ol>
     ${keyFields()}<p>${keyOn?'<button type="button" class="btn ghost danger" data-act="gh-off">Disconnect</button> ':''}<button type="button" class="btn" data-act="gh-key">Connect</button></p></details>`;
-  const main=signed?'':`<button class="btn primary" type="submit">${ta(step==='code'?'au_enter':'au_send')}</button>`;
+  const main=signed?'':`<button class="btn primary" type="submit">${ta('au_enter')}</button>`;
   dlg.innerHTML=`<form class="dlg-form" id="dlg-form" novalidate><header class="dlg-h"><div><p class="eyebrow">${ta('au_eyebrow')}</p><h2>${ta('au_btn')}</h2></div><button type="button" class="icon-btn" data-act="close" aria-label="Close">×</button></header>
   <div class="dlg-body">${mail}${key}<div id="f-err" class="form-err" hidden></div></div>
   <footer class="dlg-f">${signed?`<button type="button" class="btn ghost danger" data-act="gh-out">${ta('au_signout')}</button>`:''}<span class="sp"></span><button type="button" class="btn ghost" data-act="close">${ta(signed?'au_close':'au_cancel')}</button>${main}</footer></form>`;
-  if(!dlg.open) dlg.showModal(); const f=$('#gh-code')||$('#gh-mail'); if(f) f.focus();
+  if(!dlg.open) dlg.showModal(); const m=$('#gh-mail'); if(m) (m.value?$('#gh-pass'):m).focus();
 }
+/* The password is read and the field emptied at once, so it is not left in the page. dlg.dataset.verified = the email
+   whose sign-in already worked: if only the connection to the lab service failed, "Sign in" with the password field empty
+   retries the connection without asking for the password again. */
 async function saveMail(){
-  const btn=dlg.querySelector('button[type="submit"]'); if(!btn) return;
+  const btn=dlg.querySelector('button[type="submit"]'), pw=$('#gh-pass'); if(!btn||!pw) return;
+  const password=pw.value||''; pw.value='';
   const label=btn.textContent, busy=on=>{btn.disabled=on; btn.textContent=on?ta('au_wait'):label;};
-  if(dlg.dataset.step==='code'){
-    const email=dlg.dataset.email, code=($('#gh-code').value||'').trim(); if(!code) return formErr(ta('au_e_code'));
-    busy(true); let phase='code';
-    try{
-      mailBusy=true;
-      if(dlg.dataset.verified!==email){ await LA.verificar(email,code); dlg.dataset.verified=email; }
-      /* From here the session exists: stay in email mode, so the polling retries if the function fails now. */
-      phase='connect'; Object.assign(GH,{modo:'correo',email,login:null,push:false,pushEnsayos:false,noAccess:false,expired:false}); S.ro=true;
-      await connectMail(email);
-      if(PREVIEW&&DEMO){DEMO=false; try{localStorage.setItem(DEMO_KEY,'0');}catch(e){} remote.data=null;}
-      remote.etag=null; await refresh(); dlg.close(); render(); loadCal();
-      toast(GH.noAccess?ta('au_none'):`${ta('au_in',GH.login)} ${ta(GH.push?'au_edit':'au_view')}`);
-    }catch(err){ busy(false); const c=err&&err.code;
-      if(phase==='code') formErr(ta(c==='bad_code'?'au_e_bad':'au_e_net'));
-      else if(c==='auth'){ mailExpired(); render(); dlg.dataset.verified=''; openMail('email'); formErr(ta('au_e_sess')); }
-      else { render(); formErr(ta(c==='forbidden'?'au_none':c==='rate'?'au_e_busy':'au_e_down')); }
-    }
-    finally{mailBusy=false;}
-    return;
+  const email=($('#gh-mail').value||'').trim().toLowerCase();
+  if(!/^[^@\s]+@[^@\s]+$/.test(email)) return formErr(ta('au_e_mail'));
+  const s=!password&&dlg.dataset.verified===email?await LA.sesion():null, again=!!s&&s.email===email;
+  if(!password&&!again) return formErr(ta('au_e_pass'));
+  dlg.dataset.email=email; busy(true); let phase='login';
+  try{
+    mailBusy=true;
+    if(!again){ dlg.dataset.verified=''; await LA.entrar(email,password); dlg.dataset.verified=email; }
+    /* From here the session exists: stay in email mode, so the polling retries if the function fails now. */
+    phase='connect'; Object.assign(GH,{modo:'correo',email,login:null,push:false,pushEnsayos:false,noAccess:false,expired:false}); S.ro=true;
+    await connectMail(email);
+    if(PREVIEW&&DEMO){DEMO=false; try{localStorage.setItem(DEMO_KEY,'0');}catch(e){} remote.data=null;}
+    dlg.dataset.verified=''; remote.etag=null; await refresh(); dlg.close(); render(); loadCal();
+    toast(GH.noAccess?ta('au_none'):`${ta('au_in',GH.login)} ${ta(GH.push?'au_edit':'au_view')}`);
+  }catch(err){ busy(false); const c=err&&err.code;
+    if(phase==='login') formErr(ta(c==='bad_credentials'?'au_e_cred':c==='rate'?'au_e_rate':'au_e_net'));
+    else if(c==='auth'){ mailExpired(); render(); dlg.dataset.verified=''; openMail(); formErr(ta('au_e_sess')); }
+    else { render(); formErr(ta(c==='forbidden'?'au_none':c==='rate'?'au_e_busy':'au_e_down')); }
   }
-  const email=($('#gh-mail').value||'').trim().toLowerCase(); if(!email) return formErr(ta('au_e_mail'));
-  busy(true);
-  try{ await LA.pedirCodigo(email); dlg.dataset.email=email; dlg.dataset.verified=''; openMail('code'); }
-  catch(err){ busy(false); formErr(ta(err.code==='not_allowed'?'au_e_reg':err.code==='bad_email'?'au_e_mail':err.code==='rate'?'au_e_rate':'au_e_net')); }
+  finally{mailBusy=false;}
 }
 function saveGh(){ return LA&&document.activeElement!==$('#gh-token')?saveMail():saveKey(); }
 async function saveKey(){
@@ -2232,7 +2228,7 @@ async function saveKey(){
   const btn=LA?dlg.querySelector('[data-act="gh-key"]'):dlg.querySelector('button[type="submit"]'); btn.disabled=true; btn.textContent='Checking…';
   try{
     await connectGh(t); try{localStorage.setItem(TOKEN_KEY,t);}catch(e){}
-    if(LA){ dlg.dataset.step=''; if(await LA.sesion()){mailBusy=true; try{await LA.salir();}catch(e){} mailBusy=false;} }
+    if(LA){ dlg.dataset.verified=''; if(await LA.sesion()){mailBusy=true; try{await LA.salir();}catch(e){} mailBusy=false;} }
     if(PREVIEW&&DEMO){DEMO=false; try{localStorage.setItem(DEMO_KEY,'0');}catch(e){} remote.data=null;}
     remote.etag=null; await refresh(); dlg.close(); render(); loadCal();
     toast(GH.push?`Connected as ${GH.login}. You can now edit.`:`Connected as ${GH.login}, but this account cannot edit the repository.`);

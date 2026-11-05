@@ -4,7 +4,7 @@
 'use strict';
 const assert = require('node:assert/strict');
 const { chromium } = require('playwright');
-const { setupLab } = require('./lab-mock.js');
+const { setupLab, CLAVE_PRUEBA } = require('./lab-mock.js');
 
 const BASE = 'https://polinya-lab.github.io/management-tools/';
 const ENSAYOS = BASE + 'control-ensayos/';
@@ -31,12 +31,12 @@ async function check(nombre, fn) {
   }
 }
 
-// Los 4xx esperados (401 de la sesión caducada, 403 de un rol sin acceso, 409/422 de conflictos) salen en la consola
-// como "Failed to load resource"; cualquier otro error cuenta.
+// Los 4xx esperados (400 de una contraseña incorrecta, 401 de la sesión caducada, 403 de un rol sin acceso, 409/422 de
+// conflictos) salen en la consola como "Failed to load resource"; cualquier otro error cuenta.
 // También el 404 de la lectura anónima de raw.githubusercontent.com (lab-data es privado, como hoy): se comprueba aparte
 // que ningún otro recurso responde 404.
 const erroresReales = (errores) =>
-  errores.filter((e) => !/Failed to load resource: the server responded with a status of (40[134]|409|422)/.test(e));
+  errores.filter((e) => !/Failed to load resource: the server responded with a status of (40[0134]|409|422)/.test(e));
 const otros404 = (respuestas) => respuestas.filter((r) => r.status === 404 && !r.url.startsWith('https://raw.githubusercontent.com/'));
 
 // Datos extra para estas pruebas (inventados): un PLR con piezas y sin muestras (propuesta de códigos en Muestras)
@@ -91,16 +91,14 @@ const lecturasFuncion = (peticiones) =>
 const lecturasGithub = (peticiones) =>
   peticiones.filter((p) => p.method === 'GET' && p.url.startsWith('https://api.github.com/') && p.url.includes('/contents/' + FICHERO)).length;
 
-// Entra con correo desde el botón de la cabecera; textos en inglés (es=false) o castellano (Muestras).
+// Entra con correo y contraseña desde el botón de la cabecera; textos en inglés (es=false) o castellano (Muestras).
 async function entrar(page, email, nombre, es = false) {
   await page.click('#btn-gh');
   await page.waitForSelector('#gh-mail');
   assert.ok(await page.locator('#dlg').getByText(es ? 'Entrar con tu correo' : 'Sign in with your email').isVisible());
   await page.fill('#gh-mail', email);
-  await page.press('#gh-mail', 'Enter');
-  await page.waitForSelector('#gh-code');
-  await page.fill('#gh-code', '123456');
-  await page.press('#gh-code', 'Enter');
+  await page.fill('#gh-pass', CLAVE_PRUEBA);
+  await page.press('#gh-pass', 'Enter');
   await page.waitForFunction((n) => document.querySelector('#btn-gh span').textContent === n && !document.querySelector('#dlg').open, nombre);
 }
 
@@ -119,15 +117,43 @@ async function entrar(page, email, nombre, es = false) {
         assert.ok(a.y < b.y, `correo (${a.y}) antes que clave (${b.y})`);
         await page.click('#dlg [data-act="close"]');
       });
-      await check('correo no dado de alta → aviso en el diálogo', async () => {
+      await check('diálogo de un paso: correo, contraseña, "Sign in" y "Forgot your password? Ask an administrator."', async () => {
         await page.click('#btn-gh');
-        await page.fill('#gh-mail', 'nadie@fluidra.com');
-        await page.press('#gh-mail', 'Enter');
-        await page.waitForFunction(() => !document.querySelector('#f-err').hidden);
-        assert.match(await page.locator('#f-err').textContent(), /not registered/i);
+        await page.waitForSelector('#gh-mail');
+        assert.equal(await page.getAttribute('#gh-pass', 'type'), 'password');
+        assert.equal(await page.getAttribute('#gh-pass', 'autocomplete'), 'current-password');
+        assert.equal(await page.locator('#dlg button[type="submit"]').textContent(), 'Sign in');
+        assert.ok(await page.locator('#dlg').getByText('Forgot your password? Ask an administrator.').isVisible());
+        assert.equal(await page.locator('#gh-code').count(), 0, 'sin paso de código');
         await page.click('#dlg [data-act="close"]');
       });
-      await check('correo → código → la cabecera muestra el nombre (Ana Ruiz)', async () => {
+      await check('contraseña incorrecta → "Wrong email or password.", sin sesión y el campo de contraseña vacío', async () => {
+        await page.click('#btn-gh');
+        await page.fill('#gh-mail', 'ana.ruiz@fluidra.com');
+        await page.fill('#gh-pass', 'no-es-la-clave-1234');
+        await page.press('#gh-pass', 'Enter');
+        await page.waitForFunction(() => !document.querySelector('#f-err').hidden);
+        assert.equal(await page.locator('#f-err').textContent(), 'Wrong email or password.');
+        assert.equal(await page.inputValue('#gh-pass'), '', 'la contraseña no se queda en la página');
+        assert.equal(await page.evaluate(() => window.LabAuth.sesion()), null);
+        assert.equal(await textoBoton(page), 'Sign in');
+        await page.click('#dlg [data-act="close"]');
+      });
+      await check('correo no dado de alta → el mismo aviso; sin contraseña → "Enter your password." sin petición', async () => {
+        await page.click('#btn-gh');
+        await page.fill('#gh-mail', 'nadie@fluidra.com');
+        await page.fill('#gh-pass', CLAVE_PRUEBA);
+        await page.press('#gh-pass', 'Enter');
+        await page.waitForFunction(() => !document.querySelector('#f-err').hidden);
+        assert.equal(await page.locator('#f-err').textContent(), 'Wrong email or password.');
+        const n = lab.logins.length;
+        await page.fill('#gh-mail', 'ana.ruiz@fluidra.com');
+        await page.press('#gh-pass', 'Enter');
+        await page.waitForFunction(() => /Enter your password/.test(document.querySelector('#f-err').textContent));
+        assert.equal(lab.logins.length, n);
+        await page.click('#dlg [data-act="close"]');
+      });
+      await check('correo y contraseña → la cabecera muestra el nombre (Ana Ruiz)', async () => {
         await entrar(page, '  Ana.Ruiz@Fluidra.com ', 'Ana Ruiz');
         assert.equal(await page.isVisible('#btn-new'), true, '+ New test visible con editar');
       });
@@ -189,6 +215,20 @@ async function entrar(page, email, nombre, es = false) {
     // ---------- Muestras ----------
     {
       const { ctx, page, lab, errores } = await abrir(browser, MUESTRAS);
+      await check('Muestras: contraseña incorrecta → "Correo o contraseña incorrectos.", sin sesión y campo vacío', async () => {
+        await page.click('#btn-gh');
+        await page.waitForSelector('#gh-mail');
+        assert.ok(await page.locator('#dlg').getByText('¿Has olvidado la contraseña? Pídesela a un administrador.').isVisible());
+        assert.equal(await page.locator('#dlg button[type="submit"]').textContent(), 'Entrar');
+        await page.fill('#gh-mail', 'marta.m@fluidra.com');
+        await page.fill('#gh-pass', 'no-es-la-clave-1234');
+        await page.press('#gh-pass', 'Enter');
+        await page.waitForFunction(() => !document.querySelector('#f-err').hidden);
+        assert.equal(await page.locator('#f-err').textContent(), 'Correo o contraseña incorrectos.');
+        assert.equal(await page.inputValue('#gh-pass'), '');
+        assert.equal(await page.evaluate(() => window.LabAuth.sesion()), null);
+        await page.click('#dlg [data-act="close"]');
+      });
       await check('Muestras (editar muestras, ver ensayos): "Entrar con tu correo"; no aparece Import ARAS', async () => {
         assert.equal(await textoBoton(page), 'Entrar');
         await entrar(page, 'marta.m@fluidra.com', 'Marta Muestras', true);
@@ -289,15 +329,14 @@ async function entrar(page, email, nombre, es = false) {
         assert.match(txt, /session has expired/i);
         assert.equal(await page.isVisible('#btn-new'), false);
       });
-      await check('"Sign in again" abre el diálogo en el paso del correo, con el correo puesto; volver a entrar recupera la edición', async () => {
+      await check('"Sign in again" abre el diálogo con el correo puesto; volver a entrar recupera la edición', async () => {
         lab.setUsuarios(USUARIOS);
         await page.click('#btn-gh');
         await page.waitForSelector('#gh-mail');
         assert.equal(await page.inputValue('#gh-mail'), 'ana.ruiz@fluidra.com');
-        await page.press('#gh-mail', 'Enter');
-        await page.waitForSelector('#gh-code');
-        await page.fill('#gh-code', '123456');
-        await page.press('#gh-code', 'Enter');
+        assert.equal(await page.evaluate(() => document.activeElement.id), 'gh-pass', 'el foco va a la contraseña');
+        await page.fill('#gh-pass', CLAVE_PRUEBA);
+        await page.press('#gh-pass', 'Enter');
         await page.waitForFunction(() => document.querySelector('#btn-gh span').textContent === 'Ana Ruiz');
         assert.equal(await page.isVisible('#btn-new'), true);
       });
@@ -375,10 +414,7 @@ async function entrar(page, email, nombre, es = false) {
         await p2.goto(ENSAYOS);
         await esperarCarga(p2);
         await p2.waitForFunction(() => document.querySelector('#btn-gh span').textContent === 'Ana Ruiz');
-        await p2.evaluate(async () => {
-          await window.LabAuth.pedirCodigo('luis.ver@fluidra.com');
-          await window.LabAuth.verificar('luis.ver@fluidra.com', '123456');
-        });
+        await p2.evaluate((c) => window.LabAuth.entrar('luis.ver@fluidra.com', c), CLAVE_PRUEBA);
         await page.waitForFunction(() => document.querySelector('#btn-gh span').textContent === 'Luis Ver');
         await page.waitForFunction(() => /PLR900001/.test(document.querySelector('#view').textContent));
         assert.equal(await page.isVisible('#btn-new'), false, 'Luis solo puede ver');
@@ -389,29 +425,28 @@ async function entrar(page, email, nombre, es = false) {
       await ctx.close();
     }
 
-    // ---------- La función falla justo después de un código correcto ----------
+    // ---------- La función falla justo después de una contraseña correcta ----------
     {
       const { ctx, page, lab, errores } = await abrir(browser, ENSAYOS);
       const averia = { status: 0 };
       await averiarUser(ctx, averia);
-      await check('código correcto pero la función responde 503 → mensaje concreto; reintentar sin pedir otro código', async () => {
+      await check('contraseña correcta pero la función responde 503 → mensaje concreto; reintentar sin volver a escribir la contraseña', async () => {
         await page.click('#btn-gh');
         await page.fill('#gh-mail', 'ana.ruiz@fluidra.com');
-        await page.press('#gh-mail', 'Enter');
-        await page.waitForSelector('#gh-code');
-        await page.fill('#gh-code', '123456');
+        await page.fill('#gh-pass', CLAVE_PRUEBA);
         averia.status = 503;
-        await page.press('#gh-code', 'Enter');
+        await page.press('#gh-pass', 'Enter');
         await page.waitForFunction(() => !document.querySelector('#f-err').hidden);
         assert.match(await page.locator('#f-err').textContent(), /not responding/i);
+        assert.equal(await page.inputValue('#gh-pass'), '', 'la contraseña no se queda en la página');
         averia.status = 429;
-        await page.press('#gh-code', 'Enter');
+        await page.press('#gh-pass', 'Enter');
         await page.waitForFunction(() => /limiting requests/i.test(document.querySelector('#f-err').textContent));
         averia.status = 0;
-        const verifies = lab.verifies.length;
-        await page.press('#gh-code', 'Enter');
+        const logins = lab.logins.length;
+        await page.press('#gh-pass', 'Enter');
         await page.waitForFunction(() => document.querySelector('#btn-gh span').textContent === 'Ana Ruiz' && !document.querySelector('#dlg').open);
-        assert.equal(lab.verifies.length, verifies, 'sin volver a verificar el código (es de un solo uso)');
+        assert.equal(lab.logins.length, logins, 'sin volver a enviar la contraseña');
         assert.deepEqual(lab.bloqueadas, []);
         assert.deepEqual(errores.filter((e) => !/Failed to load resource: the server responded with a status of (40[134]|409|422|429|503)/.test(e)), []);
       });

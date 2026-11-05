@@ -4,9 +4,8 @@
 //   - https://polinya-lab.github.io/management-tools/**  → ficheros de `mtDir` (acceso/config.js con la configuración de prueba)
 //   - CDN (cdnjs xlsx, jsDelivr qrcode-generator / jsbarcode / @supabase/supabase-js) → tests/node_modules
 //   - Google Fonts → CSS vacío
-//   - <supabaseUrl>/auth/v1/{token,otp,verify,user,logout} → Supabase Auth simulado: correo + contraseña
-//     (grant_type=password; cada usuario tiene `password`, por defecto CLAVE_PRUEBA) y, hasta que las apps dejen de
-//     usarlo, el código de 6 dígitos (otp/verify)
+//   - <supabaseUrl>/auth/v1/{token,user,logout} → Supabase Auth simulado: correo + contraseña
+//     (grant_type=password; cada usuario tiene `password`, por defecto CLAVE_PRUEBA)
 //   - <supabaseUrl>/functions/v1/github/**, /functions/v1/admin/** → los handlers REALES (supabase/functions/*/handler.ts,
 //     empaquetados con esbuild) con dependencias falsas: así las pruebas ejercitan la lógica de permisos de verdad
 //   - api.github.com y raw.githubusercontent.com → modo "clave de GitHub" sobre los mismos ficheros
@@ -90,13 +89,12 @@ function leerFixtures(dirs) {
 
 /**
  * @param {import('playwright').BrowserContext} ctx
- * @param {{usuarios?: Array<{email:string,nombre:string,roles:object,admin:boolean,password?:string}>, codigo?: string,
+ * @param {{usuarios?: Array<{email:string,nombre:string,roles:object,admin:boolean,password?:string}>,
  *   supabaseUrl?: string, anonKey?: string, mtDir?: string, fixturesDir?: string, dataDirs?: Record<string,string>,
  *   github?: {login:string, push:boolean, token?:string}, rawPublico?: string[], expiresIn?: number,
  *   formatoErrores?: 'legacy'|'2024'}} opts
  */
 async function setupLab(ctx, opts = {}) {
-  const codigo = opts.codigo ?? '123456';
   const supabaseUrl = String(opts.supabaseUrl ?? 'https://lab-test.supabase.co').replace(/\/+$/, '');
   const anonKey = opts.anonKey ?? 'anon-test';
   const mtDir = path.resolve(opts.mtDir ?? RAIZ);
@@ -124,10 +122,8 @@ async function setupLab(ctx, opts = {}) {
   const buscar = (email) => usuarios.find((u) => u.email === norm(email)) || null;
 
   const estado = {
-    puts: [], logins: [], otps: [], verifies: [], tokens: [], logouts: [], bloqueadas: [], refrescos: 0,
+    puts: [], logins: [], tokens: [], logouts: [], bloqueadas: [], refrescos: 0,
   };
-  const VALIDEZ_CODIGO_MS = 600 * 1000; // el código vale 10 minutos desde que se pide
-  const codigosPedidos = new Map(); // email → momento del último /otp aceptado
   const sesiones = new Map(); // session_id → {email, revocada}
   const refreshes = new Map(); // refresh_token → session_id (solo el vigente)
 
@@ -402,29 +398,6 @@ async function setupLab(ctx, opts = {}) {
         }
         return route.fulfill(json(200, nuevaSesion(email), corsAuth(origin)));
       }
-      if (u.pathname === '/auth/v1/otp' && metodo === 'POST') {
-        estado.otps.push(body);
-        // Registro libre desactivado: solo los usuarios dados de alta reciben código.
-        if (!body.email || !buscar(body.email) || body.email !== norm(body.email) || body.create_user !== false) {
-          return route.fulfill(errorAuth(422, 'otp_disabled', 'Signups not allowed for otp', origin));
-        }
-        codigosPedidos.set(body.email, Date.now());
-        return route.fulfill(json(200, {}, corsAuth(origin)));
-      }
-      if (u.pathname === '/auth/v1/verify' && metodo === 'POST') {
-        estado.verifies.push(body);
-        if (body.type !== 'email' || !body.email) {
-          return route.fulfill(errorAuth(400, 'validation_failed', 'Verify requires a verification type', origin));
-        }
-        const email = norm(body.email);
-        const pedido = codigosPedidos.get(email);
-        const vigente = pedido !== undefined && Date.now() - pedido <= VALIDEZ_CODIGO_MS;
-        if (!buscar(email) || !vigente || String(body.token) !== codigo) {
-          return route.fulfill(errorAuth(403, 'otp_expired', 'Token has expired or is invalid', origin));
-        }
-        codigosPedidos.delete(email); // de un solo uso
-        return route.fulfill(json(200, nuevaSesion(email), corsAuth(origin)));
-      }
       if (u.pathname === '/auth/v1/token' && metodo === 'POST' && u.searchParams.get('grant_type') === 'refresh_token') {
         const sid = refreshes.get(body.refresh_token);
         const s = sid && sesiones.get(sid);
@@ -507,8 +480,6 @@ async function setupLab(ctx, opts = {}) {
   return {
     puts: estado.puts,
     logins: estado.logins,
-    otps: estado.otps,
-    verifies: estado.verifies,
     tokens: estado.tokens,
     logouts: estado.logouts,
     bloqueadas: estado.bloqueadas,

@@ -664,7 +664,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="../acceso/config.js"></script>
-<script src="../acceso/lab-auth.js?v=20261107"></script>
+<script src="../acceso/lab-auth.js?v=20261108"></script>
 <script>
 (() => {
   const $ = (s, r = document) => r.querySelector(s);
@@ -1742,20 +1742,18 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
   const APP_ID = 'piscina';
   const AU = {
     btn: 'Entrar con tu correo', btnT: 'Entra con tu correo para ver y modificar los datos', title: 'Entrar con tu correo',
-    mail: 'Correo', help: 'Te enviaremos un código de 6 cifras. Solo pueden entrar los correos dados de alta por un administrador.',
-    send: 'Enviar código', sent: m => `Te hemos enviado un código de 6 cifras a <b>${m}</b>. Vale 10 minutos.`, code: 'Código', enter: 'Entrar',
-    other: 'Usar otro correo', wait: 'Comprobando…', key: 'Usar una clave de GitHub', signout: 'Salir',
+    mail: 'Correo', pass: 'Contraseña', enter: 'Entrar',
+    forgot: '¿Has olvidado la contraseña? Pídesela a un administrador.', wait: 'Comprobando…', key: 'Usar una clave de GitHub', signout: 'Salir',
     as: (n, m) => `Has entrado como <b>${n}</b> (${m}).`, in: n => `Has entrado como ${n}.`,
     edit: 'Puedes registrar y modificar bombas.', view: 'Solo puedes consultar los datos.',
     noapp: 'No tienes acceso a esta app. Pídeselo a un administrador.',
     again: 'Vuelve a entrar', expired: 'Tu sesión ha caducado.', saving: 'Guardando…', out: 'Has salido. Este navegador ya no tiene tu sesión.',
     private: 'Entra con tu correo para ver la piscina.',
     ro: n => `Has entrado como <b>${n}</b>, pero solo puedes consultar los datos. Pide a un administrador permiso de edición.`,
-    eMail: 'Escribe un correo válido.', eReg: 'Ese correo no está dado de alta. Pídeselo a un administrador.',
-    eRate: 'Has pedido demasiados códigos. Espera unos minutos y vuelve a intentarlo.', eNet: 'No se pudo conectar. Comprueba la conexión y vuelve a intentarlo.',
-    eSess: 'No se pudo iniciar tu sesión. Pide un código nuevo y vuelve a intentarlo.', eBusy: 'El servicio del laboratorio está limitando las peticiones. Espera un minuto y vuelve a intentarlo.',
-    eDown: 'El código es correcto, pero el servicio del laboratorio no responde ahora. Inténtalo en un momento; la app también reintenta sola.',
-    eCode: 'Escribe el código de 6 cifras.', eBad: 'El código no es correcto o ha caducado.',
+    eMail: 'Escribe un correo válido.', ePass: 'Escribe tu contraseña.', eCred: 'Correo o contraseña incorrectos.',
+    eRate: 'Demasiados intentos. Espera unos minutos y vuelve a intentarlo.', eNet: 'No se pudo conectar. Comprueba la conexión y vuelve a intentarlo.',
+    eSess: 'No se pudo iniciar tu sesión. Vuelve a entrar.', eBusy: 'El servicio del laboratorio está limitando las peticiones. Espera un minuto y vuelve a intentarlo.',
+    eDown: 'La contraseña es correcta, pero el servicio del laboratorio no responde ahora. Inténtalo en un momento; la app también reintenta sola.',
     eSave: 'Tu sesión ha caducado y el cambio no se ha guardado. Vuelve a entrar y repítelo.',
     ePerm: 'No puedes modificar los datos: tu cuenta no tiene permiso de edición en esta app. Pídeselo a un administrador.'
   };
@@ -1830,7 +1828,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
   }
 
   async function refresh() {
-    // Sesión de correo aún sin conectar (la función falló al arrancar o tras el código): se reintenta aquí, en cada consulta.
+    // Sesión de correo aún sin conectar (la función falló al arrancar o justo después de entrar): se reintenta aquí, en cada consulta.
     if (byMail() && !state.gh.login && !mail.expired) {
       try { await connectMail(mail.email); renderGh(); renderAll(); }
       catch (err) {
@@ -1937,7 +1935,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
   }
   // La función respondió 401 (sesión caducada o persona dada de baja): lo que hay en pantalla se queda, en solo lectura,
   // y el botón ofrece volver a entrar.
-  function mailExpired() { mail.expired = true; state.gh.push = false; state.canWrite = false; renderGh(); renderAll(); }
+  function mailExpired() { mailVerified = ''; mail.expired = true; state.gh.push = false; state.canWrite = false; renderGh(); renderAll(); }
   async function mailSignOut() {
     mailBusy = true; try { await LA.salir(); } catch (e) {} mailBusy = false;
     modo = null; Object.assign(mail, { email: '', noAccess: false, expired: false });
@@ -1978,8 +1976,10 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
     }
     if (LA) renderMailBox(signed, keyOn);
   }
-  // Con el correo configurado: "Entrar con tu correo" (correo → código de 6 cifras) arriba y "Usar una clave de GitHub" debajo.
-  let mailStep = 'email', mailAddr = '', mailVerified = '';
+  // Con el correo configurado: "Entrar con tu correo" (correo y contraseña, un solo paso) arriba y "Usar una clave de GitHub" debajo.
+  // mailVerified = el correo con el que ya se ha entrado: si solo ha fallado la conexión con el servicio del laboratorio,
+  // "Entrar" con la contraseña vacía reintenta la conexión sin volver a pedirla.
+  let mailAddr = '', mailVerified = '';
   function setupMailUi() {
     F('gh-form').querySelector('h2').textContent = ta('title');
     F('gh-form').querySelector('.sub').textContent = 'Para ver, registrar y modificar bombas';
@@ -1996,55 +1996,53 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
     const box = F('gh-mailbox');
     F('gh-keybox').hidden = signed;
     F('gh-save').hidden = signed;
-    F('gh-save').textContent = ta(mailStep === 'code' ? 'enter' : 'send');
+    F('gh-save').textContent = ta('enter');
     if (signed) {
       box.innerHTML = `<p style="margin:0">${ta('as', esc(state.gh.login), esc(mail.email))} ${ta(mail.noAccess ? 'noapp' : state.gh.push ? 'edit' : 'view')}</p><div><button type="button" class="btn" id="gm-out">${ta('signout')}</button></div>`;
       return;
     }
     box.innerHTML = `<h3 style="margin:0;font-size:15px">${ta('title')}</h3>${mail.expired ? `<p class="ro-note" style="margin:0">${ta('expired')}</p>` : ''}`
-      + (mailStep === 'code'
-        ? `<p style="margin:0;font-size:14px">${ta('sent', esc(mailAddr))}</p><div class="field s6"><label for="gh-code">${ta('code')}</label><input id="gh-code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456" spellcheck="false"></div><div><button type="button" class="btn ghost" id="gm-back">${ta('other')}</button></div>`
-        : `<div class="field s6"><label for="gh-mail">${ta('mail')}</label><input id="gh-mail" type="email" autocomplete="email" spellcheck="false" value="${esc(mailAddr || mail.email || '')}"></div><p class="ro-note" style="margin:0">${ta('help')}</p>`);
+      + `<div class="field s6"><label for="gh-mail">${ta('mail')}</label><input id="gh-mail" type="email" autocomplete="username" spellcheck="false" value="${esc(mailAddr || mail.email || '')}"></div>`
+      + `<div class="field s6"><label for="gh-pass">${ta('pass')}</label><input id="gh-pass" type="password" autocomplete="current-password" spellcheck="false"></div>`
+      + `<p class="ro-note" style="margin:0">${ta('forgot')}</p>`;
   }
   function gmHint(msg, cls = 'bad') { const h = F('gm-hint'); h.hidden = !msg; h.textContent = msg || ''; h.className = 'hint ' + cls; }
-  function openMail(step) {
-    mailStep = step || 'email'; gmHint('');
+  function openMail() {
+    gmHint('');
     renderGh();
     F('gh-keybox').open = modo === 'clave' && !!state.gh.login;
-    openOverlay('ov-gh', F('gh-code') || F('gh-mail') || F('gh-token'));
+    const m = F('gh-mail');
+    openOverlay('ov-gh', m ? (m.value ? F('gh-pass') : m) : F('gh-token'));
   }
+  // La contraseña se lee y el campo se vacía enseguida: no se queda en la página.
   async function saveMail() {
-    const btn = F('gh-save'), label = btn.textContent, busy = on => { btn.disabled = on; btn.textContent = on ? ta('wait') : label; };
-    if (mailStep === 'code') {
-      const email = mailAddr, code = (F('gh-code').value || '').trim();
-      if (!code) return gmHint(ta('eCode'));
-      busy(true); let phase = 'code';
-      try {
-        mailBusy = true;
-        if (mailVerified !== email) { await LA.verificar(email, code); mailVerified = email; }
-        // Desde aquí la sesión existe: se queda en modo correo, así la consulta reintenta si la función falla ahora.
-        phase = 'connect'; modo = 'correo'; Object.assign(mail, { email, noAccess: false, expired: false });
-        state.gh = { login: null, push: false, tokenInvalid: false }; state.canWrite = false;
-        await connectMail(email);
-        remote.etag = null; await refresh(); busy(false); mailStep = 'email'; renderGh(); renderAll(); closeOverlay('ov-gh');
-        toast(mail.noAccess ? ta('noapp') : `${ta('in', state.gh.login)} ${ta(state.gh.push ? 'edit' : 'view')}`);
-      } catch (err) {
-        busy(false); const c = err && err.code;
-        if (phase === 'code') gmHint(ta(c === 'bad_code' ? 'eBad' : 'eNet'));
-        else if (c === 'auth') { mailExpired(); mailVerified = ''; mailStep = 'email'; renderGh(); gmHint(ta('eSess')); }
-        else { renderGh(); renderAll(); gmHint(ta(c === 'forbidden' ? 'noapp' : c === 'rate' ? 'eBusy' : 'eDown')); }
-      } finally { mailBusy = false; }
-      return;
-    }
+    const btn = F('gh-save'), pw = F('gh-pass'); if (!pw) return;
+    const password = pw.value || ''; pw.value = '';
+    const label = btn.textContent, busy = on => { btn.disabled = on; btn.textContent = on ? ta('wait') : label; };
     const email = (F('gh-mail').value || '').trim().toLowerCase();
-    if (!email) return gmHint(ta('eMail'));
-    busy(true);
-    try { await LA.pedirCodigo(email); mailAddr = email; mailVerified = ''; busy(false); mailStep = 'code'; gmHint(''); renderGh(); F('gh-code').focus(); }
-    catch (err) { busy(false); gmHint(ta(err.code === 'not_allowed' ? 'eReg' : err.code === 'bad_email' ? 'eMail' : err.code === 'rate' ? 'eRate' : 'eNet')); }
+    if (!/^[^@\s]+@[^@\s]+$/.test(email)) return gmHint(ta('eMail'));
+    const ses = !password && mailVerified === email ? await LA.sesion() : null, again = !!ses && ses.email === email;
+    if (!password && !again) return gmHint(ta('ePass'));
+    mailAddr = email; busy(true); let phase = 'login';
+    try {
+      mailBusy = true;
+      if (!again) { mailVerified = ''; await LA.entrar(email, password); mailVerified = email; }
+      // Desde aquí la sesión existe: se queda en modo correo, así la consulta reintenta si la función falla ahora.
+      phase = 'connect'; modo = 'correo'; Object.assign(mail, { email, noAccess: false, expired: false });
+      state.gh = { login: null, push: false, tokenInvalid: false }; state.canWrite = false;
+      await connectMail(email);
+      remote.etag = null; await refresh(); busy(false); mailVerified = ''; renderGh(); renderAll(); closeOverlay('ov-gh');
+      toast(mail.noAccess ? ta('noapp') : `${ta('in', state.gh.login)} ${ta(state.gh.push ? 'edit' : 'view')}`);
+    } catch (err) {
+      busy(false); const c = err && err.code;
+      if (phase === 'login') gmHint(ta(c === 'bad_credentials' ? 'eCred' : c === 'rate' ? 'eRate' : 'eNet'));
+      else if (c === 'auth') { mailExpired(); mailVerified = ''; renderGh(); gmHint(ta('eSess')); }
+      else { renderGh(); renderAll(); gmHint(ta(c === 'forbidden' ? 'noapp' : c === 'rate' ? 'eBusy' : 'eDown')); }
+    } finally { mailBusy = false; }
   }
   F('btn-gh').onclick = () => {
     F('gh-token').value = ''; F('gh-hint').textContent = '';
-    if (LA) return openMail(byMail() && mail.expired ? 'email' : mailStep === 'code' && !byMail() ? 'code' : 'email');
+    if (LA) return openMail();
     renderGh(); openOverlay('ov-gh', state.gh.login ? null : F('gh-token'));
   };
   async function saveKey() {
@@ -2055,7 +2053,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
       await connect(t);
       try { localStorage.setItem(TOKEN_KEY, t); } catch (err) {}
       if (LA && await LA.sesion()) { mailBusy = true; try { await LA.salir(); } catch (e) {} mailBusy = false; }
-      mailStep = 'email';
+      mailVerified = '';
       renderGh(); renderAll(); refresh();
       hint.textContent = ''; toast(`Conectado como @${state.gh.login}`);
       if (state.gh.push) closeOverlay('ov-gh');
@@ -2073,7 +2071,6 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
   F('gh-form').addEventListener('click', e => {
     if (e.target.closest('#gh-key-go')) saveKey();
     else if (e.target.closest('#gm-out')) { closeOverlay('ov-gh'); mailSignOut(); }
-    else if (e.target.closest('#gm-back')) { mailStep = 'email'; gmHint(''); renderGh(); F('gh-mail').focus(); }
   });
   F('banners').addEventListener('click', e => { if (e.target.closest('[data-act="mail-in"]')) F('btn-gh').click(); });
   F('gh-out').onclick = () => {

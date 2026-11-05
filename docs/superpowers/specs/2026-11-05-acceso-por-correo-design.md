@@ -2,6 +2,35 @@
 
 Fecha: 5/11/2026 · Estado: borrador para revisión de Daniel Quesada
 
+## Cambio 5/11: contraseña en lugar de código
+
+Aprobado por Daniel el 5/11. No hay servicio de correo (ni Brevo, ni Gmail, ni el SMTP de Fluidra), así que no se envía
+ningún correo y el código de un solo uso desaparece. Donde el resto de este documento habla de código, OTP, SMTP o
+plantillas de correo, vale lo siguiente:
+
+- **Entrar:** en las apps y en `acceso/`, un solo paso con correo y contraseña (`LabAuth.entrar`, que usa
+  `signInWithPassword` de supabase-js). La sesión se recuerda como antes (refresh token, `storageKey` `lab-auth`).
+  Errores: `bad_credentials` ("Correo o contraseña incorrectos" / "Wrong email or password."), `rate`, `unavailable`.
+  Las apps leen la contraseña y vacían el campo enseguida, y dicen "¿Has olvidado la contraseña? Pídesela a un
+  administrador."
+- **Alta** (`acceso/`): la página genera una contraseña aleatoria de 16 letras y números sin ambiguos (sin 0/O/1/l/I) y
+  la enseña una sola vez, con botón Copiar; el administrador puede escribir otra (mínimo 12 caracteres).
+- **Nueva contraseña** en cada fila de `acceso/`: genera otra, la enseña una vez y la guarda; la anterior deja de valer
+  (las sesiones abiertas siguen).
+- **Función `admin`:** `POST /admin/usuarios` acepta `password` (obligatoria al crear el usuario de Auth, ≥ 12
+  caracteres); `POST /admin/usuarios/<correo>/password` con `{password}` la cambia (400 si es corta, 404 si la persona no
+  está dada de alta, 409 si no tiene usuario de Auth). Solo administradores. La contraseña nunca se guarda en `acceso`,
+  no se devuelve ni se escribe en el log.
+- **Supabase:** proveedor Email activo, registro libre desactivado, *Confirm email* desactivado, longitud mínima 12 y sin
+  requisitos de tipos de carácter; sin SMTP ni plantillas. El primer administrador (Daniel) se crea en
+  *Authentication → Users* con su propia contraseña (Auto Confirm) y el `INSERT` de la guía.
+- **Sin cambios:** roles, permisos, función `github`, clave de GitHub como alternativa, borrado de datos al salir, cambio
+  de persona entre pestañas.
+- **Fuera de alcance:** que cada persona cambie su propia contraseña desde las apps.
+
+Criterios de éxito 1 y 4, con este cambio: la persona entra con su contraseña; con un correo no dado de alta o una
+contraseña equivocada no se obtiene sesión ni datos.
+
 ## 1. Objetivo
 
 Cualquier persona del laboratorio entra en las apps de https://polinya-lab.github.io/management-tools/ con su correo, sin

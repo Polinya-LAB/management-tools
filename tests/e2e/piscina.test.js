@@ -4,7 +4,7 @@
 'use strict';
 const assert = require('node:assert/strict');
 const { chromium } = require('playwright');
-const { setupLab } = require('./lab-mock.js');
+const { setupLab, CLAVE_PRUEBA } = require('./lab-mock.js');
 
 const URL_APP = 'https://polinya-lab.github.io/management-tools/seguimiento-piscina-durabilidad/';
 const FICHERO = 'piscina.json';
@@ -28,10 +28,10 @@ async function check(nombre, fn) {
   }
 }
 
-// 4xx esperados (401 de la sesión caducada, 403 de un rol sin acceso, 409/422 de conflictos) y el 404 de la lectura anónima de
+// 4xx esperados (400 de una contraseña incorrecta, 401 de la sesión caducada, 403 de un rol sin acceso, 409/422 de conflictos) y el 404 de la lectura anónima de
 // raw.githubusercontent.com (endurance-data es privado) salen en la consola como "Failed to load resource".
 const erroresReales = (errores, extra = '') =>
-  errores.filter((e) => !new RegExp(`Failed to load resource: the server responded with a status of (40[134]|409|422${extra})`).test(e));
+  errores.filter((e) => !new RegExp(`Failed to load resource: the server responded with a status of (40[0134]|409|422${extra})`).test(e));
 const otros404 = (respuestas) => respuestas.filter((r) => r.status === 404 && !r.url.startsWith('https://raw.githubusercontent.com/'));
 
 async function averiarUser(ctx, estado) {
@@ -78,10 +78,8 @@ async function entrar(page, email, nombre) {
   await page.waitForSelector('#gh-mail');
   assert.ok(await page.locator('#ov-gh').getByText('Entrar con tu correo').first().isVisible());
   await page.fill('#gh-mail', email);
-  await page.press('#gh-mail', 'Enter');
-  await page.waitForSelector('#gh-code');
-  await page.fill('#gh-code', '123456');
-  await page.press('#gh-code', 'Enter');
+  await page.fill('#gh-pass', CLAVE_PRUEBA);
+  await page.press('#gh-pass', 'Enter');
   await page.waitForFunction((n) => document.querySelector('#btn-gh-label').textContent === n && document.querySelector('#ov-gh').hidden, nombre);
 }
 const botonNueva = (page) => page.evaluate(() => !document.querySelector('#btn-new').hidden && document.querySelector('#btn-new').offsetParent !== null);
@@ -116,22 +114,65 @@ const enviarSinPermiso = (page) => page.evaluate(() => {
         assert.equal(await textoBoton(page), 'Entrar con tu correo');
         assert.equal(lecturasGithub(peticiones) + lecturasFuncion(peticiones), 0);
       });
-      await check('diálogo: "Entrar con tu correo" arriba y "Usar una clave de GitHub" debajo; correo no registrado avisa', async () => {
+      await check('diálogo: "Entrar con tu correo" arriba y "Usar una clave de GitHub" debajo; correo no registrado → "Correo o contraseña incorrectos."', async () => {
         await page.click('#btn-gh');
         await page.waitForSelector('#gh-mail');
         const a = await page.locator('#ov-gh h3').boundingBox();
         const b = await page.locator('#ov-gh summary').boundingBox();
         assert.ok(a && b && a.y < b.y);
+        assert.equal(await page.getAttribute('#gh-pass', 'type'), 'password');
+        assert.equal(await page.locator('#gh-save').textContent(), 'Entrar');
+        assert.ok(await page.locator('#ov-gh').getByText('¿Has olvidado la contraseña? Pídesela a un administrador.').isVisible());
+        assert.equal(await page.locator('#gh-code').count(), 0, 'sin paso de código');
         await page.fill('#gh-mail', 'nadie@fluidra.com');
-        await page.press('#gh-mail', 'Enter');
+        await page.fill('#gh-pass', CLAVE_PRUEBA);
+        await page.press('#gh-pass', 'Enter');
         await page.waitForFunction(() => !document.querySelector('#gm-hint').hidden);
-        assert.match(await page.locator('#gm-hint').textContent(), /no está dado de alta/i);
+        assert.equal(await page.locator('#gm-hint').textContent(), 'Correo o contraseña incorrectos.');
+        await page.click('#ov-gh .foot-row [data-close]');
+      });
+      await check('contraseña incorrecta → "Correo o contraseña incorrectos.", sin sesión y el campo de contraseña vacío', async () => {
+        await page.click('#btn-gh');
+        await page.fill('#gh-mail', 'ana.ruiz@fluidra.com');
+        await page.fill('#gh-pass', 'no-es-la-clave-1234');
+        await page.press('#gh-pass', 'Enter');
+        await page.waitForFunction(() => !document.querySelector('#gm-hint').hidden);
+        assert.equal(await page.locator('#gm-hint').textContent(), 'Correo o contraseña incorrectos.');
+        assert.equal(await page.inputValue('#gh-pass'), '', 'la contraseña no se queda en la página');
+        assert.equal(await page.evaluate(() => window.LabAuth.sesion()), null);
+        assert.equal(await textoBoton(page), 'Entrar con tu correo');
+        assert.equal(await hayDatos(page), false);
         await page.click('#ov-gh .foot-row [data-close]');
       });
       await check('sin sesión: sin errores de consola ni peticiones bloqueadas', async () => {
         assert.deepEqual(lab.bloqueadas, []);
         assert.deepEqual(erroresReales(errores), []);
         assert.deepEqual(errores.otros404(), []);
+      });
+      await ctx.close();
+    }
+
+    // ---------- Contraseña correcta pero la función falla justo después ----------
+    {
+      const { ctx, page, lab, errores } = await abrir(browser);
+      const averia = { status: 0 };
+      await averiarUser(ctx, averia);
+      await check('contraseña correcta pero la función responde 503 → mensaje concreto; reintentar sin volver a escribir la contraseña', async () => {
+        await page.click('#btn-gh');
+        await page.fill('#gh-mail', 'ana.ruiz@fluidra.com');
+        await page.fill('#gh-pass', CLAVE_PRUEBA);
+        averia.status = 503;
+        await page.press('#gh-pass', 'Enter');
+        await page.waitForFunction(() => /no responde/.test(document.querySelector('#gm-hint').textContent));
+        assert.equal(await page.inputValue('#gh-pass'), '', 'la contraseña no se queda en la página');
+        assert.equal(await page.inputValue('#gh-mail'), 'ana.ruiz@fluidra.com');
+        averia.status = 0;
+        const logins = lab.logins.length;
+        await page.press('#gh-pass', 'Enter');
+        await page.waitForFunction(() => document.querySelector('#btn-gh-label').textContent === 'Ana Ruiz' && document.querySelector('#ov-gh').hidden);
+        assert.equal(lab.logins.length, logins, 'sin volver a enviar la contraseña');
+        assert.deepEqual(lab.bloqueadas, []);
+        assert.deepEqual(erroresReales(errores, '|503'), []);
       });
       await ctx.close();
     }
@@ -248,15 +289,14 @@ const enviarSinPermiso = (page) => page.evaluate(() => {
         assert.equal(await botonNueva(page), false);
         assert.equal(lab.puts.length, 0);
       });
-      await check('"Vuelve a entrar" abre el diálogo en el paso del correo con el correo puesto; volver a entrar recupera la edición', async () => {
+      await check('"Vuelve a entrar" abre el diálogo con el correo puesto; volver a entrar recupera la edición', async () => {
         lab.setUsuarios(USUARIOS);
         await page.click('#btn-gh');
         await page.waitForSelector('#gh-mail');
         assert.equal(await page.inputValue('#gh-mail'), 'ana.ruiz@fluidra.com');
-        await page.press('#gh-mail', 'Enter');
-        await page.waitForSelector('#gh-code');
-        await page.fill('#gh-code', '123456');
-        await page.press('#gh-code', 'Enter');
+        assert.equal(await page.evaluate(() => document.activeElement.id), 'gh-pass', 'el foco va a la contraseña');
+        await page.fill('#gh-pass', CLAVE_PRUEBA);
+        await page.press('#gh-pass', 'Enter');
         await esperarBoton(page, 'Ana Ruiz');
         assert.ok(await botonNueva(page));
       });

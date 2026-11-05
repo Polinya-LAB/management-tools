@@ -5,6 +5,7 @@ import { createClient } from "npm:@supabase/supabase-js@2.49.4";
 import type { Acceso } from "../_shared/permisos.ts";
 import { sesionDe } from "../_shared/sesion.ts";
 import { type AdminDeps, crearHandlerAdmin } from "./handler.ts";
+import { ponerPasswordPorId } from "./password.ts";
 
 const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
   auth: { persistSession: false, autoRefreshToken: false },
@@ -24,11 +25,6 @@ async function idAuthPorCorreo(e: string): Promise<string | null> {
   }
 }
 
-// La contraseña nunca va en el mensaje del error (que el handler escribe en el log).
-async function ponerPasswordPorId(id: string, password: string): Promise<void> {
-  const { error } = await supabase.auth.admin.updateUserById(id, { password });
-  if (error) throw new Error(`updateUserById: ${error.status ?? ""} ${error.code ?? ""} ${error.message}`);
-}
 
 const deps: AdminDeps = {
   async usuario(jwt) {
@@ -69,7 +65,8 @@ const deps: AdminDeps = {
     if (!yaExiste) throw error ?? new Error("createUser sin usuario");
     const id = await idAuthPorCorreo(e);
     if (!id) throw error;
-    await ponerPasswordPorId(id, password);
+    // Recién encontrado por correo: si ahora no existe, alguien lo ha borrado a la vez; se trata como cualquier error.
+    if (!await ponerPasswordPorId(supabase.auth.admin, id, password)) throw error;
     return id;
   },
   async ponerPassword(email, password) {
@@ -78,8 +75,8 @@ const deps: AdminDeps = {
     if (error) throw error;
     const id = (data as { user_id: string | null } | null)?.user_id ?? await idAuthPorCorreo(e);
     if (!id) return false;
-    await ponerPasswordPorId(id, password);
-    return true;
+    // Un user_id que ya no existe en Auth (usuario borrado a mano) da false → 409, no 502.
+    return await ponerPasswordPorId(supabase.auth.admin, id, password);
   },
   async borrarUsuarioAuth(email) {
     const { data, error } = await supabase

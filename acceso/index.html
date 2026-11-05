@@ -167,7 +167,6 @@ td.acc .btn + .btn { margin-left: 6px; }
     }
     return out;
   }
-  window.__generarClave = generarClave; // para las pruebas
   function $(id) { return document.getElementById(id); }
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 
@@ -203,6 +202,7 @@ td.acc .btn + .btn { margin-left: 6px; }
   function ocupado(si) { var b = $('a-go'); if (b) b.disabled = si; }
   function entrar() {
     var email = $('a-mail').value.trim().toLowerCase(), clave = $('a-pass').value;
+    $('a-pass').value = ''; // la contraseña no se queda en la página
     if (!email || !clave) return pista(T.eVacio);
     dirCorreo = email;
     ocupado(true); pista('');
@@ -212,7 +212,7 @@ td.acc .btn + .btn { margin-left: 6px; }
       ocupado(false);
       var code = err && err.code;
       pista(code === 'bad_credentials' ? T.eBad : code === 'rate' ? T.eRate : T.eNet);
-      if (code === 'bad_credentials') { $('a-pass').value = ''; $('a-pass').focus(); }
+      if (code === 'bad_credentials') $('a-pass').focus();
     });
   }
   function aEntrar(msg) { cerrarClave(); yo = null; lista = []; aviso = msg || ''; pintarLogin(); }

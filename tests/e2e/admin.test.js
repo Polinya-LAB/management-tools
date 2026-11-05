@@ -100,6 +100,7 @@ const texto = (page) => page.evaluate(() => document.body.innerText);
       await check('contraseña incorrecta o correo no dado de alta: "Correo o contraseña incorrectos"', async () => {
         await entrar(page, 'ana.ruiz@fluidra.com', 'no-es-la-clave');
         await pista(page, /Correo o contraseña incorrectos/);
+        assert.equal(await page.inputValue('#a-pass'), '', 'la contraseña no se queda en la página');
         await page.evaluate(() => { document.querySelector('#a-hint').textContent = ''; });
         await entrar(page, 'intruso@fluidra.com');
         await pista(page, /Correo o contraseña incorrectos/);
@@ -163,9 +164,16 @@ const texto = (page) => page.evaluate(() => document.body.innerText);
       await check('"Añadir persona" trae una contraseña generada de 16 caracteres sin 0 O 1 l I, distinta cada vez', async () => {
         const a = await page.inputValue('#n-pass');
         assert.match(a, GENERADA);
-        const vistas = new Set();
-        for (let i = 0; i < 20; i++) vistas.add(await page.evaluate(() => window.__generarClave()));
-        assert.equal(vistas.size, 20);
+        // Cada vez que se abre la página (y tras cada alta, más abajo) el campo trae otra.
+        const vistas = new Set([a]);
+        for (let i = 0; i < 5; i++) {
+          const p = await ctx.newPage();
+          await p.goto(URL_APP);
+          await p.waitForFunction(() => document.querySelector('#n-pass').value.length === 16);
+          vistas.add(await p.inputValue('#n-pass'));
+          await p.close();
+        }
+        assert.equal(vistas.size, 6);
         for (const v of vistas) assert.match(v, GENERADA);
       });
       await check('"Añadir persona" con contraseña de menos de 12 caracteres: avisa y no da de alta', async () => {
@@ -180,10 +188,13 @@ const texto = (page) => page.evaluate(() => document.body.innerText);
         await page.fill('#n-mail', ''); await page.fill('#n-nombre', '');
       });
       await check('"Añadir persona" crea la fila con todos los roles en ninguno y enseña la contraseña una vez', async () => {
-        const generada = await page.evaluate(() => window.__generarClave());
+        // La prueba anterior dejó una contraseña corta en el campo: al recargar, la página trae otra generada.
+        await page.reload();
+        await page.waitForSelector('#n-mail');
+        const generada = await page.inputValue('#n-pass');
+        assert.match(generada, GENERADA);
         await page.fill('#n-mail', '  Nuevo.Tec@Fluidra.com ');
         await page.fill('#n-nombre', 'Nuria Nueva');
-        await page.fill('#n-pass', generada);
         await page.click('#n-add');
         await page.waitForSelector('#clave:not([hidden])');
         assert.match(await page.locator('#clave').textContent(), /nuevo\.tec@fluidra\.com/);

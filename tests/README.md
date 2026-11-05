@@ -35,8 +35,7 @@ si alguna falla. Usa el Playwright instalado en el sistema (`require('playwright
 - Supabase Auth (`/auth/v1/token`, `user`, `logout`) solo para los correos de `opts.usuarios`: se entra con correo y
   contraseña (`grant_type=password`; cada usuario trae `password`, por defecto `CLAVE_PRUEBA` = `clave-de-prueba-1234`,
   exportada por `lab-mock.js`; si no coincide responde 400 `invalid_credentials`). Las altas y "Nueva contraseña" de la
-  función admin cambian esas contraseñas. Mientras las apps no pasen a contraseña, también `/auth/v1/otp` y `verify` con
-  código fijo (`opts.codigo`, por defecto `123456`).
+  función admin cambian esas contraseñas.
 - `/functions/v1/github/**` y `/functions/v1/admin/**` ejecutan los handlers reales de `supabase/functions/` (empaquetados
   con esbuild) con dependencias falsas: la lógica de permisos es la de verdad.
 - `api.github.com` (con `opts.github = {login, push}`) y `raw.githubusercontent.com` para el modo "clave de GitHub".
@@ -44,7 +43,7 @@ si alguna falla. Usa el Playwright instalado en el sistema (`require('playwright
   público; nunca copiar datos reales del laboratorio).
 - Cualquier otra petición se bloquea y queda en `lab.bloqueadas`.
 
-Devuelve `{puts, logins, otps, verifies, tokens, logouts, bloqueadas, refrescos, setUsuarios(lista), usuarios(),
+Devuelve `{puts, logins, tokens, logouts, bloqueadas, refrescos, setUsuarios(lista), usuarios(),
 claveDe(email), revocar(email), datos(repo, ruta), fijarDatos(repo, ruta, valor)}` (`logins`: correos de cada intento de
 entrar, sin la contraseña). `revocar(email)` invalida las sesiones abiertas de esa persona: la
 siguiente llamada a las funciones responde 401.

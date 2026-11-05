@@ -31,8 +31,9 @@ El navegador guarda la clave y **Desconectar** la borra. Si caduca, la app avisa
 
 ## Acceso con correo
 
-Además de la clave de GitHub, las apps permiten **entrar con el correo**: la persona escribe su correo de Fluidra, recibe un
-código de 6 dígitos (caduca a los 10 minutos) y lo introduce. No necesita cuenta de GitHub ni acceso directo a los
+Además de la clave de GitHub, las apps permiten **entrar con el correo**: la persona escribe su correo de Fluidra y la
+contraseña que le ha dado un administrador (se genera en la página de administración; no se envía ningún correo). Si la
+olvida, un administrador le da otra con *Nueva contraseña*. No necesita cuenta de GitHub ni acceso directo a los
 repositorios: una función de Supabase lee y escribe los datos por ella con una clave del servidor, y cada commit lleva su
 nombre y correo como autor.
 
@@ -48,8 +49,8 @@ Cada persona tiene un rol por app: `ninguno`, `ver` (solo consulta) o `editar`. 
 
 Quien no tiene rol en una app ve el aviso "No tienes acceso a esta app". La vista *Import ARAS* de Muestras exige `editar` en `ensayos`.
 
-- **Administrar personas y roles:** https://polinya-lab.github.io/management-tools/acceso/ (solo administradores).
-- **Puesta en marcha** (Supabase, Brevo, clave del servidor, funciones): [`acceso/DESPLIEGUE.md`](acceso/DESPLIEGUE.md).
+- **Administrar personas, roles y contraseñas:** https://polinya-lab.github.io/management-tools/acceso/ (solo administradores).
+- **Puesta en marcha** (Supabase, clave del servidor, funciones, primer administrador): [`acceso/DESPLIEGUE.md`](acceso/DESPLIEGUE.md).
 - **Código:** [`supabase/`](supabase/) (tabla y funciones `github` y `admin`), [`acceso/`](acceso/) (página de administración,
   `config.js` y `lab-auth.js`) y [`tests/`](tests/) (pruebas).
 - **Sin configurar** `acceso/config.js`, las apps funcionan como hasta ahora, con la clave de GitHub. La clave sigue

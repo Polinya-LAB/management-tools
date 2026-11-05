@@ -8,7 +8,10 @@ verify_jwt = false
 
 [auth]
 enable_signup = false
+# Contraseña asignada por el administrador (acceso/): mínimo 12 caracteres y sin exigir tipos de carácter (las generadas
+# son letras y números; con requisitos, createUser respondería weak_password).
+minimum_password_length = 12
+password_requirements = ""
 
 [auth.email]
-otp_length = 6
-otp_expiry = 600
+enable_confirmations = false

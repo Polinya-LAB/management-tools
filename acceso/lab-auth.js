@@ -11,10 +11,6 @@
                                 Normaliza el correo (espacios y mayúsculas); la contraseña va tal cual. Errores {code}:
                                 'bad_credentials' (correo o contraseña incorrectos, o persona no dada de alta),
                                 'rate' (demasiados intentos, 429), 'unavailable' (sin red o error 5xx de Supabase)
-     pedirCodigo(email)         OBSOLETO (código por correo; se quita cuando las apps usen entrar). Promise<void>; errores
-                                {code}: 'not_allowed' (no dado de alta), 'bad_email', 'rate' (demasiados envíos), 'error'
-     verificar(email, codigo)   OBSOLETO, como pedirCodigo. Promise<void>; errores {code}: 'bad_code' (código incorrecto
-                                o caducado), 'bad_email', 'error'
      salir()                    Promise<void>
      api(app)                   string: `${url}/functions/v1/github/${app}`
      apiAdmin()                 string: `${url}/functions/v1/admin`
@@ -135,46 +131,6 @@
     });
   }
 
-  // OBSOLETO: código por correo. Se mantiene sin cambios hasta que las apps usen entrar().
-  function pedirCodigo(email) {
-    var e = normalizar(email);
-    if (!pareceCorreo(e)) return Promise.reject(err('bad_email', 'Correo no válido'));
-    return conCliente().then(function (c) {
-      return c.auth.signInWithOtp({ email: e, options: { shouldCreateUser: false } });
-    }).then(function (r) {
-      if (!r.error) return;
-      var code = codigoDe(r.error);
-      var msg = r.error.message || '';
-      if (code === 'otp_disabled' || code === 'signup_disabled' || code === 'user_not_found' ||
-        /signups not allowed|user not found/i.test(msg)) throw err('not_allowed', msg);
-      if (r.error.status === 429 || /rate_limit/.test(code)) throw err('rate', msg);
-      throw err('error', msg);
-    });
-  }
-
-  function verificar(email, codigo) {
-    var e = normalizar(email);
-    var token = String(codigo == null ? '' : codigo).replace(/\s+/g, '');
-    if (!pareceCorreo(e)) return Promise.reject(err('bad_email', 'Correo no válido'));
-    if (!/^\d{6}$/.test(token)) return Promise.reject(err('bad_code', 'El código tiene 6 cifras'));
-    return conCliente().then(function (c) {
-      return c.auth.verifyOtp({ email: e, token: token, type: 'email' });
-    }).then(function (r) {
-      if (!r.error) {
-        if (!r.data || !r.data.session) throw err('error', 'Sin sesión');
-        avisar(r.data.session);
-        return;
-      }
-      var code = codigoDe(r.error);
-      var st = r.error.status;
-      if (code === 'otp_expired' || code === 'otp_invalid' || code === 'invalid_credentials' ||
-        st === 400 || st === 401 || st === 403 || /expired|invalid/i.test(r.error.message || '')) {
-        throw err('bad_code', r.error.message);
-      }
-      throw err('error', r.error.message);
-    });
-  }
-
   function salir() {
     if (!activo) return Promise.resolve();
     return conCliente().then(function (c) {
@@ -218,8 +174,6 @@
     listo: listo,
     sesion: sesion,
     entrar: entrar,
-    pedirCodigo: pedirCodigo, // obsoleto
-    verificar: verificar, // obsoleto
     salir: salir,
     api: api,
     apiAdmin: apiAdmin,
