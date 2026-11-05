@@ -1,7 +1,7 @@
 /* Service worker of the Muestras desktop app. It keeps the app files (and the libraries from the CDN) so the app opens
    without connection, and refreshes them in the background. It never caches lab data (GitHub API and raw files). */
-const CACHE='muestras-v20261104';
-const SHELL=['./','index.html','../control-ensayos/app.js?v=20261104','../control-ensayos/app.css?v=20261104','manifest.webmanifest','icons/icon.svg','icons/icon-192.png','icons/icon-512.png'];
+const CACHE='muestras-v20261105';
+const SHELL=['./','index.html','../control-ensayos/app.js?v=20261105','../control-ensayos/app.css?v=20261105','manifest.webmanifest','icons/icon.svg','icons/icon-192.png','icons/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
 self.addEventListener('fetch',e=>{

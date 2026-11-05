@@ -68,6 +68,10 @@ const S={tests:[],people:[],equipment:[],qtps:[],cfg:{},loaded:new Set(),view:AP
 let db=null, dl=null, IX=null;
 try{const v=localStorage.getItem(VIEW_KEY); if(VIEWS.some(x=>x[0]===v)) S.view=v; S.hideIdle=localStorage.getItem('tl.hideIdle')==='1'; const z=+localStorage.getItem('tl.dayW'); if(z) S.dayW=z===30?32:z; const qs=JSON.parse(localStorage.getItem('tl.qst')||'null'); if(Array.isArray(qs)&&qs.length) S.qst=qs.filter(x=>ACTIVE.includes(x)); if(!localStorage.getItem('tl.qstv')){ if(!S.qst.includes('Not approved')) S.qst.unshift('Not approved'); localStorage.setItem('tl.qstv','2'); } if(localStorage.getItem('tl.qstv')==='2'){ if(!S.qst.includes('Endurance running')) S.qst.push('Endurance running'); localStorage.setItem('tl.qstv','3'); } localStorage.setItem('tl.qst',JSON.stringify(S.qst)); const ow=+localStorage.getItem('tl.occw'); if([2,4,6,8].includes(ow)) S.occ.weeks=ow;}catch(e){}
 if(location.hash&&VIEWS.some(x=>'#'+x[0]===location.hash)) S.view=location.hash.slice(1);
+/* The QR of a sample label opens Control de ensayos on the tests of its PLR: #queue?plr=PLR000000. The queue then shows every
+   active status; once the tests load, a PLR whose tests are all closed goes to History. */
+const DEEP=(m=>m&&APP==='tests'?{plr:decodeURIComponent(m[1]).trim().toUpperCase(),done:false}:null)(location.hash.match(/^#queue\?plr=([^&]+)/i));
+if(DEEP){S.view='queue'; S.q=DEEP.plr; S.qst=[...ACTIVE]; try{history.replaceState(null,'',location.pathname+location.search+'#queue');}catch(e){}}
 
 /* ---------- Utilities ---------- */
 const $=s=>document.querySelector(s);
@@ -308,6 +312,8 @@ function computeAlerts(ix){
 
 /* ---------- Render ---------- */
 function render(){
+  if(DEEP&&!DEEP.done&&S.loaded.has('tests')){DEEP.done=true; const ts=S.tests.filter(t=>String(t.plr||'').toUpperCase()===DEEP.plr);
+    if(ts.length&&!ts.some(t=>ACTIVE.includes(t.status))){S.view='history'; try{history.replaceState(null,'',location.pathname+location.search+'#history');}catch(e){}}}
   IX=buildIndex(S.tests); const A=computeAlerts(IX); S.A=A;
   $('#qtp-list').innerHTML=[...S.qtps].sort(byName).map(q=>`<option value="${esc(q.code||q.id)}">${esc(q.name||'')}</option>`).join('');
   const crit=A.global.filter(a=>a.sev==='crit').length, nq=S.tests.filter(t=>t.status==='Queued').length, nh=S.tests.filter(t=>CLOSED.includes(t.status)).length, ns=APP!=='occupancy'?smpMissingCount():0;
@@ -1187,7 +1193,7 @@ es:{
   linked:'Ensayos enlazados', printLot:'Imprimir etiquetas',
   log_recv:n=>`Recibida (${n} ud${n===1?'':'s'}.)`, log_state:(c,a,b)=>`${c}: ${a} → ${b}`, log_add:c=>`${c} añadida`, log_rm:c=>`${c} retirada`, log_back:c=>`${c} recuperada`, log_edit:'Datos de la recepción editados', log_print:n=>`${n} etiqueta${n===1?'':'s'} impresa${n===1?'':'s'}`,
   lb_eyebrow:'Etiquetas · DYMO LabelWriter 550', lb_title:n=>`Imprimir ${n} etiqueta${n===1?'':'s'}`, lb_units:'Unidades', lb_all:'Todas', lb_noneSel:'Ninguna',
-  lb_size:'Etiqueta', lb_code:'Código', qr:'QR (abre la muestra en la app)', bar:'Código de barras (Code 128)', noCode:'Sin código',
+  lb_size:'Etiqueta', lb_code:'Código', qr:'QR (abre los ensayos del PLR en Control de ensayos)', bar:'Código de barras (Code 128)', noCode:'Sin código',
   lb_show:'Contenido', lb_plr:'PLR · QTP', lb_desc:'Descripción', lb_proj:'Proyecto', lb_phase:'Fase del proyecto', lb_date:'Fecha de recepción',
   lb_preview:'Vista previa a tamaño real',
   lb_how:'<b>En el cuadro de impresión:</b> impresora <b>DYMO LabelWriter 550</b>, tamaño de papel el de la etiqueta (p. ej. <i>99012 Large Address</i>), márgenes <b>ninguno</b>, escala <b>100 %</b> y sin encabezados ni pies de página. Sale una etiqueta por página.',
@@ -1250,7 +1256,7 @@ en:{
   linked:'Linked tests', printLot:'Print labels',
   log_recv:n=>`Received (${n} unit${n===1?'':'s'})`, log_state:(c,a,b)=>`${c}: ${a} → ${b}`, log_add:c=>`${c} added`, log_rm:c=>`${c} withdrawn`, log_back:c=>`${c} restored`, log_edit:'Reception details edited', log_print:n=>`${n} label${n===1?'':'s'} printed`,
   lb_eyebrow:'Labels · DYMO LabelWriter 550', lb_title:n=>`Print ${n} label${n===1?'':'s'}`, lb_units:'Units', lb_all:'All', lb_noneSel:'None',
-  lb_size:'Label', lb_code:'Code', qr:'QR (opens the sample in the app)', bar:'Barcode (Code 128)', noCode:'No code',
+  lb_size:'Label', lb_code:'Code', qr:'QR (opens the PLR tests in Control de ensayos)', bar:'Barcode (Code 128)', noCode:'No code',
   lb_show:'Content', lb_plr:'PLR · QTP', lb_desc:'Description', lb_proj:'Project', lb_phase:'Project phase', lb_date:'Reception date',
   lb_preview:'Preview at real size',
   lb_how:'<b>In the print dialog:</b> printer <b>DYMO LabelWriter 550</b>, paper size of the label (e.g. <i>99012 Large Address</i>), margins <b>none</b>, scale <b>100%</b> and no headers or footers. One label per page.',
@@ -1681,6 +1687,10 @@ function smpBarcodes(root){
   });
 }
 const smpUrl=code=>location.href.split('#')[0]+'#m='+code;
+/* The label QR opens Control de ensayos filtered by the sample's PLR (the first one when it has several); an old FLT reference
+   has no tests there, so its QR opens the sample in this app. */
+const CE_URL='https://polinya-lab.github.io/management-tools/control-ensayos/';
+const smpQrUrl=(l,code)=>{const p=(l.plrs||[]).find(x=>!smpLegacy(x)); return p?`${CE_URL}#queue?plr=${encodeURIComponent(p)}`:smpUrl(code);};
 function smpLabel(k,c){
   const x=smpByKey(k); if(!x) return ''; const {l,u}=x, code=smpCode(l,u), sz=SMP_LABELS[c.size]||SMP_LABELS['99012'];
   const qtps=smpLotTests(l).map(y=>y.qtp);
@@ -1689,7 +1699,7 @@ function smpLabel(k,c){
   /* Code height that fits the text column: the QR takes a square of the label height, the barcode a strip at the bottom. */
   const textW=sz.w-4.4-(c.code==='qr'?sz.h-3.2+2:0), fs=Math.min(sz.h*(c.code==='bar'?.13:.16),textW/(code.length*.62)).toFixed(2);
   return `<div class="dlbl ${c.code==='bar'?'wbar':''} ${sz.h<=28?'sm':''}" style="width:${sz.w}mm;height:${sz.h}mm;--fs:${fs}mm">
-    ${c.code==='qr'?`<div class="qr">${smpQr(smpUrl(code))}</div>`:''}
+    ${c.code==='qr'?`<div class="qr">${smpQr(smpQrUrl(l,code))}</div>`:''}
     <div class="tx"><b class="id">${esc(code)}</b>${c.plr&&l2?`<span class="l2">${esc(l2)}</span>`:''}${c.desc?`<span class="ds">${esc(l.desc)}</span>`:''}${ft?`<span class="ft">${esc(ft)}</span>`:''}</div>
     ${c.code==='bar'?`<svg class="bc" data-bc="${esc(code)}"></svg>`:''}</div>`;
 }

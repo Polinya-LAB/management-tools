@@ -65,7 +65,7 @@ Identificación de las muestras del laboratorio: cada PLR de ARAS recibe sus có
   aparta un PLR que no lleva muestra; el botón **Generar códigos** de cada PLR vuelve a proponer los que falten.
 - Al llegar la muestra, **Marcar recibidas** pasa sus unidades a *Recibida* con la fecha del día. **+ Recibir muestras** registra
   a mano una muestra que no viene de ARAS.
-- **Etiquetas DYMO:** tamaños 99012, 99010, 11354 y 11352, con QR que abre la muestra en la app, código de barras Code 128 o sin código.
+- **Etiquetas DYMO:** tamaños 99012, 99010, 11354 y 11352, con QR que abre Control de ensayos filtrado por el PLR de la muestra, código de barras Code 128 o sin código.
   Se imprimen desde el navegador, sin instalar nada.
 - Se puede instalar en el PC desde Chrome o Edge (**Instalar app**) y se abre sin conexión; los datos los sigue leyendo de GitHub.
 - Control de ensayos muestra en el tablero el chip *📦 Muestras x/y* de cada PLR y, en la ficha de un ensayo, sus muestras.
