@@ -11,19 +11,49 @@ El código y los datos están en repositorios distintos: cada persona modifica l
 | Repositorio | Contenido | Visibilidad | Quién tiene acceso |
 |---|---|---|---|
 | [management-tools](https://github.com/Polinya-LAB/management-tools) (este) | Código de las apps y la web | Público | Solo administradores |
-| [endurance-data](https://github.com/Polinya-LAB/endurance-data) | Datos de la piscina de durabilidad | Público | **Write** para quien registra bombas |
+| [endurance-data](https://github.com/Polinya-LAB/endurance-data) | Datos de la piscina de durabilidad | Público (pasará a privado al desplegar el acceso por correo) | **Write** para quien registra bombas |
 | [lab-data](https://github.com/Polinya-LAB/lab-data) | Datos privados del laboratorio: `ensayos/` (Control de ensayos), `calibraciones/` (Plan de calibraciones) y `mantenimiento/` (Plan de mantenimiento) | Privado | **Read** para consultar, **Write** para modificar |
 
-Para dar acceso a una persona: en el repositorio de datos que toque, **Settings → Collaborators and teams → Add people**,
+Con el [acceso con correo](#acceso-con-correo), las personas no necesitan ser colaboradoras de los repositorios de datos:
+se les da de alta en `acceso/` con su rol. Una vez desplegado, `endurance-data` pasa a privado y solo Daniel queda como
+colaborador directo.
+
+Para dar acceso a una persona con clave de GitHub: en el repositorio de datos que toque, **Settings → Collaborators and teams → Add people**,
 elige el rol y la persona acepta la invitación que recibe por correo. Para quitárselo, elimínala de la misma lista.
 
-**Clave de acceso (una por persona y navegador).** Se crea en
+**Clave de acceso de GitHub (alternativa al correo; una por persona y navegador).** Se crea en
 [github.com/settings/tokens/new](https://github.com/settings/tokens/new?scopes=repo&description=Laboratorio%20Polinya)
 y la pegas en la app con **Conectar con GitHub** / **Connect GitHub**. Sirve para todas las apps.
 - Para usar solo la piscina basta el permiso `public_repo`.
 - Control de ensayos y el Plan de calibraciones necesitan `repo`, porque sus datos son privados (el enlace anterior lo marca).
 
 El navegador guarda la clave y **Desconectar** la borra. Si caduca, la app avisa y basta con crear otra.
+
+## Acceso con correo
+
+Además de la clave de GitHub, las apps permiten **entrar con el correo**: la persona escribe su correo de Fluidra, recibe un
+código de 6 dígitos (caduca a los 10 minutos) y lo introduce. No necesita cuenta de GitHub ni acceso directo a los
+repositorios: una función de Supabase lee y escribe los datos por ella con una clave del servidor, y cada commit lleva su
+nombre y correo como autor.
+
+Cada persona tiene un rol por app: `ninguno`, `ver` (solo consulta) o `editar`. Además, `admin` da acceso a la administración.
+
+| Rol | App | Lee | Escribe (con `editar`) |
+|---|---|---|---|
+| `ensayos` | Control de ensayos, Ocupación | `ensayos.json`, `calibraciones.json` | `ensayos.json`, salvo la colección `muestras` y `config/samples` |
+| `muestras` | Muestras | `ensayos.json`, `calibraciones.json` | `ensayos.json`: solo `muestras` y `config/samples` |
+| `calibraciones` | Plan de calibraciones | `calibraciones.json`, `certificados.json` | `calibraciones.json` |
+| `mantenimiento` | Plan de mantenimiento | `registro.json`, `mantenimiento.json`, `calibraciones.json` | `registro.json` |
+| `piscina` | Seguimiento piscina durabilidad | `piscina.json` | `piscina.json` |
+
+Quien no tiene rol en una app ve el aviso "No tienes acceso a esta app". La vista *Import ARAS* de Muestras exige `editar` en `ensayos`.
+
+- **Administrar personas y roles:** https://polinya-lab.github.io/management-tools/acceso/ (solo administradores).
+- **Puesta en marcha** (Supabase, Brevo, clave del servidor, funciones): [`acceso/DESPLIEGUE.md`](acceso/DESPLIEGUE.md).
+- **Código:** [`supabase/`](supabase/) (tabla y funciones `github` y `admin`), [`acceso/`](acceso/) (página de administración,
+  `config.js` y `lab-auth.js`) y [`tests/`](tests/) (pruebas).
+- **Sin configurar** `acceso/config.js`, las apps funcionan como hasta ahora, con la clave de GitHub. La clave sigue
+  valiendo como alternativa para quien es colaborador.
 
 ## Control de ensayos
 
@@ -134,7 +164,8 @@ las fechas de cada ensayo y un registro de observaciones por proyecto.
 
 - Es una página ([`seguimiento-piscina-durabilidad/index.html`](seguimiento-piscina-durabilidad/index.html)) publicada con GitHub Pages, sin servidor.
 - Los datos están en [`piscina.json`](https://github.com/Polinya-LAB/endurance-data/blob/main/piscina.json) del repositorio `endurance-data`: bombas, HotBox, observaciones y ajustes.
-- Cualquiera con el enlace puede **consultar** la aplicación.
+- Hoy cualquiera con el enlace puede **consultar** la aplicación. Cuando `endurance-data` pase a privado (al desplegar el
+  [acceso con correo](#acceso-con-correo)), hará falta entrar con correo (rol `piscina`) o con una clave de GitHub con acceso.
 - Para **registrar o modificar**, conecta la aplicación con una cuenta de GitHub con rol **Write**
   en `endurance-data`. La app guarda cada cambio como un commit, así que el
   [historial de cambios](https://github.com/Polinya-LAB/endurance-data/commits/main/piscina.json)
