@@ -138,6 +138,12 @@ async function registrarPlan(page) {
         await page.waitForFunction(() => document.querySelector('#btn-gh span').textContent === 'Sign in');
         assert.equal(await botonesEdicion(page), 0);
       });
+      await check('salir: los datos privados salen de la pantalla y de la memoria, sale el aviso de datos privados y no hay peticiones con credenciales a GitHub', async () => {
+        const t = await page.evaluate(() => document.body.innerText);
+        assert.doesNotMatch(t, /DEMO-00[0-9]/);
+        assert.match(await page.locator('#view').textContent(), /calibration data is private/i);
+        assert.equal(peticiones.filter((q) => q.url.startsWith('https://api.github.com/') || ((q.headers.authorization || q.headers.apikey) && q.url.startsWith('https://raw.githubusercontent.com/'))).length, 0);
+      });
       await check('editar: sin errores de consola ni peticiones bloqueadas', async () => {
         assert.deepEqual(lab.bloqueadas, []);
         assert.deepEqual(erroresReales(errores), []);

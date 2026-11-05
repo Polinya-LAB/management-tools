@@ -1942,8 +1942,13 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
     mailBusy = true; try { await LA.salir(); } catch (e) {} mailBusy = false;
     modo = null; Object.assign(mail, { email: '', noAccess: false, expired: false });
     state.gh = { login: null, push: false, tokenInvalid: false }; state.canWrite = false; remote.etag = null;
-    if (token) { modo = 'clave'; try { await connect(token); } catch (err) { if (err.code === 'auth') state.gh.tokenInvalid = true; } }
-    await refresh(); renderGh(); renderAll(); toast(ta('out'));
+    if (token) { modo = 'clave'; try { await connect(token); } catch (err) { if (err.code === 'auth') state.gh.tokenInvalid = true; } await refresh(); }
+    else {
+      // Sin clave: los datos privados salen de la memoria y de la pantalla, para que la siguiente persona de este navegador no los vea.
+      Object.assign(remote, { data: null, sha: null, etag: null });
+      Object.assign(state, { bombas: [], hotboxes: [], obs: [], cfg: { ...DEFAULT_CFG }, loaded: false, dbStatus: 'private' });
+    }
+    renderGh(); renderAll(); toast(ta('out'));
   }
   function renderGh() {
     const keyOn = modo === 'clave' && !!state.gh.login;

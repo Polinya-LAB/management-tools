@@ -164,6 +164,12 @@ function datosSinRegistro() {
         await page.waitForFunction(() => document.querySelector('#btn-gh span').textContent === 'Sign in');
         assert.equal(await botonesEdicion(page), 0);
       });
+      await check('salir: los datos privados salen de la pantalla y de la memoria, sale el aviso de datos privados y no hay peticiones con credenciales a GitHub', async () => {
+        const t = await page.evaluate(() => document.body.innerText);
+        assert.doesNotMatch(t, /Banco demo/);
+        assert.match(await page.locator('#view').textContent(), /maintenance data is private/i);
+        assert.equal(peticiones.filter((q) => q.url.startsWith('https://api.github.com/') || ((q.headers.authorization || q.headers.apikey) && q.url.startsWith('https://raw.githubusercontent.com/'))).length, 0);
+      });
       await check('editar: sin errores de consola ni peticiones bloqueadas', async () => {
         assert.deepEqual(lab.bloqueadas, []);
         assert.deepEqual(erroresReales(errores), []);
@@ -290,6 +296,25 @@ function datosSinRegistro() {
         await page.waitForFunction(() => document.querySelector('#btn-gh span').textContent === 'Sign in again');
         assert.equal(lab.puts.length, 0);
         assert.match(await page.locator('#view').textContent(), /Banco demo 1/);
+        assert.deepEqual(lab.bloqueadas, []);
+        assert.deepEqual(erroresReales(errores), []);
+      });
+      await ctx.close();
+    }
+
+    {
+      const { ctx, page, lab, errores, peticiones } = await abrir(browser, { reloj: true });
+      await check('la sesión caduca entre guardar y el envío (700 ms): aviso de sesión caducada, ningún PUT ni lectura anónima de raw', async () => {
+        await entrar(page, 'ana.ruiz@fluidra.com', 'Ana Ruiz');
+        const raw0 = peticiones.filter((p) => p.url.startsWith('https://raw.githubusercontent.com/')).length;
+        await registrarPlan(page);
+        await page.evaluate(() => window.LabAuth.salir());
+        await page.waitForFunction(() => document.querySelector('#btn-gh span').textContent === 'Sign in again');
+        await page.clock.fastForward(1000);
+        await page.waitForFunction(() => /expired/i.test(document.querySelector('#toast').textContent));
+        assert.doesNotMatch(await toastTexto(page), /object Object/);
+        assert.equal(lab.puts.length, 0);
+        assert.equal(peticiones.filter((p) => p.url.startsWith('https://raw.githubusercontent.com/')).length, raw0);
         assert.deepEqual(lab.bloqueadas, []);
         assert.deepEqual(erroresReales(errores), []);
       });

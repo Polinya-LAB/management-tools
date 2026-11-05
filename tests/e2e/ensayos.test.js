@@ -74,7 +74,7 @@ async function abrir(browser, url, opts = {}) {
   errores.otros404 = () => otros404(respuestas);
   page.on('console', (m) => { if (m.type() === 'error') errores.push(m.text()); });
   page.on('pageerror', (e) => errores.push(String(e)));
-  page.on('request', (r) => peticiones.push({ url: r.url(), method: r.method() }));
+  page.on('request', (r) => peticiones.push({ url: r.url(), method: r.method(), headers: r.headers() }));
   page.on('response', (r) => respuestas.push({ url: r.url(), status: r.status() }));
   if (reloj) await page.clock.install();
   await page.goto(url);
@@ -109,7 +109,7 @@ async function entrar(page, email, nombre, es = false) {
   try {
     // ---------- Control de ensayos, editar ----------
     {
-      const { ctx, page, lab, errores } = await abrir(browser, ENSAYOS);
+      const { ctx, page, lab, errores, peticiones } = await abrir(browser, ENSAYOS);
       await check('diálogo: "Sign in with your email" arriba y "Use a GitHub key" debajo', async () => {
         await page.click('#btn-gh');
         await page.waitForSelector('#gh-mail');
@@ -152,6 +152,12 @@ async function entrar(page, email, nombre, es = false) {
         await page.click('#dlg [data-act="gh-out"]');
         await page.waitForFunction(() => document.querySelector('#btn-gh span').textContent === 'Sign in');
         assert.equal(await page.isVisible('#btn-new'), false);
+      });
+      await check('salir: los datos privados salen de la pantalla y de la memoria, sale el aviso de datos privados y no hay peticiones con credenciales a GitHub', async () => {
+        const t = await page.evaluate(() => document.body.innerText);
+        assert.doesNotMatch(t, /PLR9000|QTP900/);
+        assert.match(await page.locator('#view').textContent(), /lab data is private/i);
+        assert.equal(peticiones.filter((q) => q.url.startsWith('https://api.github.com/') || ((q.headers.authorization || q.headers.apikey) && q.url.startsWith('https://raw.githubusercontent.com/'))).length, 0);
       });
       await check('Control de ensayos (editar): sin errores de consola ni peticiones bloqueadas', async () => {
         assert.deepEqual(lab.bloqueadas, []);

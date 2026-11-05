@@ -2043,6 +2043,8 @@ function commitMessage(ops){
 }
 async function commitOps(ops){
   for(let i=0;i<4;i++){
+    /* The session may have expired between the save and this commit: reject it, never fall back to an anonymous read. */
+    if(byMail()&&!viaApi()) throw {code:'auth'};
     const cur=await fetchApi(false), next=applyOps(clone(cur.data),ops);
     const body={message:commitMessage(ops),branch:REPO.branch,content:b64encode(JSON.stringify(next,null,1)+'\n')}; if(cur.sha) body.sha=cur.sha;
     const res=await ghFetch(`${apiBase()}/contents/${REPO.path}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
@@ -2129,6 +2131,10 @@ async function mailSignOut(){
   mailBusy=true; try{await LA.salir();}catch(e){} mailBusy=false;
   Object.assign(GH,{modo:null,email:'',login:null,push:false,pushEnsayos:false,noAccess:false,expired:false}); S.ro=true; remote.etag=null;
   if(GH.token){GH.modo='clave'; try{await connectGh(GH.token);}catch(err){ if(err.code==='auth') GH.invalid=true; } await refresh();}
+  else{ /* No key left: the private data leaves memory and screen, so the next person on this browser does not see it. */
+    clearTimeout(flushTimer); pendingOps.splice(0).forEach(b=>b.rej({code:'auth'}));
+    remote.data=null; remote.sha=null; remote.etag=null; local=null; CAL.eq=null; CAL.err=null;
+    Object.assign(S,{tests:[],people:[],equipment:[],qtps:[],samples:[],cfg:{},loaded:new Set(),noDb:true,privateData:true}); }
   render(); toast(ta('au_out'));
 }
 function disconnectGh(){Object.assign(GH,{token:'',login:null,push:false,invalid:false,modo:null}); S.ro=true; try{localStorage.removeItem(TOKEN_KEY);}catch(e){} remote.etag=null; render(); toast('Disconnected from GitHub. This browser no longer has the key.');}

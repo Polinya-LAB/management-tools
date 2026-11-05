@@ -168,6 +168,13 @@ const enviarSinPermiso = (page) => page.evaluate(() => {
         await esperarBoton(page, 'Entrar con tu correo');
         assert.equal(await botonNueva(page), false);
       });
+      await check('salir: los datos privados desaparecen de la pantalla y sale "Entra con tu correo para ver la piscina."', async () => {
+        assert.equal(await hayDatos(page), false);
+        const t = await textoPagina(page);
+        assert.doesNotMatch(t, /Proyecto Demo Piscina|REF-DEMO|SN-DEMO|Hotbox demo/);
+        assert.match(await page.locator('#banners').textContent(), /Entra con tu correo para ver la piscina\./);
+        assert.equal(peticiones.filter((q) => q.url.startsWith('https://api.github.com/') || ((q.headers.authorization || q.headers.apikey) && q.url.startsWith('https://raw.githubusercontent.com/'))).length, 0);
+      });
       await check('editar: sin errores de consola ni peticiones bloqueadas', async () => {
         assert.deepEqual(lab.bloqueadas, []);
         assert.deepEqual(erroresReales(errores), []);
