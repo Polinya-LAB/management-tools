@@ -40,10 +40,23 @@ const deps: AdminDeps = {
     const { error } = await supabase.from("acceso").delete().eq("email", norm(email));
     if (error) throw error;
   },
+  // Idempotente: si el usuario de Auth ya existe (p. ej. un POST anterior falló al guardar la fila),
+  // devuelve su id en vez de fallar.
   async crearUsuarioAuth(email) {
-    const { data, error } = await supabase.auth.admin.createUser({ email: norm(email), email_confirm: true });
-    if (error || !data.user) throw error ?? new Error("createUser sin usuario");
-    return data.user.id;
+    const e = norm(email);
+    const { data, error } = await supabase.auth.admin.createUser({ email: e, email_confirm: true });
+    if (!error && data.user) return data.user.id;
+    const yaExiste = error?.code === "email_exists" || error?.code === "user_already_exists" ||
+      /already (been )?registered|already exists/i.test(error?.message ?? "");
+    if (!yaExiste) throw error ?? new Error("createUser sin usuario");
+    const porPagina = 200;
+    for (let page = 1;; page++) {
+      const { data: lista, error: e2 } = await supabase.auth.admin.listUsers({ page, perPage: porPagina });
+      if (e2) throw e2;
+      const u = lista.users.find((x) => x.email?.trim().toLowerCase() === e);
+      if (u) return u.id;
+      if (lista.users.length < porPagina) throw error;
+    }
   },
   async borrarUsuarioAuth(email) {
     const { data, error } = await supabase

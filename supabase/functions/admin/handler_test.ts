@@ -198,3 +198,41 @@ Deno.test("error inesperado → 502 con CORS", async () => {
   assertEquals(res.status, 502);
   assertEquals(res.headers.get("access-control-allow-origin"), ORIGEN);
 });
+
+Deno.test("POST: si guardar falla tras crear el usuario de Auth, el reintento termina con el mismo id", async () => {
+  const filas: Acceso[] = [ADMIN];
+  const authExistentes = new Map<string, string>();
+  let fallar = true;
+  const guardados: (Acceso & { user_id?: string })[] = [];
+  const deps: AdminDeps = {
+    usuario: () => Promise.resolve({ email: "ana@fluidra.com" }),
+    acceso: (e) => Promise.resolve(filas.find((f) => f.email === e) ?? null),
+    listar: () => Promise.resolve(filas),
+    guardar: (a) => {
+      if (fallar) return Promise.reject(new Error("db caída"));
+      guardados.push(a);
+      filas.push(a);
+      return Promise.resolve();
+    },
+    borrar: () => Promise.resolve(),
+    // Idempotente, como el real: si ya existe devuelve el mismo id.
+    crearUsuarioAuth: (e) => {
+      if (!authExistentes.has(e)) authExistentes.set(e, "uid-7");
+      return Promise.resolve(authExistentes.get(e)!);
+    },
+    borrarUsuarioAuth: () => Promise.resolve(),
+  };
+  const h = crearHandlerAdmin(deps);
+  const post = () =>
+    h(
+      new Request(`${BASE}/admin/usuarios`, {
+        method: "POST",
+        headers: { origin: ORIGEN, authorization: "Bearer jwt", "content-type": "application/json" },
+        body: JSON.stringify(valido),
+      }),
+    );
+  assertEquals((await post()).status, 502);
+  fallar = false;
+  assertEquals((await post()).status, 200);
+  assertEquals(guardados[0].user_id, "uid-7");
+});
