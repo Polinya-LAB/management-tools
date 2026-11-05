@@ -6,6 +6,8 @@ Guía para poner en marcha el acceso por correo y los roles por app. Diseño com
 Mientras `acceso/config.js` esté vacío, las apps funcionan como hasta ahora, con la clave de GitHub. Puedes publicar el
 código antes de desplegar nada.
 
+Los nombres de menús de Supabase, Brevo y GitHub pueden diferir algo de los de esta guía; busca el ajuste por su nombre.
+
 Necesitas: una cuenta de Supabase, una de Brevo, permisos de administrador en la organización
 [Polinya-LAB](https://github.com/Polinya-LAB) y Node.js 18 o superior (para `npx`). Ejecuta los comandos desde la raíz de
 este repositorio.
@@ -46,7 +48,6 @@ En *Authentication*:
   <p>Caduca en 10 minutos. Si no lo has pedido tú, ignora este correo.</p>
   ```
 
-  Haz lo mismo en la plantilla **Confirm signup** por si acaso, aunque con el registro desactivado no se usa.
 
 ## 4. Clave de GitHub del servidor
 
@@ -91,19 +92,27 @@ Comprobaciones tras el despliegue:
 
 ## 6. Primer administrador
 
-En Supabase, *SQL Editor*, ejecuta (con tu correo **en minúsculas**):
+Con el registro desactivado, Supabase no envía código a un correo que no existe en Auth, y la página de administración (que
+crea los usuarios de Auth) exige haber entrado antes. Por eso el primer administrador se crea a mano, en dos pasos:
+
+1. En Supabase, *Authentication → Users → Add user → Create new user*: tu correo **en minúsculas**, una contraseña
+   cualquiera (no se usará) y **Auto Confirm User** marcado.
+2. En *SQL Editor* ejecuta la alta, que toma el `user_id` de ese usuario:
 
 ```sql
-insert into public.acceso (email, nombre, roles, admin)
+insert into public.acceso (email, user_id, nombre, roles, admin)
 values (
   'tu.correo@fluidra.com',
-  'Daniel Quesada',
+  (select id from auth.users where email = 'tu.correo@fluidra.com'),
+  'Tu nombre',
   '{"ensayos":"editar","muestras":"editar","calibraciones":"editar","mantenimiento":"editar","piscina":"editar"}',
   true
 );
 ```
 
-La tabla rechaza correos con mayúsculas. Desde aquí, el resto de altas se hacen en la página de administración.
+Si `user_id` queda vacío (el usuario no existía), la baja posterior dejaría un usuario huérfano en Auth: comprueba con
+`select email, user_id from public.acceso;`. La tabla rechaza correos con mayúsculas. Desde aquí, el resto de altas se hacen
+en la página de administración, que crea el usuario de Auth y la fila a la vez.
 
 ## 7. Configurar las apps
 
@@ -115,8 +124,9 @@ La tabla rechaza correos con mayúsculas. Desde aquí, el resto de altas se hace
 
 2. **Muestras es una app instalable con service worker**, y guarda `config.js` en su caché. Sube la versión de
    `muestras/sw.js` para que las copias instaladas recojan la configuración: cambia `CACHE` (por ejemplo
-   `muestras-v20261107`) y el `?v=` de los ficheros de `SHELL` y de `muestras/index.html` (y de los `index.html` de las
-   otras apps que cargan `app.js` y `lab-auth.js`, para que coincidan).
+   `muestras-v20261107`) y el `?v=` de `SHELL`. El valor nuevo de `?v=` debe ser **el mismo** en `muestras/sw.js` (`CACHE` y
+   `SHELL`) y en todos los `index.html` que cargan `lab-auth.js`, `app.js` o `app.css` (los de management-tools y, si se
+   quiere mantener la beta, `new-projects/muestras/index.html` y su `sw.js`).
 3. Haz commit y push a `main`. GitHub Pages publica en uno o dos minutos.
 4. Comprueba que `https://polinya-lab.github.io/management-tools/acceso/config.js` devuelve la configuración nueva y que
    Control de ensayos ofrece **Entrar con correo**.
@@ -133,7 +143,8 @@ Antes de abrirlo a todo el laboratorio:
    "No tienes acceso a esta app".
 4. Haz un cambio con `editar` y mira el historial de commits en GitHub: el autor y el *committer* son la persona (nombre y
    correo del alta), aunque el commit lo envíe la clave del servidor.
-5. Comprueba que la clave de GitHub sigue funcionando para quien ya la usa.
+5. Prueba también la piscina con una sesión de correo y rol `piscina`, con `endurance-data` todavía público.
+6. Comprueba que la clave de GitHub sigue funcionando para quien ya la usa.
 
 ## 9. Cierre del acceso por GitHub
 
