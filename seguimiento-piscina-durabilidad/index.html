@@ -639,6 +639,8 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
   <form class="sheet narrow" id="gh-form" novalidate autocomplete="off">
     <header><div><h2>Conectar con GitHub</h2><div class="sub">Para registrar y modificar bombas</div></div><button type="button" class="x" data-close aria-label="Cerrar">×</button></header>
     <div class="sheet-body">
+      <div id="gh-mailbox" hidden style="display:flex;flex-direction:column;gap:12px"></div>
+      <div class="hint" id="gm-hint" aria-live="polite" hidden></div>
       <div id="gh-on" hidden style="display:flex;flex-direction:column;gap:12px">
         <p style="margin:0">Conectado como <b id="gh-login"></b>.</p>
         <p class="ro-note" id="gh-perm" style="margin:0"></p>
@@ -652,6 +654,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
         </ol>
         <div class="field s6"><label for="gh-token">Clave de acceso (token)</label><input id="gh-token" type="password" placeholder="ghp_…" autocomplete="off" spellcheck="false"></div>
         <div class="hint" id="gh-hint" aria-live="polite"></div>
+        <div id="gh-keygo" hidden><button type="button" class="btn" id="gh-key-go">Conectar</button></div>
       </div>
     </div>
     <footer><div class="foot-row"><span class="spacer"></span><button type="button" class="btn ghost" data-close>Cerrar</button><button type="submit" class="btn primary" id="gh-save">Conectar</button></div></footer>
@@ -660,6 +663,8 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
+<script src="../acceso/config.js"></script>
+<script src="../acceso/lab-auth.js?v=20261106"></script>
 <script>
 (() => {
   const $ = (s, r = document) => r.querySelector(s);
@@ -947,13 +952,17 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
   function renderBanners() {
     const out = [];
     if (state.dbStatus === 'connecting') out.push('<div class="banner">Cargando datos…</div>');
+    if (byMail() && mail.noAccess) out.push(`<div class="banner bad"><b>${ta('noapp')}</b></div>`);
+    else if (byMail() && mail.expired) out.push(`<div class="banner warn">${ta('expired')} <button type="button" class="btn ghost" data-act="mail-in">${ta('again')}</button></div>`);
     if (state.dbStatus === 'private') out.push(state.gh?.login
       ? `<div class="banner warn">Tu cuenta @${esc(state.gh.login)} no tiene acceso a los datos de esta app. Pide al responsable que te añada al repositorio <span class="mono">${REPO.owner}/${REPO.repo}</span>.</div>`
+      : LA ? `<div class="banner warn">${ta('private')}</div>`
       : '<div class="banner warn">Los datos de esta app son privados. Pulsa «Conectar con GitHub» con una cuenta que tenga acceso para verlos.</div>');
     if (state.dbStatus === 'error') out.push('<div class="banner bad">No se pudieron cargar los datos desde GitHub. Comprueba la conexión y recarga la página.</div>');
     if (state.gh?.tokenInvalid) out.push('<div class="banner warn">Tu clave de GitHub ya no es válida o ha caducado. Pulsa «Conectar con GitHub» y pega una nueva.</div>');
+    else if (byMail()) { if (state.dbStatus === 'ok' && state.gh?.login && !mail.noAccess && !mail.expired && !state.canWrite) out.push(`<div class="banner">${ta('ro', esc(state.gh.login))}</div>`); }
     else if (state.dbStatus === 'ok' && state.gh?.login && !state.canWrite) out.push(`<div class="banner">Estás conectado como @${esc(state.gh.login)}, pero sin permiso de escritura. Pide al responsable que te añada como colaborador del repositorio.</div>`);
-    else if (state.dbStatus === 'ok' && !state.canWrite) out.push('<div class="banner">Modo consulta. Para registrar o modificar bombas, pulsa «Conectar con GitHub».</div>');
+    else if (state.dbStatus === 'ok' && !state.canWrite) out.push(`<div class="banner">Modo consulta. Para registrar o modificar bombas, pulsa «${LA ? ta('btn') : 'Conectar con GitHub'}».</div>`);
     if (IDX.conflicts.size) out.push(`<div class="banner warn">Hay ${IDX.conflicts.size} bombas con la misma posición o petaca/fase (marcadas con «!»). Revísalas y corrige su ubicación.</div>`);
     $('#banners').innerHTML = out.join('');
     $('#banners').hidden = !out.length;
@@ -1210,6 +1219,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
   $('#cons-precio-form').addEventListener('submit', async e => {
     e.preventDefault();
     const hint = $('#cons-precio-hint');
+    if (!state.canWrite && denyWrite()) return;
     if (!state.canWrite) { hint.textContent = 'Conecta con GitHub para guardar el precio.'; hint.className = 'hint bad'; return; }
     const v = Number(String($('#cons-precio').value).replace(',', '.'));
     if (!(v > 0) || v > 10) { hint.textContent = 'Escribe un precio válido en € por kWh, por ejemplo 0,15.'; hint.className = 'hint bad'; return; }
@@ -1413,8 +1423,16 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
     v.bad.forEach(id => F(id)?.setAttribute('aria-invalid', 'true'));
   }
 
+  // Con sesión de correo, un guardado sin permiso (o con la sesión caducada) avisa con un mensaje; con la clave, como siempre.
+  function denyWrite() {
+    if (!byMail()) return false;
+    toast(ta(mail.expired ? 'eSave' : 'ePerm'));
+    return true;
+  }
   function writeError(err) {
     const code = err?.code;
+    if (byMail() && code === 'auth') { mailExpired(); toast(ta('eSave')); return ta('eSave'); }
+    if (byMail() && code === 'forbidden') { state.canWrite = false; renderAll(); return ta('ePerm'); }
     if (code === 'forbidden') { state.canWrite = false; renderAll(); return 'Tu usuario de GitHub no tiene permiso para modificar los datos. Pide al responsable que te añada como colaborador.'; }
     if (code === 'auth') { state.gh.tokenInvalid = true; state.canWrite = false; renderAll(); return 'Tu clave de GitHub no es válida o ha caducado. Vuelve a conectar con GitHub.'; }
     if (code === 'conflict') return 'Otra persona estaba guardando a la vez. Vuelve a intentarlo.';
@@ -1431,7 +1449,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
 
   F('form').addEventListener('submit', e => {
     e.preventDefault();
-    if (!state.db || !state.canWrite) return;
+    if (!state.db || !state.canWrite) return denyWrite();
     const d = readForm(), v = validate(d, state.editing);
     showMsgs(v);
     if (v.errors.length) return;
@@ -1557,7 +1575,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
   });
   F('cfg-form').addEventListener('submit', async e => {
     e.preventDefault();
-    if (!state.db || !state.canWrite) return;
+    if (!state.db || !state.canWrite) return denyWrite();
     const cfg = { avisoDias: Math.max(0, Math.min(90, parseInt(F('cfg-aviso').value, 10) || 0)) };
     F('cfg-save').disabled = true;
     try { await state.db.doc('config/piscina').update(cfg); closeOverlay('ov-cfg'); toast('Ajustes guardados'); }
@@ -1656,7 +1674,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
   F('b-obs').onclick = () => { const id = state.editing; closeOverlay('ov-form'); openObs(id); };
   F('obs-form').addEventListener('submit', async e => {
     e.preventDefault();
-    if (!state.db || !state.canWrite) return;
+    if (!state.db || !state.canWrite) return denyWrite();
     const b = state.bombas.find(x => x.id === state.obsBomba);
     if (!b) return;
     const fecha = F('obs-fecha').value, texto = F('obs-texto').value.trim(), hint = F('obs-hint');
@@ -1699,9 +1717,6 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
     t.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.target.closest('button')) open(e); });
   });
 
-  setView(state.view);
-  renderAll();
-
   /* ---------- Conexión con los datos ---------- */
   const normalize = (id, d) => ({
     id, ...d,
@@ -1712,13 +1727,49 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
   // Todo vive en piscina.json del repositorio de datos Polinya-LAB/endurance-data. Si es público, cualquiera puede consultarlo; para guardar
   // hace falta la clave (token) de un colaborador con permiso de escritura. Cada cambio es un commit.
   const REPO = { owner: 'Polinya-LAB', repo: 'endurance-data', branch: 'main', path: 'piscina.json' };
-  const API = `https://api.github.com/repos/${REPO.owner}/${REPO.repo}`;
+  const GH_API = `https://api.github.com/repos/${REPO.owner}/${REPO.repo}`;
   const RAW = `https://raw.githubusercontent.com/${REPO.owner}/${REPO.repo}/${REPO.branch}/${REPO.path}`;
   const TOKEN_KEY = 'pd-gh-token';
   let token = '';
   try { token = localStorage.getItem(TOKEN_KEY) || ''; } catch (e) {}
   const remote = { data: null, sha: null, etag: null };
   state.gh = { login: null, push: false, tokenInvalid: false };
+
+  /* ---------- Entrar con el correo (acceso/lab-auth.js) ---------- */
+  // Con una sesión de correo los datos pasan por la función de Supabase del laboratorio, que lee y escribe en el repositorio
+  // privado con su propia clave. Sin configuración (LabAuth.activo falso) solo existe la clave de GitHub, como siempre.
+  const LA = window.LabAuth && window.LabAuth.activo ? window.LabAuth : null;
+  const APP_ID = 'piscina';
+  const AU = {
+    btn: 'Entrar con tu correo', btnT: 'Entra con tu correo para ver y modificar los datos', title: 'Entrar con tu correo',
+    mail: 'Correo', help: 'Te enviaremos un código de 6 cifras. Solo pueden entrar los correos dados de alta por un administrador.',
+    send: 'Enviar código', sent: m => `Te hemos enviado un código de 6 cifras a <b>${m}</b>. Vale 10 minutos.`, code: 'Código', enter: 'Entrar',
+    other: 'Usar otro correo', wait: 'Comprobando…', key: 'Usar una clave de GitHub', signout: 'Salir',
+    as: (n, m) => `Has entrado como <b>${n}</b> (${m}).`, in: n => `Has entrado como ${n}.`,
+    edit: 'Puedes registrar y modificar bombas.', view: 'Solo puedes consultar los datos.',
+    noapp: 'No tienes acceso a esta app. Pídeselo a un administrador.',
+    again: 'Vuelve a entrar', expired: 'Tu sesión ha caducado.', saving: 'Guardando…', out: 'Has salido. Este navegador ya no tiene tu sesión.',
+    private: 'Entra con tu correo para ver la piscina.',
+    ro: n => `Has entrado como <b>${n}</b>, pero solo puedes consultar los datos. Pide a un administrador permiso de edición.`,
+    eMail: 'Escribe un correo válido.', eReg: 'Ese correo no está dado de alta. Pídeselo a un administrador.',
+    eRate: 'Has pedido demasiados códigos. Espera unos minutos y vuelve a intentarlo.', eNet: 'No se pudo conectar. Comprueba la conexión y vuelve a intentarlo.',
+    eSess: 'No se pudo iniciar tu sesión. Pide un código nuevo y vuelve a intentarlo.', eBusy: 'El servicio del laboratorio está limitando las peticiones. Espera un minuto y vuelve a intentarlo.',
+    eDown: 'El código es correcto, pero el servicio del laboratorio no responde ahora. Inténtalo en un momento; la app también reintenta sola.',
+    eCode: 'Escribe el código de 6 cifras.', eBad: 'El código no es correcto o ha caducado.',
+    eSave: 'Tu sesión ha caducado y el cambio no se ha guardado. Vuelve a entrar y repítelo.',
+    ePerm: 'No puedes modificar los datos: tu cuenta no tiene permiso de edición en esta app. Pídeselo a un administrador.'
+  };
+  const ta = (k, ...a) => { const v = AU[k]; return typeof v === 'function' ? v(...a) : v; };
+  // modo: 'correo' (sesión de correo), 'clave' (clave de GitHub) o null. Con 'correo': noAccess (sin rol en esta app) y expired (la función respondió 401).
+  let modo = token ? 'clave' : null;
+  const mail = { email: '', noAccess: false, expired: false };
+  const byMail = () => modo === 'correo';
+  let mailBusy = false; // alta o baja propia en curso: LabAuth.onCambio no es entonces una pérdida de sesión
+  const mailRepo = () => `${LA.api(APP_ID)}/repos/${REPO.owner}/${REPO.repo}`;
+  // La base de la API sigue al modo: con sesión de correo siempre la función; con clave, siempre api.github.com.
+  const apiBase = () => modo === 'correo' ? mailRepo() : GH_API;
+  // Se leen los datos por la API (clave o sesión de correo); si no, los ficheros anónimos de raw.githubusercontent.com.
+  const viaApi = () => byMail() ? !mail.expired && !mail.noAccess : !!token && !state.gh.tokenInvalid;
 
   const b64encode = s => {
     const bytes = new TextEncoder().encode(s);
@@ -1727,9 +1778,12 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
     return btoa(bin);
   };
   const b64decode = b => new TextDecoder().decode(Uint8Array.from(atob(b.replace(/\s/g, '')), c => c.charCodeAt(0)));
-  const ghFetch = (url, opts = {}) => fetch(url, {
+  // Cada credencial solo va a su servicio: la sesión de correo a la función del laboratorio, la clave a api.github.com.
+  const ghAuth = async url => LA && url.startsWith(LA.api(APP_ID).replace(/[^/]+$/, '')) ? await LA.cabeceras()
+    : url.startsWith('https://api.github.com/') && token ? { Authorization: `Bearer ${token}` } : {};
+  const ghFetch = async (url, opts = {}) => fetch(url, {
     cache: 'no-store', ...opts,
-    headers: { Accept: 'application/vnd.github+json', ...(token ? { Authorization: `Bearer ${token}` } : {}), ...(opts.headers || {}) }
+    headers: { Accept: 'application/vnd.github+json', ...await ghAuth(url), ...(opts.headers || {}) }
   });
   const httpError = res => {
     const limited = res.status === 429 || (res.status === 403 && res.headers.get('x-ratelimit-remaining') === '0');
@@ -1737,7 +1791,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
   };
 
   async function fetchApi(useEtag) {
-    const res = await ghFetch(`${API}/contents/${REPO.path}?ref=${REPO.branch}`, useEtag && remote.etag ? { headers: { 'If-None-Match': remote.etag } } : {});
+    const res = await ghFetch(`${apiBase()}/contents/${REPO.path}?ref=${REPO.branch}`, useEtag && remote.etag ? { headers: { 'If-None-Match': remote.etag } } : {});
     if (res.status === 304) return null;
     if (res.status === 404) throw { code: 'private', status: 404 };
     if (!res.ok) throw httpError(res);
@@ -1745,7 +1799,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
     let text;
     if (j.content) text = b64decode(j.content);
     else {
-      const blob = await ghFetch(`${API}/git/blobs/${j.sha}`);
+      const blob = await ghFetch(`${apiBase()}/git/blobs/${j.sha}`);
       if (!blob.ok) throw httpError(blob);
       text = b64decode((await blob.json()).content);
     }
@@ -1776,10 +1830,22 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
   }
 
   async function refresh() {
+    // Sesión de correo aún sin conectar (la función falló al arrancar o tras el código): se reintenta aquí, en cada consulta.
+    if (byMail() && !state.gh.login && !mail.expired) {
+      try { await connectMail(mail.email); renderGh(); renderAll(); }
+      catch (err) {
+        if (err.code === 'auth') mailExpired();
+        if (!state.loaded) state.dbStatus = err.code === 'auth' ? 'login' : 'error';
+        renderAll(); return;
+      }
+    }
+    // Con sesión de correo sin rol en esta app, o caducada, no se lee nada; lo que hay en pantalla se queda.
+    if (byMail() && !viaApi()) { if (!state.loaded) state.dbStatus = 'login'; renderAll(); return; }
     try {
-      const r = token && !state.gh.tokenInvalid ? await fetchApi(true) : await fetchRaw();
+      const r = viaApi() ? await fetchApi(true) : await fetchRaw();
       if (r) { Object.assign(remote, r); applyData(r.data); }
     } catch (err) {
+      if (err.code === 'auth' && byMail()) { mailExpired(); if (!state.loaded) state.dbStatus = 'login'; renderAll(); return; }
       if (err.code === 'auth') { state.gh = { login: null, push: false, tokenInvalid: true }; state.canWrite = false; return refresh(); }
       if (!state.loaded) { state.dbStatus = err.code === 'private' ? 'private' : 'error'; renderAll(); }
     }
@@ -1787,12 +1853,15 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
 
   // Lee la última versión, aplica el cambio y la guarda. Si otra persona guardó a la vez, reintenta.
   async function commit(mutate, message) {
-    if (!token || !state.gh.push) throw { code: 'forbidden' };
+    // Si la sesión caduca entre el guardado y el envío, el cambio se rechaza: nunca se lee ni se escribe como anónimo.
+    const allowed = () => byMail() ? !mail.expired && !mail.noAccess && state.gh.push : !!token && state.gh.push;
+    if (!allowed()) throw { code: byMail() && mail.expired ? 'auth' : 'forbidden' };
     for (let i = 0; i < 4; i++) {
+      if (!allowed()) throw { code: byMail() && mail.expired ? 'auth' : 'forbidden' };
       const cur = await fetchApi(false);
       const next = JSON.parse(JSON.stringify(cur.data));
       mutate(next);
-      const res = await ghFetch(`${API}/contents/${REPO.path}`, {
+      const res = await ghFetch(`${apiBase()}/contents/${REPO.path}`, {
         method: 'PUT', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message, branch: REPO.branch, sha: cur.sha, content: b64encode(JSON.stringify(next, null, 1) + '\n') })
       });
@@ -1843,35 +1912,135 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
     const prev = token;
     token = t;
     try {
-      const [u, r] = await Promise.all([ghFetch('https://api.github.com/user'), ghFetch(API)]);
+      const [u, r] = await Promise.all([ghFetch('https://api.github.com/user'), ghFetch(GH_API)]);
       if (!u.ok) throw httpError(u);
       const user = await u.json(), repo = r.ok ? await r.json() : {};
       state.gh = { login: user.login, push: !!repo.permissions?.push, tokenInvalid: false };
       state.canWrite = state.gh.push;
+      modo = 'clave'; Object.assign(mail, { email: '', noAccess: false, expired: false });
       remote.etag = null;
       return true;
     } catch (err) { token = prev; throw err; }
   }
+  // Sesión de correo: la función responde GET /user con el nombre y GET /repos con push = rol editar en esta app, o 403 si no tiene rol.
+  async function connectMail(email) {
+    const h = { Accept: 'application/vnd.github+json', ...await LA.cabeceras() };
+    const get = url => fetch(url, { headers: h, cache: 'no-store' }).catch(() => { throw { code: 'unavailable' }; });
+    const [u, r] = await Promise.all([get(`${LA.api(APP_ID)}/user`), get(mailRepo())]);
+    if (u.status === 401 || r.status === 401) throw { code: 'auth' };
+    if (!u.ok && u.status !== 403) throw httpError(u);
+    if (!r.ok && r.status !== 403) throw httpError(r);
+    const user = u.ok ? await u.json() : {}, repo = r.ok ? await r.json() : {};
+    modo = 'correo'; Object.assign(mail, { email, noAccess: !r.ok, expired: false });
+    state.gh = { login: user.login || email, push: !!repo.permissions?.push, tokenInvalid: false };
+    state.canWrite = state.gh.push;
+  }
+  // La función respondió 401 (sesión caducada o persona dada de baja): lo que hay en pantalla se queda, en solo lectura,
+  // y el botón ofrece volver a entrar.
+  function mailExpired() { mail.expired = true; state.gh.push = false; state.canWrite = false; renderGh(); renderAll(); }
+  async function mailSignOut() {
+    mailBusy = true; try { await LA.salir(); } catch (e) {} mailBusy = false;
+    modo = null; Object.assign(mail, { email: '', noAccess: false, expired: false });
+    state.gh = { login: null, push: false, tokenInvalid: false }; state.canWrite = false; remote.etag = null;
+    if (token) { modo = 'clave'; try { await connect(token); } catch (err) { if (err.code === 'auth') state.gh.tokenInvalid = true; } }
+    await refresh(); renderGh(); renderAll(); toast(ta('out'));
+  }
   function renderGh() {
-    const on = !!state.gh.login;
-    F('btn-gh-label').textContent = on ? `@${state.gh.login}` : 'Conectar con GitHub';
-    F('gh-on').hidden = !on; F('gh-off').hidden = on; F('gh-save').hidden = on;
-    if (on) {
+    const keyOn = modo === 'clave' && !!state.gh.login;
+    const signed = byMail() && !!state.gh.login && !mail.expired;
+    if (LA && modo !== 'clave') {
+      F('btn-gh-label').textContent = mail.expired ? ta('again') : state.gh.login || mail.email || ta('btn');
+      F('btn-gh').title = mail.expired ? ta('expired') : state.gh.login ? `${mail.email} · ${ta(mail.noAccess ? 'noapp' : state.gh.push ? 'edit' : 'view')}` : ta('btnT');
+    } else {
+      F('btn-gh-label').textContent = keyOn ? `@${state.gh.login}` : 'Conectar con GitHub';
+    }
+    F('gh-on').hidden = !keyOn; F('gh-off').hidden = keyOn; F('gh-save').hidden = keyOn;
+    if (keyOn) {
       F('gh-login').textContent = `@${state.gh.login}`;
       F('gh-perm').textContent = state.gh.push
         ? 'Puedes registrar y modificar bombas. Cada cambio queda guardado en el historial del repositorio con tu usuario.'
         : 'Tu usuario no tiene permiso de escritura en el repositorio. Pide al responsable que te añada como colaborador.';
     }
+    if (LA) renderMailBox(signed, keyOn);
   }
-  F('btn-gh').onclick = () => { renderGh(); F('gh-token').value = ''; F('gh-hint').textContent = ''; openOverlay('ov-gh', state.gh.login ? null : F('gh-token')); };
-  F('gh-form').addEventListener('submit', async e => {
-    e.preventDefault();
-    const t = F('gh-token').value.trim(), hint = F('gh-hint');
+  // Con el correo configurado: "Entrar con tu correo" (correo → código de 6 cifras) arriba y "Usar una clave de GitHub" debajo.
+  let mailStep = 'email', mailAddr = '', mailVerified = '';
+  function setupMailUi() {
+    F('gh-form').querySelector('h2').textContent = ta('title');
+    F('gh-form').querySelector('.sub').textContent = 'Para ver, registrar y modificar bombas';
+    const det = document.createElement('details');
+    det.id = 'gh-keybox'; det.style.cssText = 'border:1px solid var(--line);border-radius:8px;padding:10px 12px';
+    det.innerHTML = `<summary style="cursor:pointer;font-weight:500">${ta('key')}</summary><div id="gh-keyin" style="display:flex;flex-direction:column;gap:12px;margin-top:12px"></div>`;
+    const box = det.querySelector('#gh-keyin');
+    box.append(F('gh-on'), F('gh-off'));
+    F('gm-hint').after(det);
+    F('gh-keygo').hidden = false; F('gh-off').append(F('gh-keygo'));
+    F('gh-mailbox').hidden = false;
+  }
+  function renderMailBox(signed, keyOn) {
+    const box = F('gh-mailbox');
+    F('gh-keybox').hidden = signed;
+    F('gh-save').hidden = signed;
+    F('gh-save').textContent = ta(mailStep === 'code' ? 'enter' : 'send');
+    if (signed) {
+      box.innerHTML = `<p style="margin:0">${ta('as', esc(state.gh.login), esc(mail.email))} ${ta(mail.noAccess ? 'noapp' : state.gh.push ? 'edit' : 'view')}</p><div><button type="button" class="btn" id="gm-out">${ta('signout')}</button></div>`;
+      return;
+    }
+    box.innerHTML = `<h3 style="margin:0;font-size:15px">${ta('title')}</h3>${mail.expired ? `<p class="ro-note" style="margin:0">${ta('expired')}</p>` : ''}`
+      + (mailStep === 'code'
+        ? `<p style="margin:0;font-size:14px">${ta('sent', esc(mailAddr))}</p><div class="field s6"><label for="gh-code">${ta('code')}</label><input id="gh-code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456" spellcheck="false"></div><div><button type="button" class="btn ghost" id="gm-back">${ta('other')}</button></div>`
+        : `<div class="field s6"><label for="gh-mail">${ta('mail')}</label><input id="gh-mail" type="email" autocomplete="email" spellcheck="false" value="${esc(mailAddr || mail.email || '')}"></div><p class="ro-note" style="margin:0">${ta('help')}</p>`);
+  }
+  function gmHint(msg, cls = 'bad') { const h = F('gm-hint'); h.hidden = !msg; h.textContent = msg || ''; h.className = 'hint ' + cls; }
+  function openMail(step) {
+    mailStep = step || 'email'; gmHint('');
+    renderGh();
+    F('gh-keybox').open = modo === 'clave' && !!state.gh.login;
+    openOverlay('ov-gh', F('gh-code') || F('gh-mail') || F('gh-token'));
+  }
+  async function saveMail() {
+    const btn = F('gh-save'), label = btn.textContent, busy = on => { btn.disabled = on; btn.textContent = on ? ta('wait') : label; };
+    if (mailStep === 'code') {
+      const email = mailAddr, code = (F('gh-code').value || '').trim();
+      if (!code) return gmHint(ta('eCode'));
+      busy(true); let phase = 'code';
+      try {
+        mailBusy = true;
+        if (mailVerified !== email) { await LA.verificar(email, code); mailVerified = email; }
+        // Desde aquí la sesión existe: se queda en modo correo, así la consulta reintenta si la función falla ahora.
+        phase = 'connect'; modo = 'correo'; Object.assign(mail, { email, noAccess: false, expired: false });
+        state.gh = { login: null, push: false, tokenInvalid: false }; state.canWrite = false;
+        await connectMail(email);
+        remote.etag = null; await refresh(); busy(false); mailStep = 'email'; renderGh(); renderAll(); closeOverlay('ov-gh');
+        toast(mail.noAccess ? ta('noapp') : `${ta('in', state.gh.login)} ${ta(state.gh.push ? 'edit' : 'view')}`);
+      } catch (err) {
+        busy(false); const c = err && err.code;
+        if (phase === 'code') gmHint(ta(c === 'bad_code' ? 'eBad' : 'eNet'));
+        else if (c === 'auth') { mailExpired(); mailVerified = ''; mailStep = 'email'; renderGh(); gmHint(ta('eSess')); }
+        else { renderGh(); renderAll(); gmHint(ta(c === 'forbidden' ? 'noapp' : c === 'rate' ? 'eBusy' : 'eDown')); }
+      } finally { mailBusy = false; }
+      return;
+    }
+    const email = (F('gh-mail').value || '').trim().toLowerCase();
+    if (!email) return gmHint(ta('eMail'));
+    busy(true);
+    try { await LA.pedirCodigo(email); mailAddr = email; mailVerified = ''; busy(false); mailStep = 'code'; gmHint(''); renderGh(); F('gh-code').focus(); }
+    catch (err) { busy(false); gmHint(ta(err.code === 'not_allowed' ? 'eReg' : err.code === 'bad_email' ? 'eMail' : err.code === 'rate' ? 'eRate' : 'eNet')); }
+  }
+  F('btn-gh').onclick = () => {
+    F('gh-token').value = ''; F('gh-hint').textContent = '';
+    if (LA) return openMail(byMail() && mail.expired ? 'email' : mailStep === 'code' && !byMail() ? 'code' : 'email');
+    renderGh(); openOverlay('ov-gh', state.gh.login ? null : F('gh-token'));
+  };
+  async function saveKey() {
+    const t = F('gh-token').value.trim(), hint = F('gh-hint'), btn = LA ? F('gh-key-go') : F('gh-save');
     if (!t) { hint.textContent = 'Pega tu clave de GitHub.'; hint.className = 'hint bad'; return; }
-    F('gh-save').disabled = true; hint.textContent = 'Comprobando…'; hint.className = 'hint';
+    btn.disabled = true; hint.textContent = 'Comprobando…'; hint.className = 'hint';
     try {
       await connect(t);
       try { localStorage.setItem(TOKEN_KEY, t); } catch (err) {}
+      if (LA && await LA.sesion()) { mailBusy = true; try { await LA.salir(); } catch (e) {} mailBusy = false; }
+      mailStep = 'email';
       renderGh(); renderAll(); refresh();
       hint.textContent = ''; toast(`Conectado como @${state.gh.login}`);
       if (state.gh.push) closeOverlay('ov-gh');
@@ -1880,22 +2049,47 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
         : err.code === 'rate' ? 'GitHub ha limitado las peticiones. Espera un minuto y vuelve a intentarlo.'
         : 'No se pudo conectar con GitHub. Comprueba la conexión.';
       hint.className = 'hint bad';
-    } finally { F('gh-save').disabled = false; }
+    } finally { btn.disabled = false; }
+  }
+  F('gh-form').addEventListener('submit', e => {
+    e.preventDefault();
+    return LA && document.activeElement !== F('gh-token') ? saveMail() : saveKey();
   });
+  F('gh-form').addEventListener('click', e => {
+    if (e.target.closest('#gh-key-go')) saveKey();
+    else if (e.target.closest('#gm-out')) { closeOverlay('ov-gh'); mailSignOut(); }
+    else if (e.target.closest('#gm-back')) { mailStep = 'email'; gmHint(''); renderGh(); F('gh-mail').focus(); }
+  });
+  F('banners').addEventListener('click', e => { if (e.target.closest('[data-act="mail-in"]')) F('btn-gh').click(); });
   F('gh-out').onclick = () => {
     token = ''; try { localStorage.removeItem(TOKEN_KEY); } catch (e) {}
-    state.gh = { login: null, push: false, tokenInvalid: false }; state.canWrite = false;
+    modo = null; state.gh = { login: null, push: false, tokenInvalid: false }; state.canWrite = false;
     renderGh(); renderAll(); closeOverlay('ov-gh'); toast('Desconectado de GitHub');
   };
 
+  // La primera pintura va después de declarar el modo de acceso, que los avisos consultan.
+  setView(state.view);
+  renderAll();
   (async () => {
-    if (token) {
+    if (LA) {
+      setupMailUi();
+      await LA.listo; const ses = await LA.sesion();
+      if (ses) {
+        modo = 'correo'; mail.email = ses.email;
+        try { await connectMail(ses.email); } catch (err) { if (err.code === 'auth') mailExpired(); }
+      }
+      // Sesión cerrada en otra pestaña o imposible de renovar: lo mismo que un 401.
+      LA.onCambio(x => { if (!x && byMail() && !mailBusy && !mail.expired) mailExpired(); });
+    }
+    if (modo === 'clave' && token) {
       try { await connect(token); }
       catch (err) { if (err.code === 'auth') state.gh.tokenInvalid = true; }
     }
     renderGh();
     await refresh();
-    setInterval(() => { if (!document.hidden) refresh(); }, token ? 30000 : 60000);
+    // Consulta periódica: 30 s con clave de GitHub, 60 s con sesión de correo (límites del plan gratuito); solo con la pestaña visible.
+    const every = () => byMail() ? 60000 : token ? 30000 : 60000;
+    const poll = () => setTimeout(() => { if (!document.hidden) refresh(); poll(); }, every()); poll();
     document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
   })();
 })();
