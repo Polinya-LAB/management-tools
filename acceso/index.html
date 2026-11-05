@@ -1,0 +1,320 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Administrar accesos · Laboratorio Polinyà</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400&display=swap">
+<style>
+/* Administración de accesos: mismos tokens que la portada. */
+:root {
+  --bg: #EDF1F0; --surface: #FFFFFF; --ink: #142120; --muted: #586765; --line: #D2DAD8; --accent: #0B666C; --bad: #A12B2B; --on-accent: #FFFFFF;
+  --f-display: "Barlow Semi Condensed", "Arial Narrow", Arial, sans-serif;
+  --f-body: "Barlow", "Segoe UI", Arial, sans-serif;
+  --f-mono: "IBM Plex Mono", ui-monospace, Menlo, Consolas, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root { --bg: #0E1515; --surface: #152020; --ink: #E2EBE9; --muted: #92A29F; --line: #283837; --accent: #52B5BA; --bad: #E58A8A; --on-accent: #0E1515; color-scheme: dark; }
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body {
+  margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.5;
+  padding: 32px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px));
+}
+main { max-width: 1100px; margin: 0 auto; display: flex; flex-direction: column; gap: 24px; }
+header { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; flex-wrap: wrap; }
+.eyebrow { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+h1 { font-family: var(--f-display); font-size: clamp(28px, 5vw, 38px); font-weight: 700; line-height: 1.05; margin: 4px 0 0; }
+h2 { font-family: var(--f-display); font-size: 20px; font-weight: 600; margin: 0 0 8px; }
+.who { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 14px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; }
+.card.narrow { max-width: 460px; }
+p { margin: 0 0 12px; }
+.muted { color: var(--muted); font-size: 14px; }
+label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 4px; }
+input[type=email], input[type=text], select {
+  font: inherit; color: var(--ink); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; min-width: 0;
+}
+input[type=email], input[type=text] { width: 100%; }
+input:focus-visible, select:focus-visible, button:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+.field { margin-bottom: 12px; }
+.btn {
+  font: inherit; font-weight: 600; cursor: pointer; border-radius: 6px; padding: 8px 14px; border: 1px solid var(--accent);
+  background: var(--accent); color: var(--on-accent);
+}
+.btn.ghost { background: transparent; color: var(--accent); }
+.btn.danger { background: transparent; color: var(--bad); border-color: var(--bad); }
+.btn.small { padding: 4px 10px; font-size: 14px; }
+.btn:disabled { opacity: .55; cursor: default; }
+.hint { min-height: 1.4em; color: var(--bad); font-size: 14px; margin: 8px 0 0; }
+.actions { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.add { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: end; }
+.tablewrap { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+th { font-family: var(--f-mono); font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); font-weight: 400; }
+td.mail { font-family: var(--f-mono); font-size: 13px; word-break: break-all; }
+td.c { text-align: center; }
+input[type=checkbox] { width: 18px; height: 18px; accent-color: var(--accent); }
+tr.guardando { opacity: .6; }
+#toast {
+  position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); max-width: min(92vw, 520px);
+  background: var(--ink); color: var(--bg); padding: 10px 16px; border-radius: 8px; font-size: 14px; z-index: 20;
+}
+#toast.err { background: var(--bad); color: #fff; }
+#confirmar { position: fixed; inset: 0; background: rgba(0,0,0,.5); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 30; }
+#confirmar .card { max-width: 420px; width: 100%; }
+.foot { font-size: 14px; }
+.foot a { color: var(--accent); }
+@media (max-width: 640px) { .add { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<main>
+  <header>
+    <div>
+      <span class="eyebrow">R&amp;D · Fluidra</span>
+      <h1>Administrar accesos</h1>
+    </div>
+    <div class="who" id="who" hidden><span id="who-mail"></span><button type="button" class="btn ghost small" id="who-out">Salir</button></div>
+  </header>
+
+  <section class="card narrow" id="no-config" hidden><p style="margin:0">El acceso por correo todavía no está configurado.</p></section>
+
+  <section class="card narrow" id="login" hidden></section>
+
+  <section class="card narrow" id="denegado" hidden>
+    <h2>Esta página es solo para administradores</h2>
+    <p class="muted">Tu cuenta no tiene permiso de administración. Si lo necesitas, pídeselo a un administrador.</p>
+    <button type="button" class="btn">Salir</button>
+  </section>
+
+  <section class="card narrow" id="fallo" hidden>
+    <p id="fallo-msg"></p>
+    <button type="button" class="btn" id="fallo-reintentar">Reintentar</button>
+  </section>
+
+  <section id="admin" hidden style="display:flex;flex-direction:column;gap:24px">
+    <div class="card">
+      <h2>Añadir persona</h2>
+      <form class="add" id="n-form" novalidate>
+        <div><label for="n-mail">Correo</label><input id="n-mail" type="email" autocomplete="off" spellcheck="false"></div>
+        <div><label for="n-nombre">Nombre</label><input id="n-nombre" type="text" autocomplete="off"></div>
+        <button type="submit" class="btn" id="n-add">Añadir</button>
+      </form>
+      <p class="muted" style="margin:10px 0 0">La persona nueva empieza sin acceso a ninguna app; asígnale después el nivel de cada una.</p>
+    </div>
+    <div class="card tablewrap"><table id="tabla"></table></div>
+  </section>
+
+  <p class="foot"><a href="../">← Volver a la portada</a></p>
+</main>
+
+<div id="toast" role="status" hidden></div>
+<div id="confirmar" hidden role="dialog" aria-modal="true" aria-labelledby="c-titulo">
+  <div class="card">
+    <h2 id="c-titulo">Dar de baja</h2>
+    <p id="c-texto"></p>
+    <div class="actions"><button type="button" class="btn danger" id="c-si">Dar de baja</button><button type="button" class="btn ghost" id="c-no">Cancelar</button></div>
+  </div>
+</div>
+
+<script src="config.js"></script>
+<script src="lab-auth.js"></script>
+<script>
+(function () {
+  'use strict';
+  var LA = window.LabAuth;
+  var ROLES = [
+    ['ensayos', 'Control de ensayos y Ocupación'], ['muestras', 'Muestras'], ['calibraciones', 'Plan de calibraciones'],
+    ['mantenimiento', 'Plan de mantenimiento'], ['piscina', 'Piscina']
+  ];
+  var NIVELES = [['ninguno', '—'], ['ver', 'Ver'], ['editar', 'Editar']];
+  var T = {
+    mail: 'Correo', help: 'Te enviaremos un código de 6 cifras. Solo pueden entrar los correos dados de alta por un administrador.',
+    send: 'Enviar código', sent: function (m) { return 'Te hemos enviado un código de 6 cifras a <b>' + esc(m) + '</b>. Vale 10 minutos.'; },
+    code: 'Código', enter: 'Entrar', other: 'Usar otro correo',
+    eMail: 'Escribe un correo válido.', eReg: 'Ese correo no está dado de alta. Pídeselo a un administrador.',
+    eRate: 'Has pedido demasiados códigos. Espera unos minutos y vuelve a intentarlo.', eNet: 'No se pudo conectar. Comprueba la conexión y vuelve a intentarlo.',
+    eCode: 'Escribe el código de 6 cifras.', eBad: 'El código no es correcto o ha caducado.',
+    expired: 'Tu sesión ha caducado. Vuelve a entrar.'
+  };
+  function $(id) { return document.getElementById(id); }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+
+  var yo = null;         // {email} de la sesión
+  var lista = [];        // personas tal como las tiene el servidor
+  var aviso = '';        // texto fijo sobre el formulario de entrada (sesión caducada)
+  var paso = 'email', dirCorreo = '', verificado = '';
+
+  function vista(cual) {
+    ['no-config', 'login', 'denegado', 'fallo', 'admin'].forEach(function (id) { $(id).hidden = id !== cual; });
+    $('who').hidden = !(yo && (cual === 'admin' || cual === 'denegado' || cual === 'fallo'));
+    $('who-mail').textContent = yo ? yo.email : '';
+  }
+  var tt;
+  function toast(msg, mal) {
+    var t = $('toast'); t.textContent = msg; t.className = mal ? 'err' : ''; t.hidden = false;
+    clearTimeout(tt); tt = setTimeout(function () { t.hidden = true; }, mal ? 6000 : 2500);
+  }
+
+  /* ---------- Entrar con el correo ---------- */
+  function pintarLogin() {
+    var h = '<h2>Entrar con tu correo</h2>' + (aviso ? '<p class="muted">' + esc(aviso) + '</p>' : '')
+      + '<form id="a-form" novalidate>';
+    if (paso === 'code') {
+      h += '<p>' + T.sent(dirCorreo) + '</p><div class="field"><label for="a-code">' + T.code + '</label>'
+        + '<input id="a-code" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="7" placeholder="123456" spellcheck="false"></div>'
+        + '<div class="actions"><button type="submit" class="btn" id="a-go">' + T.enter + '</button><button type="button" class="btn ghost" id="a-back">' + T.other + '</button></div>';
+    } else {
+      h += '<div class="field"><label for="a-mail">' + T.mail + '</label><input id="a-mail" type="email" autocomplete="email" spellcheck="false" value="' + esc(dirCorreo) + '"></div>'
+        + '<p class="muted">' + T.help + '</p><div class="actions"><button type="submit" class="btn" id="a-go">' + T.send + '</button></div>';
+    }
+    $('login').innerHTML = h + '<p class="hint" id="a-hint" role="alert"></p></form>';
+    $('a-form').addEventListener('submit', function (e) { e.preventDefault(); paso === 'code' ? validar() : pedir(); });
+    var b = $('a-back'); if (b) b.addEventListener('click', function () { paso = 'email'; verificado = ''; pintarLogin(); });
+    ($('a-code') || $('a-mail')).focus();
+    vista('login');
+  }
+  function pista(m) { $('a-hint').textContent = m || ''; }
+  function ocupado(si) { var b = $('a-go'); if (b) b.disabled = si; }
+  function pedir() {
+    var email = $('a-mail').value.trim().toLowerCase();
+    if (!email) return pista(T.eMail);
+    ocupado(true); pista('');
+    LA.pedirCodigo(email).then(function () { dirCorreo = email; verificado = ''; paso = 'code'; pintarLogin(); }, function (err) {
+      ocupado(false);
+      pista(T[err && err.code === 'not_allowed' ? 'eReg' : err && err.code === 'bad_email' ? 'eMail' : err && err.code === 'rate' ? 'eRate' : 'eNet']);
+    });
+  }
+  function validar() {
+    var codigo = ($('a-code').value || '').trim();
+    if (!codigo) return pista(T.eCode);
+    ocupado(true); pista('');
+    LA.verificar(dirCorreo, codigo).then(function () { return LA.sesion(); }).then(function (s) {
+      yo = s; aviso = ''; paso = 'email'; return cargar();
+    }, function (err) {
+      ocupado(false);
+      pista(err && err.code === 'bad_code' ? T.eBad : T.eNet);
+    });
+  }
+  function aEntrar(msg) { yo = null; lista = []; aviso = msg || ''; paso = 'email'; verificado = ''; pintarLogin(); }
+
+  /* ---------- Llamadas a la función admin ---------- */
+  function llamar(metodo, ruta, cuerpo) {
+    return LA.cabeceras().then(function (h) {
+      var init = { method: metodo, headers: h };
+      if (cuerpo) { h['Content-Type'] = 'application/json'; init.body = JSON.stringify(cuerpo); }
+      return fetch(LA.apiAdmin() + ruta, init);
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (r.ok) return j;
+        var e = new Error(j && j.message || 'Error ' + r.status); e.status = r.status; throw e;
+      });
+    });
+  }
+  function cargar() {
+    return llamar('GET', '/usuarios').then(function (j) {
+      lista = j.usuarios || []; pintarTabla(); vista('admin');
+    }, function (e) {
+      if (e.status === 401) return aEntrar(T.expired);
+      if (e.status === 403) return vista('denegado');
+      $('fallo-msg').textContent = 'No se pudo cargar la lista: ' + e.message; vista('fallo');
+    });
+  }
+
+  /* ---------- Tabla ---------- */
+  function pintarTabla() {
+    var h = '<thead><tr><th>Nombre</th><th>Correo</th>';
+    ROLES.forEach(function (r) { h += '<th>' + esc(r[1]) + '</th>'; });
+    h += '<th>Administrador</th><th></th></tr></thead><tbody>';
+    lista.forEach(function (u) {
+      var propio = yo && u.email === String(yo.email).toLowerCase();
+      h += '<tr data-email="' + esc(u.email) + '"><td>' + esc(u.nombre) + '</td><td class="mail">' + esc(u.email) + '</td>';
+      ROLES.forEach(function (r) {
+        var v = (u.roles || {})[r[0]] || 'ninguno';
+        h += '<td><select data-rol="' + r[0] + '" aria-label="' + esc(r[1] + ' — ' + u.nombre) + '">';
+        NIVELES.forEach(function (n) { h += '<option value="' + n[0] + '"' + (n[0] === v ? ' selected' : '') + '>' + n[1] + '</option>'; });
+        h += '</select></td>';
+      });
+      h += '<td class="c"><input type="checkbox" data-admin aria-label="Administrador — ' + esc(u.nombre) + '"' + (u.admin ? ' checked' : '') + (propio ? ' disabled' : '') + '></td>'
+        + '<td>' + (propio ? '' : '<button type="button" class="btn danger small" data-baja>Dar de baja</button>') + '</td></tr>';
+    });
+    $('tabla').innerHTML = h + '</tbody>';
+  }
+  function filaDe(email) { return Array.prototype.filter.call($('tabla').querySelectorAll('tr[data-email]'), function (tr) { return tr.dataset.email === email; })[0]; }
+  function leerFila(tr, base) {
+    var roles = {};
+    Array.prototype.forEach.call(tr.querySelectorAll('select[data-rol]'), function (s) { roles[s.dataset.rol] = s.value; });
+    return { email: base.email, nombre: base.nombre, roles: roles, admin: tr.querySelector('[data-admin]').checked };
+  }
+  function errorLlamada(e) {
+    if (e.status === 401) { aEntrar(T.expired); return; }
+    toast(e.message || 'No se pudo guardar', true);
+  }
+  function guardarFila(tr) {
+    var base = lista.filter(function (u) { return u.email === tr.dataset.email; })[0];
+    if (!base) return;
+    var cuerpo = leerFila(tr, base);
+    tr.classList.add('guardando');
+    llamar('POST', '/usuarios', cuerpo).then(function () {
+      Object.assign(base, cuerpo); tr.classList.remove('guardando'); toast('Guardado');
+    }, function (e) {
+      if (e.status !== 401) { tr.classList.remove('guardando'); pintarTabla(); }
+      errorLlamada(e);
+    });
+  }
+  $('tabla').addEventListener('change', function (e) {
+    var tr = e.target.closest('tr[data-email]');
+    if (tr && (e.target.matches('select[data-rol]') || e.target.matches('[data-admin]'))) guardarFila(tr);
+  });
+  $('tabla').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-baja]'); if (!b) return;
+    var email = b.closest('tr').dataset.email;
+    var u = lista.filter(function (x) { return x.email === email; })[0];
+    $('c-texto').textContent = '¿Dar de baja a ' + u.nombre + ' (' + u.email + ')? Ya no podrá entrar en ninguna app.';
+    $('confirmar').dataset.email = email; $('confirmar').hidden = false; $('c-no').focus();
+  });
+  $('c-no').addEventListener('click', function () { $('confirmar').hidden = true; });
+  $('confirmar').addEventListener('keydown', function (e) { if (e.key === 'Escape') $('confirmar').hidden = true; });
+  $('c-si').addEventListener('click', function () {
+    var email = $('confirmar').dataset.email; $('confirmar').hidden = true;
+    llamar('DELETE', '/usuarios/' + encodeURIComponent(email)).then(function () {
+      lista = lista.filter(function (u) { return u.email !== email; });
+      var tr = filaDe(email); if (tr) tr.remove();
+      toast('Dada de baja');
+    }, errorLlamada);
+  });
+  $('n-form').addEventListener('submit', function (e) {
+    e.preventDefault();
+    var email = $('n-mail').value.trim().toLowerCase(), nombre = $('n-nombre').value.trim();
+    var roles = {}; ROLES.forEach(function (r) { roles[r[0]] = 'ninguno'; });
+    var cuerpo = { email: email, nombre: nombre, roles: roles, admin: false };
+    $('n-add').disabled = true;
+    llamar('POST', '/usuarios', cuerpo).then(function () {
+      $('n-add').disabled = false;
+      var i = -1; lista.forEach(function (u, k) { if (u.email === email) i = k; });
+      if (i >= 0) lista[i] = cuerpo; else lista.push(cuerpo);
+      lista.sort(function (a, b) { return a.nombre.localeCompare(b.nombre, 'es'); });
+      pintarTabla(); $('n-mail').value = ''; $('n-nombre').value = ''; toast('Guardado');
+    }, function (err) { $('n-add').disabled = false; errorLlamada(err); });
+  });
+
+  /* ---------- Salir y arranque ---------- */
+  function salir() { LA.salir().then(function () { aEntrar(''); }, function () { aEntrar(''); }); }
+  $('who-out').addEventListener('click', salir);
+  $('denegado').querySelector('button').addEventListener('click', salir);
+  $('fallo-reintentar').addEventListener('click', cargar);
+
+  if (!LA || !LA.activo) { vista('no-config'); return; }
+  LA.listo.then(function () { return LA.sesion(); }).then(function (s) {
+    if (!s) return aEntrar('');
+    yo = s; return cargar();
+  }, function () { aEntrar(''); });
+})();
+</script>
+</body>
+</html>
