@@ -49,6 +49,17 @@ function datosExtra(lab) {
   lab.fijarDatos('lab-data', FICHERO, d);
 }
 
+// La función github responde `estado.status` a GET …/user mientras estado.status no sea 0 (se registra después de
+// setupLab, así que gana a sus rutas).
+async function averiarUser(ctx, estado) {
+  await ctx.route(/\/functions\/v1\/github\/[^/]+\/user$/, (route) => {
+    if (!estado.status || route.request().method() === 'OPTIONS') return route.fallback();
+    estado.fallos = (estado.fallos || 0) + 1;
+    return route.fulfill({ status: estado.status, contentType: 'application/json',
+      headers: { 'access-control-allow-origin': 'https://polinya-lab.github.io' }, body: '{"message":"Error al contactar con el servicio"}' });
+  });
+}
+
 async function abrir(browser, url, opts = {}) {
   const { reloj, clave, ...lab_opts } = opts;
   const ctx = await browser.newContext({ serviceWorkers: 'block' });
@@ -213,6 +224,7 @@ async function entrar(page, email, nombre, es = false) {
         await entrar(page, 'sin.muestras@fluidra.com', 'Sin Muestras', true);
         await page.waitForFunction(() => /No tienes acceso a esta app/.test(document.querySelector('#view').textContent));
         assert.doesNotMatch(await page.locator('#view').textContent(), /QTS-00001/);
+        assert.equal(await page.locator('#tabs [data-view="import"]').count(), 0, 'sin Import ARAS aunque tenga editar en ensayos');
         assert.deepEqual(lab.bloqueadas, []);
         assert.deepEqual(erroresReales(errores), []);
         assert.deepEqual(errores.otros404(), []);
@@ -303,6 +315,71 @@ async function entrar(page, email, nombre, es = false) {
         assert.match(await page.locator('#view').textContent(), /PLR900001/);
         assert.deepEqual(erroresReales(errores), []);
         assert.deepEqual(errores.otros404(), []);
+      });
+      await ctx.close();
+    }
+
+    // ---------- La función falla al arrancar con una sesión guardada (sin 401) ----------
+    {
+      const { ctx, page, lab, errores } = await abrir(browser, ENSAYOS);
+      const averia = { status: 0 };
+      await averiarUser(ctx, averia);
+      const conCabecera = [];
+      ctx.on('request', (r) => {
+        const h = r.headers();
+        if (r.url().startsWith('https://api.github.com/') && (h.authorization || h.apikey)) conCabecera.push(r.url());
+      });
+      await check('función con 500 al arrancar: ninguna petición a api.github.com lleva la sesión; la siguiente consulta, ya recuperada, carga los datos', async () => {
+        await entrar(page, 'ana.ruiz@fluidra.com', 'Ana Ruiz');
+        averia.status = 500;
+        const p2 = await ctx.newPage();
+        p2.setDefaultTimeout(8000);
+        p2.on('console', (m) => { if (m.type() === 'error') errores.push(m.text()); });
+        p2.on('pageerror', (e) => errores.push(String(e)));
+        await p2.clock.install();
+        await p2.goto(ENSAYOS);
+        await esperarCarga(p2);
+        assert.ok(averia.fallos >= 1, 'la función falló al arrancar');
+        assert.match(await p2.locator('#view').textContent(), /Could not load the lab data/);
+        assert.doesNotMatch(await p2.locator('#view').textContent(), /session has expired/i);
+        assert.notEqual(await p2.locator('#btn-gh span').textContent(), 'Sign in again');
+        averia.status = 0;
+        await p2.clock.fastForward(61000);
+        await p2.waitForFunction(() => document.querySelector('#btn-gh span').textContent === 'Ana Ruiz');
+        await p2.waitForFunction(() => /PLR900001/.test(document.querySelector('#view').textContent));
+        assert.equal(await p2.isVisible('#btn-new'), true);
+        assert.deepEqual(conCabecera, []);
+        assert.deepEqual(lab.bloqueadas, []);
+        assert.deepEqual(errores.filter((e) => !/Failed to load resource: the server responded with a status of (40[134]|409|422|500)/.test(e)), []);
+      });
+      await ctx.close();
+    }
+
+    // ---------- La función falla justo después de un código correcto ----------
+    {
+      const { ctx, page, lab, errores } = await abrir(browser, ENSAYOS);
+      const averia = { status: 0 };
+      await averiarUser(ctx, averia);
+      await check('código correcto pero la función responde 503 → mensaje concreto; reintentar sin pedir otro código', async () => {
+        await page.click('#btn-gh');
+        await page.fill('#gh-mail', 'ana.ruiz@fluidra.com');
+        await page.press('#gh-mail', 'Enter');
+        await page.waitForSelector('#gh-code');
+        await page.fill('#gh-code', '123456');
+        averia.status = 503;
+        await page.press('#gh-code', 'Enter');
+        await page.waitForFunction(() => !document.querySelector('#f-err').hidden);
+        assert.match(await page.locator('#f-err').textContent(), /not responding/i);
+        averia.status = 429;
+        await page.press('#gh-code', 'Enter');
+        await page.waitForFunction(() => /limiting requests/i.test(document.querySelector('#f-err').textContent));
+        averia.status = 0;
+        const verifies = lab.verifies.length;
+        await page.press('#gh-code', 'Enter');
+        await page.waitForFunction(() => document.querySelector('#btn-gh span').textContent === 'Ana Ruiz' && !document.querySelector('#dlg').open);
+        assert.equal(lab.verifies.length, verifies, 'sin volver a verificar el código (es de un solo uso)');
+        assert.deepEqual(lab.bloqueadas, []);
+        assert.deepEqual(errores.filter((e) => !/Failed to load resource: the server responded with a status of (40[134]|409|422|429|503)/.test(e)), []);
       });
       await ctx.close();
     }

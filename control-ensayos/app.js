@@ -26,7 +26,7 @@ const VIEWS=APP==='occupancy'
   :[['overview','Overview'],['board','Board'],['queue','Queue'],['planning','Planning'],['history','History'],['resources','Equipment & team'],['library','QTP library'],['import','Import ARAS']];
 const VIEW_KEY=APP==='occupancy'?'occ.view':APP==='samples'?'smp.view':'tl.view';
 /* Muestras signed in by email: Import ARAS writes tests, so it is shown only with edit rights in ensayos. */
-const importHidden=k=>k==='import'&&APP==='samples'&&GH.modo==='correo'&&!GH.pushEnsayos;
+const importHidden=k=>k==='import'&&APP==='samples'&&GH.modo==='correo'&&(GH.noAccess||!GH.pushEnsayos);
 const DAY=86400000, WEEKS_HEAT=8;
 /* Firestore-style collections. People and equipment keep the collections created in the first version. */
 const COL={tests:'tests',people:'personas',equipment:'bancos',qtps:'qtps',samples:'muestras'};
@@ -1171,7 +1171,9 @@ es:{
   au_private:'Los datos del laboratorio son privados.', au_ro:n=>`<b>${n}</b>: puedes consultar los datos, pero no cambiarlos. Pide permiso de edición a un administrador.`,
   au_ro_out:'Solo lectura. Para hacer cambios,',
   au_e_mail:'Escribe un correo válido.', au_e_reg:'Este correo no está dado de alta. Pídeselo a un administrador.', au_e_rate:'Demasiados códigos pedidos. Espera unos minutos y vuelve a probar.',
-  au_e_net:'No se ha podido conectar. Revisa la conexión y vuelve a probar.', au_e_code:'Escribe el código de 6 cifras.', au_e_bad:'El código no es correcto o ha caducado.',
+  au_e_net:'No se ha podido conectar. Revisa la conexión y vuelve a probar.',
+  au_e_sess:'No se ha podido abrir la sesión. Pide un código nuevo y vuelve a probar.', au_e_busy:'El servicio del laboratorio está limitando las peticiones. Espera un minuto y vuelve a probar.',
+  au_e_down:'El código es correcto, pero el servicio del laboratorio no responde ahora. Vuelve a probar en un momento; la app lo reintenta sola.', au_e_code:'Escribe el código de 6 cifras.', au_e_bad:'El código no es correcto o ha caducado.',
   au_e_save:'Tu sesión ha caducado y el cambio no se ha guardado. Vuelve a entrar y repítelo.', au_e_perm:'No puedes cambiar datos: tu cuenta no tiene permiso de edición en esta app. Pídeselo a un administrador.',
   tab:'Muestras', title:'Muestras',
   search:'Buscar o escanear: QTS, PLR, QTP, proyecto, nº serie…',
@@ -1246,7 +1248,9 @@ en:{
   au_private:'The lab data is private.', au_ro:n=>`<b>${n}</b>: you can view the data but cannot change it. Ask an administrator for edit access.`,
   au_ro_out:'Read-only. To make changes,',
   au_e_mail:'Enter a valid email address.', au_e_reg:'This email is not registered. Ask an administrator.', au_e_rate:'Too many codes requested. Wait a few minutes and try again.',
-  au_e_net:'Could not connect. Check your connection and try again.', au_e_code:'Enter the 6-digit code.', au_e_bad:'The code is not correct or has expired.',
+  au_e_net:'Could not connect. Check your connection and try again.',
+  au_e_sess:'Your session could not be started. Request a new code and try again.', au_e_busy:'The lab service is limiting requests. Wait a minute and try again.',
+  au_e_down:'The code is correct, but the lab service is not responding right now. Try again in a moment; the app also retries on its own.', au_e_code:'Enter the 6-digit code.', au_e_bad:'The code is not correct or has expired.',
   au_e_save:'Your session has expired and the change was not saved. Sign in again and repeat it.', au_e_perm:'You cannot change data: your account does not have edit access to this app. Ask an administrator.',
   tab:'Samples', title:'Samples',
   search:'Search or scan: QTS, PLR, QTP, project, serial no.…',
@@ -1947,7 +1951,8 @@ const GH_API=`https://api.github.com/repos/${REPO.owner}/${REPO.repo}`;
 const LA=window.LabAuth&&window.LabAuth.activo?window.LabAuth:null;
 const APP_ID=APP==='occupancy'?'ocupacion':APP==='samples'?'muestras':'ensayos';
 const mailRepo=app=>`${LA.api(app)}/repos/${REPO.owner}/${REPO.repo}`;
-let API=GH_API;
+/* The API base follows the mode, so an email session always targets the function and a key always api.github.com. */
+const apiBase=()=>GH.modo==='correo'?mailRepo(APP_ID):GH_API;
 const RAW=`https://raw.githubusercontent.com/${REPO.owner}/${REPO.repo}/${REPO.branch}/${REPO.path}`;
 const TOKEN_KEY='pd-gh-token', DATA_COLS=['tests','personas','bancos','qtps','config','muestras'];
 /* modo: 'correo' (email session), 'clave' (GitHub key) or null. With 'correo': email, pushEnsayos (Muestras: edit
@@ -1981,29 +1986,30 @@ const clone=v=>v==null?v:JSON.parse(JSON.stringify(v));
 const rid=()=>Array.from(crypto.getRandomValues(new Uint8Array(10)),x=>'abcdefghijklmnopqrstuvwxyz0123456789'[x%36]).join('');
 const b64encode=str=>{const bytes=new TextEncoder().encode(str); let bin=''; for(let i=0;i<bytes.length;i+=0x8000) bin+=String.fromCharCode.apply(null,bytes.subarray(i,i+0x8000)); return btoa(bin);};
 const b64decode=b=>new TextDecoder().decode(Uint8Array.from(atob(b.replace(/\s/g,'')),c=>c.charCodeAt(0)));
-const ghAuth=async()=>byMail()?await LA.cabeceras():GH.token?{Authorization:`Bearer ${GH.token}`}:{};
-const ghFetch=async(url,opts={})=>fetch(url,{cache:'no-store',...opts,headers:{Accept:'application/vnd.github+json',...await ghAuth(),...(opts.headers||{})}});
+/* Credentials only for their own service: the email session for the lab's function, the key for api.github.com. */
+const ghAuth=async url=>LA&&url.startsWith(LA.api(APP_ID).replace(/[^/]+$/,''))?await LA.cabeceras():url.startsWith('https://api.github.com/')&&GH.token?{Authorization:`Bearer ${GH.token}`}:{};
+const ghFetch=async(url,opts={})=>fetch(url,{cache:'no-store',...opts,headers:{Accept:'application/vnd.github+json',...await ghAuth(url),...(opts.headers||{})}});
 const httpError=res=>{const limited=res.status===429||(res.status===403&&res.headers.get('x-ratelimit-remaining')==='0'); return {code:res.status===401?'auth':limited?'rate':(res.status===403||res.status===404)?'forbidden':'unavailable',status:res.status};};
 const emptyData=()=>Object.fromEntries(DATA_COLS.map(c=>[c,{}]));
 const normData=x=>{const o=emptyData(); for(const c of DATA_COLS) if(x&&x[c]&&typeof x[c]==='object') o[c]=x[c]; return o;};
 
 async function fetchApi(useEtag){
-  const res=await ghFetch(`${API}/contents/${REPO.path}?ref=${REPO.branch}`,useEtag&&remote.etag?{headers:{'If-None-Match':remote.etag}}:{});
+  const res=await ghFetch(`${apiBase()}/contents/${REPO.path}?ref=${REPO.branch}`,useEtag&&remote.etag?{headers:{'If-None-Match':remote.etag}}:{});
   if(res.status===304) return null;
   if(res.status===404) throw {code:'private',status:404};
   if(!res.ok) throw httpError(res);
   const j=await res.json(); let text;
   if(j.content) text=b64decode(j.content);
-  else{const blob=await ghFetch(`${API}/git/blobs/${j.sha}`); if(!blob.ok) throw httpError(blob); text=b64decode((await blob.json()).content);}
+  else{const blob=await ghFetch(`${apiBase()}/git/blobs/${j.sha}`); if(!blob.ok) throw httpError(blob); text=b64decode((await blob.json()).content);}
   return {data:normData(JSON.parse(text)),sha:j.sha,etag:res.headers.get('etag')};
 }
 async function loadCal(){
   if(!viaApi()){CAL.err='auth'; return;}
   try{
-    const res=await ghFetch(`${API}/contents/${CAL_PATH}?ref=${REPO.branch}`); if(!res.ok) throw httpError(res);
+    const res=await ghFetch(`${apiBase()}/contents/${CAL_PATH}?ref=${REPO.branch}`); if(!res.ok) throw httpError(res);
     const j=await res.json(); let text;
     if(j.content) text=b64decode(j.content);
-    else{const blob=await ghFetch(`${API}/git/blobs/${j.sha}`); if(!blob.ok) throw httpError(blob); text=b64decode((await blob.json()).content);}
+    else{const blob=await ghFetch(`${apiBase()}/git/blobs/${j.sha}`); if(!blob.ok) throw httpError(blob); text=b64decode((await blob.json()).content);}
     CAL.eq=JSON.parse(text).equipment||{}; CAL.err=null;
   }catch(err){CAL.err=err.code||'unavailable';}
   render();
@@ -2039,7 +2045,7 @@ async function commitOps(ops){
   for(let i=0;i<4;i++){
     const cur=await fetchApi(false), next=applyOps(clone(cur.data),ops);
     const body={message:commitMessage(ops),branch:REPO.branch,content:b64encode(JSON.stringify(next,null,1)+'\n')}; if(cur.sha) body.sha=cur.sha;
-    const res=await ghFetch(`${API}/contents/${REPO.path}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const res=await ghFetch(`${apiBase()}/contents/${REPO.path}`,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
     if(res.ok){const j=await res.json(); Object.assign(remote,{data:next,sha:j.content.sha,etag:null}); return;}
     if(res.status!==409&&res.status!==422) throw httpError(res);
     await new Promise(r=>setTimeout(r,500+Math.random()*800));
@@ -2078,6 +2084,11 @@ async function refresh(){
   if(pendingOps.length||flushing) return;
   if(PREVIEW&&DEMO){ if(!remote.data) remote.data=demoLoad(); S.noDb=false; S.privateData=false; S.ro=false; recompute(); return; }
   if(PREVIEW&&remote.data) return;
+  /* Email session not connected yet (the function failed at boot or after the code): try again here, on every poll. */
+  if(byMail()&&!GH.login&&!GH.expired){
+    try{await connectMail(GH.email); render(); loadCal();}
+    catch(err){ if(err.code==='auth') mailExpired(); if(!local){S.noDb=true; S.privateData=err.code==='auth';} render(); return; }
+  }
   /* Email session without a role in this app, or expired: no reading; what is on screen stays. */
   if(byMail()&&!viaApi()){ if(!local){S.noDb=true; S.privateData=true;} return; }
   try{
@@ -2097,20 +2108,18 @@ async function connectGh(t){
   if(!u.ok) throw httpError(u); if(!r.ok) throw httpError(r);
   const user=await u.json(), repo=await r.json();
   Object.assign(GH,{token:t,login:user.login,push:!!(repo.permissions&&repo.permissions.push),invalid:false,modo:'clave',email:'',pushEnsayos:false,noAccess:false,expired:false});
-  API=GH_API;
   S.ro=PREVIEW?!remote.data:!GH.push;
 }
 /* Email session: the function answers GET /user with the person's name and GET /repos with push = edit role in this app,
    or 403 when the person has no role in it (then no data is read). Muestras also asks the ensayos role (Import ARAS). */
 async function connectMail(email){
-  const h={Accept:'application/vnd.github+json',...await LA.cabeceras()}, get=url=>fetch(url,{headers:h,cache:'no-store'});
+  const h={Accept:'application/vnd.github+json',...await LA.cabeceras()}, get=url=>fetch(url,{headers:h,cache:'no-store'}).catch(()=>{throw {code:'unavailable'};});
   const [u,r,e]=await Promise.all([get(`${LA.api(APP_ID)}/user`),get(mailRepo(APP_ID)),APP==='samples'?get(mailRepo('ensayos')):null]);
   if(u.status===401||r.status===401) throw {code:'auth'};
   if(!u.ok&&u.status!==403) throw httpError(u); if(!r.ok&&r.status!==403) throw httpError(r);
   const user=u.ok?await u.json():{}, repo=r.ok?await r.json():{}, ens=e&&e.ok?await e.json():null;
   Object.assign(GH,{modo:'correo',email,login:user.login||email,push:!!(repo.permissions&&repo.permissions.push),invalid:false,
     noAccess:!r.ok,expired:false,pushEnsayos:APP==='samples'?!!(ens&&ens.permissions&&ens.permissions.push):!!(repo.permissions&&repo.permissions.push)});
-  API=mailRepo(APP_ID);
   S.ro=PREVIEW?!remote.data:!GH.push;
 }
 /* The function answered 401 (session expired, or the person was removed): what is on screen stays, read-only,
@@ -2118,7 +2127,7 @@ async function connectMail(email){
 function mailExpired(){GH.expired=true; GH.push=false; S.ro=true; renderGh();}
 async function mailSignOut(){
   mailBusy=true; try{await LA.salir();}catch(e){} mailBusy=false;
-  Object.assign(GH,{modo:null,email:'',login:null,push:false,pushEnsayos:false,noAccess:false,expired:false}); S.ro=true; API=GH_API; remote.etag=null;
+  Object.assign(GH,{modo:null,email:'',login:null,push:false,pushEnsayos:false,noAccess:false,expired:false}); S.ro=true; remote.etag=null;
   if(GH.token){GH.modo='clave'; try{await connectGh(GH.token);}catch(err){ if(err.code==='auth') GH.invalid=true; } await refresh();}
   render(); toast(ta('au_out'));
 }
@@ -2127,7 +2136,7 @@ function renderGh(){
   const b=$('#btn-gh'); if(!b) return;
   if(LA&&GH.modo!=='clave'){
     b.className='gh '+(GH.expired?'bad':GH.saving?'busy':GH.login&&GH.push?'on':'');
-    b.querySelector('span').textContent=GH.expired?ta('au_again'):GH.saving?ta('au_saving'):GH.login||ta('au_btn');
+    b.querySelector('span').textContent=GH.expired?ta('au_again'):GH.saving?ta('au_saving'):GH.login||(byMail()&&GH.email)||ta('au_btn');
     b.title=GH.expired?ta('au_expired'):GH.login?`${GH.email} · ${ta(GH.noAccess?'au_none':GH.push?'au_edit':'au_view')}`:ta('au_btn_t');
     return;
   }
@@ -2178,19 +2187,27 @@ async function saveMail(){
   const label=btn.textContent, busy=on=>{btn.disabled=on; btn.textContent=on?ta('au_wait'):label;};
   if(dlg.dataset.step==='code'){
     const email=dlg.dataset.email, code=($('#gh-code').value||'').trim(); if(!code) return formErr(ta('au_e_code'));
-    busy(true);
+    busy(true); let phase='code';
     try{
-      mailBusy=true; await LA.verificar(email,code); await connectMail(email);
+      mailBusy=true;
+      if(dlg.dataset.verified!==email){ await LA.verificar(email,code); dlg.dataset.verified=email; }
+      /* From here the session exists: stay in email mode, so the polling retries if the function fails now. */
+      phase='connect'; Object.assign(GH,{modo:'correo',email,login:null,push:false,pushEnsayos:false,noAccess:false,expired:false}); S.ro=true;
+      await connectMail(email);
       if(PREVIEW&&DEMO){DEMO=false; try{localStorage.setItem(DEMO_KEY,'0');}catch(e){} remote.data=null;}
       remote.etag=null; await refresh(); dlg.close(); render(); loadCal();
       toast(GH.noAccess?ta('au_none'):`${ta('au_in',GH.login)} ${ta(GH.push?'au_edit':'au_view')}`);
-    }catch(err){ busy(false); formErr(ta(err.code==='bad_code'?'au_e_bad':err.code==='forbidden'?'au_none':'au_e_net')); }
+    }catch(err){ busy(false); const c=err&&err.code;
+      if(phase==='code') formErr(ta(c==='bad_code'?'au_e_bad':'au_e_net'));
+      else if(c==='auth'){ mailExpired(); render(); dlg.dataset.verified=''; openMail('email'); formErr(ta('au_e_sess')); }
+      else { render(); formErr(ta(c==='forbidden'?'au_none':c==='rate'?'au_e_busy':'au_e_down')); }
+    }
     finally{mailBusy=false;}
     return;
   }
   const email=($('#gh-mail').value||'').trim().toLowerCase(); if(!email) return formErr(ta('au_e_mail'));
   busy(true);
-  try{ await LA.pedirCodigo(email); dlg.dataset.email=email; openMail('code'); }
+  try{ await LA.pedirCodigo(email); dlg.dataset.email=email; dlg.dataset.verified=''; openMail('code'); }
   catch(err){ busy(false); formErr(ta(err.code==='not_allowed'?'au_e_reg':err.code==='bad_email'?'au_e_mail':err.code==='rate'?'au_e_rate':'au_e_net')); }
 }
 function saveGh(){ return LA&&document.activeElement!==$('#gh-token')?saveMail():saveKey(); }
