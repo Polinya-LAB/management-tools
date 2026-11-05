@@ -664,7 +664,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="../acceso/config.js"></script>
-<script src="../acceso/lab-auth.js?v=20261106"></script>
+<script src="../acceso/lab-auth.js?v=20261107"></script>
 <script>
 (() => {
   const $ = (s, r = document) => r.querySelector(s);
@@ -1943,12 +1943,22 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
     modo = null; Object.assign(mail, { email: '', noAccess: false, expired: false });
     state.gh = { login: null, push: false, tokenInvalid: false }; state.canWrite = false; remote.etag = null;
     if (token) { modo = 'clave'; try { await connect(token); } catch (err) { if (err.code === 'auth') state.gh.tokenInvalid = true; } await refresh(); }
-    else {
-      // Sin clave: los datos privados salen de la memoria y de la pantalla, para que la siguiente persona de este navegador no los vea.
-      Object.assign(remote, { data: null, sha: null, etag: null });
-      Object.assign(state, { bombas: [], hotboxes: [], obs: [], cfg: { ...DEFAULT_CFG }, loaded: false, dbStatus: 'private' });
-    }
+    // Sin clave: los datos privados salen de la memoria y de la pantalla, para que la siguiente persona de este navegador no los vea.
+    else forgetPrivate();
     renderGh(); renderAll(); toast(ta('out'));
+  }
+  function forgetPrivate() {
+    Object.assign(remote, { data: null, sha: null, etag: null });
+    Object.assign(state, { bombas: [], hotboxes: [], obs: [], cfg: { ...DEFAULT_CFG }, loaded: false, dbStatus: 'private' });
+  }
+  // Otra persona entró en otra pestaña (o la misma, después de caducar aquí): la pestaña sigue a la sesión, para que nombre,
+  // rol y datos coincidan con ella. Lo que tenía en pantalla la persona anterior sale antes de la memoria.
+  async function mailSwitch(email) {
+    if (email !== mail.email) forgetPrivate();
+    modo = 'correo'; Object.assign(mail, { email, noAccess: false, expired: false });
+    state.gh = { login: null, push: false, tokenInvalid: false }; state.canWrite = false; renderGh(); renderAll();
+    try { await connectMail(email); } catch (err) { if (err.code === 'auth') mailExpired(); }
+    remote.etag = null; await refresh(); renderGh(); renderAll();
   }
   function renderGh() {
     const keyOn = modo === 'clave' && !!state.gh.login;
@@ -2083,8 +2093,13 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
         modo = 'correo'; mail.email = ses.email;
         try { await connectMail(ses.email); } catch (err) { if (err.code === 'auth') mailExpired(); }
       }
-      // Sesión cerrada en otra pestaña o imposible de renovar: lo mismo que un 401.
-      LA.onCambio(x => { if (!x && byMail() && !mailBusy && !mail.expired) mailExpired(); });
+      // Sesión cerrada en otra pestaña o imposible de renovar: lo mismo que un 401. Otra persona entró en otra pestaña:
+      // se vuelve a conectar con esa sesión.
+      LA.onCambio(x => {
+        if (mailBusy || !byMail()) return;
+        if (!x) { if (!mail.expired) mailExpired(); }
+        else if (x.email !== mail.email || mail.expired) mailSwitch(x.email);
+      });
     }
     if (modo === 'clave' && token) {
       try { await connect(token); }

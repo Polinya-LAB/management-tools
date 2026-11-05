@@ -96,7 +96,10 @@ Con el registro desactivado, Supabase no envía código a un correo que no exist
 crea los usuarios de Auth) exige haber entrado antes. Por eso el primer administrador se crea a mano, en dos pasos:
 
 1. En Supabase, *Authentication → Users → Add user → Create new user*: tu correo **en minúsculas**, una contraseña
-   cualquiera (no se usará) y **Auto Confirm User** marcado.
+   **larga y aleatoria** generada con un gestor de contraseñas (32 caracteres o más) y **Auto Confirm User** marcado. No
+   guardes esa contraseña en ningún sitio (ni siquiera en el gestor): las apps no entran nunca con contraseña, pero
+   Supabase sí acepta entrar con correo y contraseña usando la clave pública, así que una contraseña fácil daría una
+   sesión de administrador a quien la adivine.
 2. En *SQL Editor* ejecuta la alta, que toma el `user_id` de ese usuario:
 
 ```sql
@@ -124,9 +127,13 @@ en la página de administración, que crea el usuario de Auth y la fila a la vez
 
 2. **Muestras es una app instalable con service worker**, y guarda `config.js` en su caché. Sube la versión de
    `muestras/sw.js` para que las copias instaladas recojan la configuración: cambia `CACHE` (por ejemplo
-   `muestras-v20261107`) y el `?v=` de `SHELL`. El valor nuevo de `?v=` debe ser **el mismo** en `muestras/sw.js` (`CACHE` y
+   `muestras-v20261108`) y el `?v=` de `SHELL`. El valor nuevo de `?v=` debe ser **el mismo** en `muestras/sw.js` (`CACHE` y
    `SHELL`) y en todos los `index.html` que cargan `lab-auth.js`, `app.js` o `app.css` (los de management-tools y, si se
-   quiere mantener la beta, `new-projects/muestras/index.html` y su `sw.js`).
+   quiere mantener la beta, `new-projects/muestras/index.html` y su `sw.js`). Antes de subir el `?v=` de la beta, comprueba
+   que `new-projects/muestras/sw.js` tiene la misma exclusión que `muestras/sw.js`: no atiende peticiones a
+   `github.com`, `githubusercontent.com` ni `*.supabase.co`, ni ninguna con cabecera `Authorization`. Si guardara en caché
+   las respuestas de la función, los datos privados quedarían en disco tras salir y otra persona en el mismo navegador
+   vería los de la anterior.
 3. Haz commit y push a `main`. GitHub Pages publica en uno o dos minutos.
 4. Comprueba que `https://polinya-lab.github.io/management-tools/acceso/config.js` devuelve la configuración nueva y que
    Control de ensayos ofrece **Entrar con correo**.

@@ -108,6 +108,18 @@ Deno.test("JWT no válido → 401", async () => {
   await res.body?.cancel();
 });
 
+Deno.test("Supabase Auth no responde (usuario lanza) → 502, no 401", async () => {
+  const deps: Deps = {
+    usuario: () => Promise.reject(new Error("auth.getUser: AuthRetryableFetchError 503")),
+    acceso: () => Promise.resolve(null),
+    gh: () => Promise.resolve(json({}, 200)),
+  };
+  const res = await crearHandler(deps)(pet("/github/ensayos/user"));
+  assertEquals(res.status, 502);
+  assertEquals(res.headers.get("access-control-allow-origin"), ORIGEN);
+  await res.body?.cancel();
+});
+
 Deno.test("JWT válido sin fila en acceso → 403 con CORS", async () => {
   const { handler } = montar({}, undefined, { sinFila: true });
   const res = await handler(pet("/github/ensayos/user"));

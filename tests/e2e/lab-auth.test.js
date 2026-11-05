@@ -65,6 +65,19 @@ const enPagina = (page, fn, arg) => page.evaluate(async ([src, a]) => {
       assert.ok(peticiones.includes('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js'));
     });
 
+    await check('supabase-js con Subresource Integrity (sha384 del fichero servido) y crossorigin="anonymous"', async () => {
+      const fs = require('node:fs');
+      const path = require('node:path');
+      const crypto = require('node:crypto');
+      const fichero = path.resolve(__dirname, '..', 'node_modules', '@supabase', 'supabase-js', 'dist', 'umd', 'supabase.js');
+      const esperado = 'sha384-' + crypto.createHash('sha384').update(fs.readFileSync(fichero)).digest('base64');
+      const r = await page.evaluate(() => {
+        const s = document.querySelector('script[src*="@supabase/supabase-js@"]');
+        return s && { integrity: s.integrity, crossorigin: s.getAttribute('crossorigin') };
+      });
+      assert.deepEqual(r, { integrity: esperado, crossorigin: 'anonymous' });
+    });
+
     await check('sin sesión: sesion() === null', async () => {
       assert.equal(await page.evaluate(() => window.LabAuth.sesion()), null);
     });

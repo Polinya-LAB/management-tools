@@ -182,6 +182,23 @@ Deno.test("métodos y rutas: 405 y 404, OPTIONS permite POST y DELETE", async ()
   assert(metodos.includes("POST") && metodos.includes("DELETE"));
 });
 
+Deno.test("Supabase Auth no responde (usuario lanza) → 502, no 401", async () => {
+  const deps: AdminDeps = {
+    usuario: () => Promise.reject(new Error("auth.getUser: AuthRetryableFetchError 503")),
+    acceso: () => Promise.resolve(null),
+    listar: () => Promise.resolve([]),
+    guardar: () => Promise.resolve(),
+    borrar: () => Promise.resolve(),
+    crearUsuarioAuth: () => Promise.resolve("u"),
+    borrarUsuarioAuth: () => Promise.resolve(),
+  };
+  const res = await crearHandlerAdmin(deps)(
+    new Request(`${BASE}/admin/usuarios`, { headers: { origin: ORIGEN, authorization: "Bearer jwt" } }),
+  );
+  assertEquals(res.status, 502);
+  await res.body?.cancel();
+});
+
 Deno.test("error inesperado → 502 con CORS", async () => {
   const deps: AdminDeps = {
     usuario: () => Promise.resolve({ email: "ana@fluidra.com" }),

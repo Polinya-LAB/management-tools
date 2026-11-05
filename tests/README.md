@@ -30,7 +30,8 @@ si alguna falla. Usa el Playwright instalado en el sistema (`require('playwright
 - `https://polinya-lab.github.io/management-tools/**` se sirve desde el repositorio (`opts.mtDir`), y
   `acceso/config.js` se sustituye por uno con la configuración de prueba (`supabaseUrl`, `anonKey`; vacíos = sin correo).
 - Las bibliotecas de CDN (xlsx de cdnjs; qrcode-generator, jsbarcode y `@supabase/supabase-js` de jsDelivr) se sirven
-  desde `tests/node_modules`, con la misma versión que piden las apps. Google Fonts devuelve CSS vacío.
+  desde `tests/node_modules`, con la misma versión que piden las apps (supabase-js lleva Subresource Integrity: el fichero
+  servido debe ser idéntico al de jsDelivr, como el del paquete de npm). Google Fonts devuelve CSS vacío.
 - Supabase Auth (`/auth/v1/otp`, `verify`, `token`, `user`, `logout`) con código fijo (`opts.codigo`, por defecto `123456`)
   y solo para los correos de `opts.usuarios`.
 - `/functions/v1/github/**` y `/functions/v1/admin/**` ejecutan los handlers reales de `supabase/functions/` (empaquetados

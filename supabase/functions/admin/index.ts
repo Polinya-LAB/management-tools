@@ -3,6 +3,7 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2.49.4";
 import type { Acceso } from "../_shared/permisos.ts";
+import { sesionDe } from "../_shared/sesion.ts";
 import { type AdminDeps, crearHandlerAdmin } from "./handler.ts";
 
 const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, {
@@ -13,9 +14,8 @@ const norm = (email: string) => email.trim().toLowerCase();
 
 const deps: AdminDeps = {
   async usuario(jwt) {
-    const { data, error } = await supabase.auth.getUser(jwt);
-    if (error || !data.user?.email) return null;
-    return { email: data.user.email };
+    // Sin sesión solo ante un error de autenticación; los demás errores se lanzan (→ 502, las apps reintentan).
+    return sesionDe(await supabase.auth.getUser(jwt));
   },
   async acceso(email) {
     const { data, error } = await supabase

@@ -361,6 +361,34 @@ async function entrar(page, email, nombre, es = false) {
       await ctx.close();
     }
 
+    // ---------- Otra persona entra en otra pestaña ----------
+    {
+      const { ctx, page, lab, errores } = await abrir(browser, ENSAYOS);
+      await check('otra pestaña entra como Luis mientras esta muestra a Ana → esta pasa a Luis (nombre y rol ver)', async () => {
+        await entrar(page, 'ana.ruiz@fluidra.com', 'Ana Ruiz');
+        await page.waitForFunction(() => /PLR900001/.test(document.querySelector('#view').textContent));
+        assert.equal(await page.isVisible('#btn-new'), true);
+        const p2 = await ctx.newPage();
+        p2.setDefaultTimeout(8000);
+        p2.on('console', (m) => { if (m.type() === 'error') errores.push(m.text()); });
+        p2.on('pageerror', (e) => errores.push(String(e)));
+        await p2.goto(ENSAYOS);
+        await esperarCarga(p2);
+        await p2.waitForFunction(() => document.querySelector('#btn-gh span').textContent === 'Ana Ruiz');
+        await p2.evaluate(async () => {
+          await window.LabAuth.pedirCodigo('luis.ver@fluidra.com');
+          await window.LabAuth.verificar('luis.ver@fluidra.com', '123456');
+        });
+        await page.waitForFunction(() => document.querySelector('#btn-gh span').textContent === 'Luis Ver');
+        await page.waitForFunction(() => /PLR900001/.test(document.querySelector('#view').textContent));
+        assert.equal(await page.isVisible('#btn-new'), false, 'Luis solo puede ver');
+        assert.match(await page.locator('#btn-gh').getAttribute('title'), /luis\.ver@fluidra\.com/);
+        assert.deepEqual(lab.bloqueadas, []);
+        assert.deepEqual(erroresReales(errores), []);
+      });
+      await ctx.close();
+    }
+
     // ---------- La función falla justo después de un código correcto ----------
     {
       const { ctx, page, lab, errores } = await abrir(browser, ENSAYOS);

@@ -22,6 +22,9 @@
 (function () {
   'use strict';
   var SDK = 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.49.4/dist/umd/supabase.js';
+  // Subresource Integrity: el navegador rechaza el fichero si el CDN sirve otro contenido. Al cambiar de versión, recalcular:
+  // openssl dgst -sha384 -binary supabase.js | openssl base64 -A
+  var SDK_SRI = 'sha384-rwykjmWNwVxboyFmvK9OXN0wj9hnMHA2aAHtits54DuACyCq0M2PrSNxhRb+hvXT';
   var cfg = window.LAB_SUPABASE || {};
   var url = String(cfg.url || '').trim().replace(/\/+$/, '');
   var anonKey = String(cfg.anonKey || '').trim();
@@ -62,6 +65,8 @@
     return new Promise(function (resolve, reject) {
       var s = document.createElement('script');
       s.src = SDK;
+      s.integrity = SDK_SRI;
+      s.crossOrigin = 'anonymous';
       s.async = true;
       s.onload = function () { resolve(); };
       s.onerror = function () { reject(err('unavailable', 'No se pudo cargar supabase-js')); };
