@@ -345,7 +345,6 @@ img{max-width:100%}
 .imp-jobs li{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;border:1px solid var(--line);border-radius:var(--r);padding:6px 10px}
 .imp-jobs time{color:var(--muted);font-variant-numeric:tabular-nums}.imp-jobs .cods{font-family:var(--f-mono)}
 .imp-jobs .imp-tag{font-weight:600}.imp-impreso .imp-tag{color:var(--ok,#1a7f4b)}.imp-error .imp-tag,.imp-msg{color:var(--crit,#b42318)}
-.dlbl-img{display:block;flex:none;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);image-rendering:pixelated}
 .lt-plr{border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;margin-bottom:8px;display:grid;gap:6px}
 .lt-add input{flex:1;min-width:140px;max-width:260px}
 .as-list{display:grid;gap:6px;max-height:50vh;overflow:auto}

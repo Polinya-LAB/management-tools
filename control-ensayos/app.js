@@ -2199,13 +2199,6 @@ function smpLbPreview(){
   const h=dlg.querySelector('.dlg-h h2'); if(h) h.textContent=tx('lb_title',keys.length);
   const how=dlg.querySelector('.lb-how'); if(how) how.innerHTML=lab?esc(tx('imp_how')):tx('lb_how');
   let j=$('#imp-jobs'); if(lab&&!j){j=document.createElement('div'); j.id='imp-jobs'; p.parentElement.appendChild(j);} if(j){j.hidden=!lab; if(lab) j.innerHTML=impJobsHtml();}
-  /* The lab printer prints the 1-bit image: the preview shows that image (what you see is what prints). */
-  if(lab&&keys.length){const seq=++IMP.prev, slice=keys.slice(0,12);
-    Promise.all(slice.map(k=>impLabelPng(k,c))).then(pngs=>{ if(seq!==IMP.prev||!p.isConnected) return;
-      const sz=SMP_LABELS[c.size]||SMP_LABELS['99012'];
-      p.querySelectorAll('.dlbl').forEach((el,i)=>{ if(i<pngs.length) el.outerHTML=`<img class="dlbl-img" alt="" src="data:image/png;base64,${pngs[i]}" style="width:${sz.w}mm;height:${sz.h}mm">`; });
-    }).catch(e=>{ if(seq===IMP.prev&&e.code==='render') toast(tx('imp_e_render')); });
-  }
 }
 function smpLbSet(k,v){const c=smpLblCfg(); c[k]=v; try{localStorage.setItem('tl.lbl',JSON.stringify(c));}catch(e){} smpLbPreview();}
 function smpPrint(){

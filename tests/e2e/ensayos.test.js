@@ -282,7 +282,7 @@ async function entrar(page, email, nombre, es = false) {
         await page.waitForFunction(() => /Conectada/.test(document.querySelector('#imp-status').textContent));
         assert.equal(await page.locator('#smp-lb-rot').count(), 0, 'sin giro con la impresora del laboratorio');
         assert.match(await page.textContent('[data-sa="do-print"]'), /Enviar a la impresora del laboratorio/);
-        await page.waitForSelector('#smp-lb-prev img.dlbl-img');
+        await page.waitForSelector('#smp-lb-prev .dlbl');
         await page.click('[data-sa="do-print"]');
         await waitFor(() => imp.posts.length === 1);
         const t = imp.posts[0];
