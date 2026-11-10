@@ -6,6 +6,9 @@ verify_jwt = false
 [functions.admin]
 verify_jwt = false
 
+[functions.impresion]
+verify_jwt = false
+
 [auth]
 enable_signup = false
 # Contraseña asignada por el administrador (acceso/): mínimo 12 caracteres y sin exigir tipos de carácter (las generadas
