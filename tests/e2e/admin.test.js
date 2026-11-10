@@ -26,8 +26,11 @@ async function check(nombre, fn) {
 // 4xx esperados (401, 403, 400) salen en la consola como "Failed to load resource".
 const erroresReales = (errores) => errores.filter((e) => !/Failed to load resource: the server responded with a status of (40[013]|422)/.test(e));
 
-async function abrir(browser, opts = {}) {
+// Las pruebas comprueban los textos en español: se fija el idioma (Chromium arranca en en-US, que daría inglés).
+const fijarEs = (ctx) => ctx.addInitScript(() => localStorage.setItem('lab.lang', 'es'));
+async function abrir(browser, opts = {}, idioma = 'es') {
   const ctx = await browser.newContext({ serviceWorkers: 'block' });
+  if (idioma === 'es') await fijarEs(ctx);
   await ctx.grantPermissions(['clipboard-read', 'clipboard-write'], { origin: ORIGEN });
   const lab = await setupLab(ctx, { usuarios: USUARIOS, ...opts });
   const page = await ctx.newPage();
@@ -361,6 +364,7 @@ const texto = (page) => page.evaluate(() => document.body.innerText);
     }
     {
       const ctx = await browser.newContext({ serviceWorkers: 'block' });
+      await fijarEs(ctx);
       await setupLab(ctx, { usuarios: USUARIOS });
       await ctx.route(/\/functions\/v1\/admin\/usuarios$/, (route) => route.request().method() === 'GET'
         ? route.fulfill({ status: 401, contentType: 'application/json', headers: { 'access-control-allow-origin': 'https://polinya-lab.github.io' }, body: '{"message":"Sesión no válida"}' })
@@ -372,6 +376,84 @@ const texto = (page) => page.evaluate(() => document.body.innerText);
         await entrar(page, 'admin@fluidra.com');
         await page.waitForFunction(() => /sesión ha caducado/i.test(document.body.innerText));
         await page.waitForSelector('#a-mail');
+      });
+      await ctx.close();
+    }
+    {
+      // Sin idioma elegido: Chromium (en-US) abre en inglés; el selector ES | EN traduce en el sitio, sin recargar ni escribir.
+      const { ctx, page, errores, peticiones } = await abrir(browser, {}, null);
+      await check('idioma: sin elegir, el formulario sale en inglés; ES | EN traduce lo escrito sin perderlo', async () => {
+        await page.waitForSelector('#a-mail');
+        assert.match(await texto(page), /Sign in with your email/);
+        assert.equal(await page.title(), 'Manage access · Laboratorio Polinyà');
+        await page.fill('#a-mail', 'admin@fluidra.com');
+        await page.press('#a-pass', 'Enter');
+        await pista(page, /Enter your email and your password/);
+        await page.click('.lab-lang button[data-l="es"]');
+        await pista(page, /Escribe tu correo y tu contraseña/);
+        assert.match(await texto(page), /Entrar con tu correo/);
+        assert.equal(await page.inputValue('#a-mail'), 'admin@fluidra.com', 'no se recarga ni se pierde el correo');
+        assert.equal(await page.evaluate(() => localStorage.getItem('lab.lang')), 'es');
+        await page.click('.lab-lang button[data-l="en"]');
+        assert.match(await texto(page), /Sign in with your email/);
+      });
+      await check('idioma: en la tabla cambian cabeceras, niveles y botones; los valores y las peticiones no', async () => {
+        await entrar(page, 'admin@fluidra.com');
+        await page.waitForSelector('table');
+        const f = fila(page, 'ana.ruiz@fluidra.com');
+        const cab = async () => (await page.locator('thead th').allTextContents()).map((s) => s.trim());
+        assert.ok((await cab()).includes('Test Lab Control and Lab Occupancy'));
+        assert.deepEqual((await f.locator('select[data-rol="piscina"] option').allTextContents()), ['—', 'View', 'Edit']);
+        assert.ok(await page.locator('header').getByText('Sign out').isVisible());
+        await f.getByText('Remove').click();
+        assert.match(await page.locator('#c-texto').textContent(), /Remove Ana Ruiz/);
+        await page.click('#c-no');
+        const antes = peticiones.length;
+        await page.click('.lab-lang button[data-l="es"]');
+        assert.equal(await f.getByText('Dar de baja').count(), 1);
+        await f.getByText('Dar de baja').click();
+        assert.match(await page.locator('#c-texto').textContent(), /¿Dar de baja a Ana Ruiz/);
+        assert.equal(await page.locator('#c-si').textContent(), 'Dar de baja');
+        await page.click('#c-no');
+        for (const e of ETIQUETAS) assert.ok((await cab()).includes(e), e);
+        assert.deepEqual((await f.locator('select[data-rol="piscina"] option').allTextContents()), ['—', 'Ver', 'Editar']);
+        assert.equal(await f.locator('select[data-rol="piscina"]').inputValue(), 'editar');
+        assert.equal(await f.locator('select[data-rol="muestras"]').inputValue(), 'ver');
+        assert.equal(await f.locator('select[data-rol="piscina"]').getAttribute('aria-label'), 'Piscina — Ana Ruiz');
+        assert.ok(await page.locator('header').getByText('Salir').isVisible());
+        assert.match(await texto(page), /Añadir persona/);
+        await page.click('.lab-lang button[data-l="en"]');
+        assert.match(await texto(page), /Add person/);
+        assert.equal(await f.locator('select[data-rol="piscina"]').getAttribute('aria-label'), 'Endurance pool — Ana Ruiz');
+        await page.waitForTimeout(300);
+        assert.deepEqual(peticiones.slice(antes).filter((p) => p.method !== 'GET' && p.method !== 'OPTIONS' && p.method !== 'HEAD'), [], 'cambiar de idioma no escribe nada');
+        assert.equal(peticiones.slice(antes).filter((p) => /\/functions\/v1\/admin\//.test(p.url)).length, 0, 'ni vuelve a pedir la lista');
+      });
+      await check('idioma: sin errores de consola inesperados', async () => assert.deepEqual(erroresReales(errores), []));
+      await ctx.close();
+    }
+    {
+      // Portada: los textos de las apps cambian de idioma sin recargar.
+      const ctx = await browser.newContext({ serviceWorkers: 'block' });
+      await setupLab(ctx, { usuarios: USUARIOS });
+      const page = await ctx.newPage();
+      page.setDefaultTimeout(8000);
+      const errores = [];
+      page.on('pageerror', (e) => errores.push(String(e)));
+      await page.goto(ORIGEN + '/management-tools/');
+      await check('portada: en inglés por defecto (en-US) y en español con ES', async () => {
+        await page.waitForSelector('.lab-lang');
+        assert.match(await texto(page), /Test Lab Control/);
+        assert.match(await texto(page), /Calibration Plan/);
+        assert.match(await texto(page), /Manage access/);
+        assert.equal(await page.locator('nav.apps').getAttribute('aria-label'), 'Apps');
+        await page.evaluate(() => { window.sinRecargar = true; });
+        await page.click('.lab-lang button[data-l="es"]');
+        assert.match(await texto(page), /Plan de calibraciones/);
+        assert.match(await texto(page), /Administrar accesos/);
+        assert.equal(await page.locator('.app .go').first().textContent(), 'Abrir →');
+        assert.ok(await page.evaluate(() => window.sinRecargar), 'no se recarga');
+        assert.deepEqual(errores, []);
       });
       await ctx.close();
     }

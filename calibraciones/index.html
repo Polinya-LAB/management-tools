@@ -370,34 +370,30 @@ if(location.protocol==='file:'||/[?&]local\b/.test(location.search)) document.wr
 const GROUPS=['Test equipment','Auxiliary equipment'];
 const MODES=['Periodic','Expiry date','Before use','Not required'];
 const STATES=['In use','Out of service','Retired','Reserved'];
-const VIEWS=[['overview','Overview'],['equipment','Equipment'],['plan','Annual plan'],['calibrations','Calibrations'],['evaluation','TU evaluation'],['sheets','Validation sheets'],['review','Data review'],['data','Import & data']];
+const VIEWS=['overview','equipment','plan','calibrations','evaluation','sheets','review','data'].map(k=>[k]);  // labels: t('tab_'+k)
 /* Test standards a chamber can be validated for: tolerance per quantity and the test conditions (severities) the calibration must cover.
-   T:'cold' = any point ≤ 0 ºC, 'heat' = any point > 30 ºC, 'ends' = lowest and highest point; ramp = rate of change, not verifiable at fixed points. */
+   T:'cold' = any point ≤ 0 ºC, 'heat' = any point > 30 ºC, 'ends' = lowest and highest point; ramp = rate of change, not verifiable at fixed points.
+   title and label are text keys (t()). */
 const STANDARDS={
-  'ISO 9227':{title:'Salt spray tests (NSS, AASS, CASS)',tol:{T:2},sev:[{label:'NSS / AASS · 35 ºC',T:35},{label:'CASS · 50 ºC',T:50,optional:true}]},
-  'IEC 60068-2-1':{title:'Test A: Cold',tol:{T:2},sev:[{label:'Cold severities (≤ 0 ºC)',T:'cold'}]},
-  'IEC 60068-2-2':{title:'Test B: Dry heat',tol:{T:2},sev:[{label:'Dry heat severities (> 30 ºC)',T:'heat'}]},
-  'IEC 60068-2-14 Nb':{title:'Test Nb: Change of temperature, specified rate',tol:{T:2},sev:[{label:'Lower and upper temperatures',T:'ends'},{label:'Rate of change (1, 3 or 5 K/min ± 20 %)',ramp:true}]},
-  'IEC 60068-2-78':{title:'Test Cab: Damp heat, steady state',tol:{T:2,RH:3},sev:[{label:'40 ºC / 93 %RH',T:40,RH:93}]},
-  'IEC 60068-2-30':{title:'Test Db: Damp heat, cyclic',tol:{T:2,RH:3},sev:[{label:'Upper phase 40 ºC / 93 %RH',T:40,RH:93},{label:'Upper phase 55 ºC / 93 %RH (variant 2)',T:55,RH:93,optional:true},{label:'Lower phase 25 ºC / ≥ 95 %RH',T:25,RH:95}]},
+  'ISO 9227':{title:'st_9227',tol:{T:2},sev:[{label:'sv_nss',T:35},{label:'sv_cass',T:50,optional:true}]},
+  'IEC 60068-2-1':{title:'st_a',tol:{T:2},sev:[{label:'sv_cold',T:'cold'}]},
+  'IEC 60068-2-2':{title:'st_b',tol:{T:2},sev:[{label:'sv_heat',T:'heat'}]},
+  'IEC 60068-2-14 Nb':{title:'st_nb',tol:{T:2},sev:[{label:'sv_ends',T:'ends'},{label:'sv_ramp',ramp:true}]},
+  'IEC 60068-2-78':{title:'st_cab',tol:{T:2,RH:3},sev:[{label:'sv_40',T:40,RH:93}]},
+  'IEC 60068-2-30':{title:'st_db',tol:{T:2,RH:3},sev:[{label:'sv_up40',T:40,RH:93},{label:'sv_up55',T:55,RH:93,optional:true},{label:'sv_lo25',T:25,RH:95}]},
 };
-const QU={T:'ºC',RH:'%RH'};
+const QU={T:'ºC',RH:'%RH'};  // shown through qu(): Spanish writes %HR
 const V_RANK={ok:0,corr:1,b:2,nok:3,na:4};
-const V_LABEL={ok:'Conforming',corr:'Conforming with correction',b:'Simple acceptance only',nok:'Not conforming',na:'Not calibrated'};
 const DEFAULT_CFG={warnMonths:2,
   certBase:'https://fluidra.sharepoint.com/sites/127-RDCenterPolinya-SPO2/Shared%20Documents/07.%20Laboratory/4.%20Equipment/2.%20Calibration/',
   certPath:'0.%20Certificados/Equipos/{code}/Actuales',formCode:'F-IM-FM-001',formRev:'rev.1 · 16/04/2026'};
-const CAL_LABEL={valid:'Valid',soon:'Due soon',overdue:'Overdue',nok:'Out of tolerance',pending:'Pending closure',nodata:'Dates missing',
-  notreq:'Not required',beforeuse:'Check before use',reserved:'Reserved code',retired:'Retired',oos:'Out of service',none:'No plan'};
 const ACTION_KEYS=['overdue','nok','soon','pending','nodata'];
 const OFF_KEYS=['notreq','beforeuse','reserved','retired','oos'];
 const KEY_RANK={overdue:0,nok:1,soon:2,pending:3,nodata:4,valid:5,beforeuse:6,notreq:7,oos:8,retired:9,reserved:10};
-const ISSUE={certnoreg:'Certificate in SharePoint not registered',dupcode:'Duplicated inventory code',dupserial:'Serial number shared with other equipment',nextdiff:'Next date does not match last + period',
-  nextbefore:'Next date not after the last calibration',lastfuture:'Last calibration in the future',noperiod:'Calibration period missing',nodates:'Last calibration missing',
-  plannedpast:'Planned month already passed',import:'Notes from the Excel import',tudiff:'TU differs from the plan tolerance',notol:'Tolerance missing',
-  noserial:'Serial number missing',nolab:'Calibration lab to be defined',noprice:'Offer price to be defined',noenac:'ENAC accreditation to be defined'};
+const ISSUE=['certnoreg','dupcode','dupserial','nextdiff','nextbefore','lastfuture','noperiod','nodates','plannedpast','import','tudiff','notol','noserial','nolab','noprice','noenac'];  // labels: t('is_'+k)
 const ISSUE_WARN=new Set(['certnoreg','dupcode','dupserial','nextdiff','nextbefore','lastfuture','noperiod','nodates','plannedpast','import']);
-const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const MN={en:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],es:['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic']};
+const mn=i=>MN[LabLang.lang][i];
 const MONTHS_EN=['january','february','march','april','may','june','july','august','september','october','november','december'];
 const COLS=['equipment','calibrations','evaluations','maintenance','config'];
 const MT_TYPES=['Preventive','Corrective','Verification'];
@@ -425,24 +421,23 @@ const mStr=i=>`${Math.floor(i/12)}-${pad(i%12+1)}`;
 const addM=(s,n)=>{const i=mIdx(s); return i==null||!n?'':mStr(i+ +n)};
 const nowIdx=()=>{const d=new Date(); return d.getFullYear()*12+d.getMonth()};
 const fmtM=s=>{const i=mIdx(s); return i==null?'—':`${pad(i%12+1)}/${Math.floor(i/12)}`};
-const fmtML=s=>{const i=mIdx(s); return i==null?'—':`${MN[i%12]} ${Math.floor(i/12)}`};
+const fmtML=s=>{const i=mIdx(s); return i==null?'—':`${mn(i%12)} ${Math.floor(i/12)}`};
 const fmtD=s=>{const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(s||''); return m?`${m[3]}/${m[2]}/${m[1]}`:'—'};
 const num=v=>{if(v==null||v==='') return null; if(typeof v==='number') return isFinite(v)?v:null; const m=String(v).replace(',','.').match(/-?\d+(\.\d+)?/); return m?parseFloat(m[0]):null};
-const fmtNum=v=>v==null||v===''?'—':(+v).toLocaleString('en-GB',{maximumFractionDigits:3});
-const money=v=>v==null||v===''?'—':`${Math.round(+v).toLocaleString('en-GB')} €`;
-const perLabel=p=>!p?'—':p%12===0?`${p/12} year${p>12?'s':''}`:`${p} months`;
-const plural=(n,w)=>`${n} ${w}${n===1?'':'s'}`;
+const fmtNum=v=>v==null||v===''?'—':(+v).toLocaleString(LabLang.locale(),{maximumFractionDigits:3});
+const money=v=>v==null||v===''?'—':`${Math.round(+v).toLocaleString(LabLang.locale())} €`;
+const perLabel=p=>!p?'—':p%12===0?t('per_y',p/12):t('per_m',p);
 const byCode=(a,b)=>String(a.code||'').localeCompare(String(b.code||''),'en',{numeric:true})||String(a.id).localeCompare(String(b.id));
 const normSerial=s=>String(s||'').replace(/\(.*?\)/g,'').replace(/\s+/g,'').toUpperCase();
 const tolNum=e=>{for(const p of e.points||[]){const m=String(p.tolerance||'').match(/±\s*(\d+(?:[.,]\d+)?)/); if(m) return parseFloat(m[1].replace(',','.'));} return null};
 function toast(msg){const t=$('#toast'); t.textContent=msg; t.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>t.hidden=true,4200)}
 const certLink=e=>e.certUrl||(S.cfg.certBase+String(S.cfg.certPath||'').replace('{code}',encodeURIComponent(e.code||'')));
 const eqById=id=>IX&&IX.byId.get(id);
-const eqLabel=e=>e?`${e.code} · ${e.description||'(no description)'}`:'(deleted equipment)';
+const eqLabel=e=>e?`${e.code} · ${e.description||t('no_desc')}`:t('deleted_eq');
 
 /* ---------- Domain ---------- */
 const isClosed=c=>c.status==='Done'&&!!c.certificate&&c.inTolerance==='Yes'&&!!c.label;
-const missingClosure=c=>[!c.certificate&&'certificate not received',c.inTolerance!=='Yes'&&(c.inTolerance==='No'?'out of tolerance':'tolerance not checked'),!c.label&&'label not placed'].filter(Boolean);
+const missingClosure=c=>[!c.certificate&&t('mc_cert'),c.inTolerance!=='Yes'&&t(c.inTolerance==='No'?'mc_nok':'mc_tol'),!c.label&&t('mc_label')].filter(Boolean);
 function dueOf(e){
   if(e.calMode==='Expiry date') return e.nextOverride||'';
   if(e.calMode!=='Periodic') return '';
@@ -463,7 +458,7 @@ function calInfo(e){
   if(lastRec&&!isClosed(lastRec)) return {...base,key:'pending'};
   return {...base,key:'valid'};
 }
-const calLabel=(e,i)=>e.calMode==='Expiry date'&&i.key==='overdue'?'Expired':e.calMode==='Expiry date'&&i.key==='soon'?'Expires soon':i.key==='soon'&&i.months===0?'Due this month':CAL_LABEL[i.key];
+const calLabel=(e,i)=>t(e.calMode==='Expiry date'&&i.key==='overdue'?'cl_expired':e.calMode==='Expiry date'&&i.key==='soon'?'cl_expsoon':i.key==='soon'&&i.months===0?'cl_thismonth':'cl_'+i.key);
 const sevOf=k=>['overdue','nok'].includes(k)?'crit':k==='pending'?'inf':['soon','nodata'].includes(k)?'warn':'';
 function evalCalc(v){
   const sp=num(v.setpoint), ob=num(v.obtained), U=num(v.uncertainty), tu=num(v.tu);

@@ -268,13 +268,13 @@ td.acc .btn + .btn { margin-left: 6px; }
 
   /* ---------- Contraseña: se enseña una vez ---------- */
   function mostrarClave(email, clave) {
-    $('clave').dataset.email = email; $('clave-para').textContent = t('passFor', email);
+    $('clave-para').textContent = t('passFor', email);
     $('clave-valor').textContent = clave;
     rotulo($('clave-copiar'), 'copy');
     $('clave').hidden = false; $('clave-copiar').focus();
   }
   function cerrarClave() {
-    $('clave').hidden = true; $('clave-valor').textContent = ''; $('clave-para').textContent = ''; delete $('clave').dataset.email;
+    $('clave').hidden = true; $('clave-valor').textContent = ''; $('clave-para').textContent = '';
   }
   $('clave-cerrar').addEventListener('click', cerrarClave);
   $('clave').addEventListener('keydown', function (e) { if (e.key === 'Escape') cerrarClave(); });
@@ -435,12 +435,10 @@ td.acc .btn + .btn { margin-left: 6px; }
   $('denegado').querySelector('button').addEventListener('click', salir);
   $('fallo-reintentar').addEventListener('click', cargar);
 
-  /* ---------- Idioma: se retraduce en el sitio, sin recargar ni rehacer la tabla ---------- */
+  /* ---------- Idioma: se retraduce en el sitio, sin recargar ni rehacer la tabla (los diálogos tapan el selector) ---------- */
   LL.onChange(function () {
     LL.apply(D);
     if (!$('fallo').hidden) $('fallo-msg').textContent = t('eLoad', falloMsg);
-    if (!$('clave').hidden) $('clave-para').textContent = t('passFor', $('clave').dataset.email);
-    var c = $('confirmar'); if (!c.hidden) confirmar(c.dataset.accion, c.dataset.email);
     Array.prototype.forEach.call($('tabla').querySelectorAll('tr[data-email]'), function (tr) {
       var u = lista.filter(function (x) { return x.email === tr.dataset.email; })[0]; if (!u) return;
       Array.prototype.forEach.call(tr.querySelectorAll('select[data-rol]'), function (s) { s.setAttribute('aria-label', t('r_' + s.dataset.rol) + ' — ' + u.nombre); });

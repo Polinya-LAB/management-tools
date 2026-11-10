@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Laboratorio Polinyà</title>
+<title data-i18n="docTitle">Laboratorio Polinyà</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400&display=swap">
@@ -23,6 +23,7 @@ body {
   margin: 0; background: var(--bg); color: var(--ink); font-family: var(--f-body); font-size: 16px; line-height: 1.5;
   padding: 48px max(16px, env(safe-area-inset-right, 0px)) 48px max(16px, env(safe-area-inset-left, 0px));
 }
+header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; }
 main { max-width: 760px; margin: 0 auto; display: flex; flex-direction: column; gap: 28px; }
 .eyebrow { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 h1 { font-family: var(--f-display); font-size: clamp(30px, 6vw, 42px); font-weight: 700; line-height: 1.05; margin: 4px 0 0; }
@@ -42,36 +43,69 @@ a.app:hover, a.app:focus-visible { border-color: var(--accent); outline: none; }
 <body>
 <main>
   <header>
-    <span class="eyebrow">R&amp;D · Fluidra</span>
-    <h1>Laboratorio Polinyà</h1>
+    <div>
+      <span class="eyebrow">R&amp;D · Fluidra</span>
+      <h1>Laboratorio Polinyà</h1>
+    </div>
+    <span data-lab-lang></span>
   </header>
-  <nav class="apps" aria-label="Aplicaciones">
+  <nav class="apps" aria-label="Aplicaciones" data-i18n-aria="apps">
     <a class="app" href="control-ensayos/">
-      <div><h2>Control de ensayos</h2><p>Cola, tablero por estado, planificación, historial, biblioteca de QTP e importación de solicitudes de ARAS.</p></div>
-      <span class="go">Abrir →</span>
+      <div><h2 data-i18n="ensayos">Control de ensayos</h2><p data-i18n="ensayos_d">Cola, tablero por estado, planificación, historial, biblioteca de QTP e importación de solicitudes de ARAS.</p></div>
+      <span class="go" data-i18n="open">Abrir →</span>
     </a>
     <a class="app" href="muestras/">
-      <div><h2>Muestras</h2><p>Recepción de muestras, códigos QTS desde las peticiones de ARAS y etiquetas DYMO.</p></div>
-      <span class="go">Abrir →</span>
+      <div><h2 data-i18n="muestras">Muestras</h2><p data-i18n="muestras_d">Recepción de muestras, códigos QTS desde las peticiones de ARAS y etiquetas DYMO.</p></div>
+      <span class="go" data-i18n="open">Abrir →</span>
     </a>
     <a class="app" href="seguimiento-piscina-durabilidad/">
-      <div><h2>Seguimiento piscina durabilidad</h2><p>Ocupación de las 120 posiciones, petacas, HotBox, ensayos, incidencias, potencia por fase y consumo eléctrico.</p></div>
-      <span class="go">Abrir →</span>
+      <div><h2 data-i18n="piscina">Seguimiento piscina durabilidad</h2><p data-i18n="piscina_d">Ocupación de las 120 posiciones, petacas, HotBox, ensayos, incidencias, potencia por fase y consumo eléctrico.</p></div>
+      <span class="go" data-i18n="open">Abrir →</span>
     </a>
     <a class="app" href="ocupacion/">
-      <div><h2>Ocupación de equipos y técnicos</h2><p>Carga semanal, planificación por recurso y ocupación diaria de técnicos y equipos.</p></div>
-      <span class="go">Abrir →</span>
+      <div><h2 data-i18n="ocupacion">Ocupación de equipos y técnicos</h2><p data-i18n="ocupacion_d">Carga semanal, planificación por recurso y ocupación diaria de técnicos y equipos.</p></div>
+      <span class="go" data-i18n="open">Abrir →</span>
     </a>
     <a class="app" href="calibraciones/">
-      <div><h2>Plan de calibraciones</h2><p>Equipos, plan anual, registro de calibraciones, evaluación de la tolerancia de uso y hojas de validación.</p></div>
-      <span class="go">Abrir →</span>
+      <div><h2 data-i18n="calibraciones">Plan de calibraciones</h2><p data-i18n="calibraciones_d">Equipos, plan anual, registro de calibraciones, evaluación de la tolerancia de uso y hojas de validación.</p></div>
+      <span class="go" data-i18n="open">Abrir →</span>
     </a>
     <a class="app" href="mantenimiento/">
-      <div><h2>Plan de mantenimiento</h2><p>Plan anual de mantenimiento, programación y registro, acciones correctivas, ofertas y partes de trabajo de SharePoint.</p></div>
-      <span class="go">Abrir →</span>
+      <div><h2 data-i18n="mantenimiento">Plan de mantenimiento</h2><p data-i18n="mantenimiento_d">Plan anual de mantenimiento, programación y registro, acciones correctivas, ofertas y partes de trabajo de SharePoint.</p></div>
+      <span class="go" data-i18n="open">Abrir →</span>
     </a>
   </nav>
-  <p class="admin-link"><a href="acceso/">Administrar accesos</a></p>
+  <p class="admin-link"><a href="acceso/" data-i18n="admin">Administrar accesos</a></p>
 </main>
+<script src="acceso/lab-lang.js?v=20261114"></script>
+<script>
+/* Textos de la portada en ES / EN; el resto del HTML queda en español como respaldo. */
+(function () {
+  'use strict';
+  var D = {
+    es: {
+      docTitle: 'Laboratorio Polinyà', apps: 'Aplicaciones', open: 'Abrir →', admin: 'Administrar accesos',
+      ensayos: 'Control de ensayos', ensayos_d: 'Cola, tablero por estado, planificación, historial, biblioteca de QTP e importación de solicitudes de ARAS.',
+      muestras: 'Muestras', muestras_d: 'Recepción de muestras, códigos QTS desde las peticiones de ARAS y etiquetas DYMO.',
+      piscina: 'Seguimiento piscina durabilidad', piscina_d: 'Ocupación de las 120 posiciones, petacas, HotBox, ensayos, incidencias, potencia por fase y consumo eléctrico.',
+      ocupacion: 'Ocupación de equipos y técnicos', ocupacion_d: 'Carga semanal, planificación por recurso y ocupación diaria de técnicos y equipos.',
+      calibraciones: 'Plan de calibraciones', calibraciones_d: 'Equipos, plan anual, registro de calibraciones, evaluación de la tolerancia de uso y hojas de validación.',
+      mantenimiento: 'Plan de mantenimiento', mantenimiento_d: 'Plan anual de mantenimiento, programación y registro, acciones correctivas, ofertas y partes de trabajo de SharePoint.'
+    },
+    en: {
+      docTitle: 'Laboratorio Polinyà', apps: 'Apps', open: 'Open →', admin: 'Manage access',
+      ensayos: 'Test Lab Control', ensayos_d: 'Queue, board by status, planning, history, QTP library and import of ARAS requests.',
+      muestras: 'Samples', muestras_d: 'Sample reception, QTS codes from ARAS requests and DYMO labels.',
+      piscina: 'Endurance pool tracking', piscina_d: 'Occupancy of the 120 positions, junction boxes, HotBox, tests, incidents, power per phase and electricity consumption.',
+      ocupacion: 'Lab Occupancy', ocupacion_d: 'Weekly load, planning by resource and daily occupancy of technicians and equipment.',
+      calibraciones: 'Calibration Plan', calibraciones_d: 'Equipment, annual plan, calibration log, tolerance-of-use assessment and validation sheets.',
+      mantenimiento: 'Maintenance Plan', mantenimiento_d: 'Annual maintenance plan, scheduling and log, corrective actions, offers and SharePoint work reports.'
+    }
+  };
+  function pintar() { LabLang.apply(D); }
+  LabLang.onChange(pintar);
+  pintar();
+})();
+</script>
 </body>
 </html>

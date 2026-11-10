@@ -378,65 +378,66 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
 <div class="wrap">
   <header class="top">
     <div class="brand">
-      <a class="eyebrow back" href="../" title="Volver a la portada del laboratorio">← Laboratorio Polinyà</a>
-      <h1>Piscina de durabilidad</h1>
+      <a class="eyebrow back" href="../" title="Volver a la portada del laboratorio" data-i18n="back" data-i18n-title="backT">← Laboratorio Polinyà</a>
+      <h1 data-i18n="title">Piscina de durabilidad</h1>
     </div>
     <div class="actions">
-      <button class="btn" id="btn-copy" type="button" title="Copia la tabla completa para pegarla en Excel">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg>Copiar para Excel</button>
+      <span data-lab-lang></span>
+      <button class="btn" id="btn-copy" type="button" title="Copia la tabla completa para pegarla en Excel" data-i18n-title="copyT">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V5a2 2 0 0 1 2-2h10"/></svg><span data-i18n="copy">Copiar para Excel</span></button>
       <button class="btn" id="btn-csv" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 19h16"/></svg>Exportar CSV</button>
-      <button class="btn" id="btn-gh" type="button" title="Conectar con GitHub para registrar y modificar">
-        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.52 2.34 1.08 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02a9.6 9.6 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2z"/></svg><span id="btn-gh-label">Conectar con GitHub</span></button>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12m0 0-4-4m4 4 4-4M4 19h16"/></svg><span data-i18n="csv">Exportar CSV</span></button>
+      <button class="btn" id="btn-gh" type="button" title="Conectar con GitHub para registrar y modificar" data-i18n-title="ghBtnT">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2a10 10 0 0 0-3.16 19.49c.5.09.68-.22.68-.48v-1.7c-2.78.6-3.37-1.34-3.37-1.34-.45-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.9 1.52 2.34 1.08 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.09.39-1.98 1.03-2.68-.1-.25-.45-1.27.1-2.64 0 0 .84-.27 2.75 1.02a9.6 9.6 0 0 1 5 0c1.91-1.29 2.75-1.02 2.75-1.02.55 1.37.2 2.39.1 2.64.64.7 1.03 1.59 1.03 2.68 0 3.84-2.34 4.68-4.57 4.93.36.31.68.92.68 1.85v2.74c0 .27.18.58.69.48A10 10 0 0 0 12 2z"/></svg><span id="btn-gh-label" data-i18n="ghBtn">Conectar con GitHub</span></button>
       <button class="btn" id="btn-cfg" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg>Ajustes</button>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/></svg><span data-i18n="cfg">Ajustes</span></button>
       <button class="btn primary" id="btn-new" type="button">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg>Nueva bomba</button>
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M12 5v14M5 12h14"/></svg><span data-i18n="newPump">Nueva bomba</span></button>
     </div>
   </header>
 
   <div id="banners"></div>
 
-  <section class="kpis" id="kpis" aria-label="Resumen de ocupación"></section>
+  <section class="kpis" id="kpis" data-i18n-aria="kpisA" aria-label="Resumen de ocupación"></section>
 
-  <nav class="tabs" role="tablist" aria-label="Vistas">
-    <button class="tab" role="tab" id="tab-plano" data-view="plano" aria-selected="true">Plano</button>
-    <button class="tab" role="tab" id="tab-listado" data-view="listado" aria-selected="false">En ensayo<span class="count" id="cnt-act"></span></button>
-    <button class="tab" role="tab" id="tab-historial" data-view="historial" aria-selected="false">Historial<span class="count" id="cnt-hist"></span></button>
-    <button class="tab" role="tab" id="tab-incidencias" data-view="incidencias" aria-selected="false">Incidencias<span class="count" id="cnt-inc"></span></button>
-    <button class="tab" role="tab" id="tab-potencia" data-view="potencia" aria-selected="false">Potencia</button>
-    <button class="tab" role="tab" id="tab-consumo" data-view="consumo" aria-selected="false">Consumo eléctrico</button>
+  <nav class="tabs" role="tablist" data-i18n-aria="views" aria-label="Vistas">
+    <button class="tab" role="tab" id="tab-plano" data-view="plano" aria-selected="true"><span data-i18n="tab.plano">Plano</span></button>
+    <button class="tab" role="tab" id="tab-listado" data-view="listado" aria-selected="false"><span data-i18n="tab.listado">En ensayo</span><span class="count" id="cnt-act"></span></button>
+    <button class="tab" role="tab" id="tab-historial" data-view="historial" aria-selected="false"><span data-i18n="tab.historial">Historial</span><span class="count" id="cnt-hist"></span></button>
+    <button class="tab" role="tab" id="tab-incidencias" data-view="incidencias" aria-selected="false"><span data-i18n="tab.incidencias">Incidencias</span><span class="count" id="cnt-inc"></span></button>
+    <button class="tab" role="tab" id="tab-potencia" data-view="potencia" aria-selected="false"><span data-i18n="tab.potencia">Potencia</span></button>
+    <button class="tab" role="tab" id="tab-consumo" data-view="consumo" aria-selected="false"><span data-i18n="tab.consumo">Consumo eléctrico</span></button>
   </nav>
 
   <section id="view-plano" class="pool-card" role="tabpanel" aria-labelledby="tab-plano">
     <div class="toolbar">
       <div class="legend" id="legend"></div>
-      <div class="seg" role="group" aria-label="Colorear por">
-        <button type="button" data-color="estado" aria-pressed="true">Estado</button>
-        <button type="button" data-color="proyecto" aria-pressed="false">Proyecto</button>
+      <div class="seg" role="group" data-i18n-aria="colorBy" aria-label="Colorear por">
+        <button type="button" data-color="estado" aria-pressed="true" data-i18n="byState">Estado</button>
+        <button type="button" data-color="proyecto" aria-pressed="false" data-i18n="byProj">Proyecto</button>
       </div>
     </div>
     <div class="pool-scroll"><div class="pool" id="pool"></div></div>
-    <p class="empty-note" id="pool-note">Pulsa una posición libre para registrar una bomba en ella, o una petaca para ver sus fases. Pasa el ratón sobre una bomba para ver a qué petaca está conectada.</p>
+    <p class="empty-note" id="pool-note" data-i18n="poolNote">Pulsa una posición libre para registrar una bomba en ella, o una petaca para ver sus fases. Pasa el ratón sobre una bomba para ver a qué petaca está conectada.</p>
   </section>
 
   <section id="view-listado" role="tabpanel" aria-labelledby="tab-listado" hidden>
     <div class="toolbar" style="margin-bottom:12px">
       <div class="filters">
-        <input type="search" id="q" placeholder="Buscar referencia, nº serie, proyecto…" aria-label="Buscar">
-        <select id="fl-proyecto" aria-label="Filtrar por proyecto"></select>
-        <select id="fl-estado" aria-label="Filtrar por estado">
-          <option value="">Todos los estados</option>
-          <option value="curso">En curso</option>
-          <option value="proximo">Finaliza pronto</option>
-          <option value="vencido">Fin superado</option>
-          <option value="pendiente">Programado</option>
+        <input type="search" id="q" placeholder="Buscar referencia, nº serie, proyecto…" aria-label="Buscar" data-i18n-placeholder="qPh" data-i18n-aria="search">
+        <select id="fl-proyecto" data-i18n-aria="flProj" aria-label="Filtrar por proyecto"></select>
+        <select id="fl-estado" data-i18n-aria="flSt" aria-label="Filtrar por estado">
+          <option value="" data-i18n="allSt">Todos los estados</option>
+          <option value="curso" data-i18n="st.curso">En curso</option>
+          <option value="proximo" data-i18n="st.proximo">Finaliza pronto</option>
+          <option value="vencido" data-i18n="st.vencido">Fin superado</option>
+          <option value="pendiente" data-i18n="st.pendiente">Programado</option>
         </select>
-        <select id="fl-zona" aria-label="Filtrar por zona">
-          <option value="">Todas las zonas</option>
-          <option value="Suelo">Suelo</option>
-          <option value="Playa">Playa</option>
-          <option value="HotBox">Solo HotBox</option>
+        <select id="fl-zona" data-i18n-aria="flZone" aria-label="Filtrar por zona">
+          <option value="" data-i18n="allZones">Todas las zonas</option>
+          <option value="Suelo" data-i18n="niv.Suelo">Suelo</option>
+          <option value="Playa" data-i18n="niv.Playa">Playa</option>
+          <option value="HotBox" data-i18n="onlyHb">Solo HotBox</option>
         </select>
       </div>
       <span class="ro-note" id="list-count"></span>
@@ -446,7 +447,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
 
   <section id="view-historial" role="tabpanel" aria-labelledby="tab-historial" hidden>
     <div class="toolbar" style="margin-bottom:12px">
-      <div class="filters"><input type="search" id="qh" placeholder="Buscar en el historial…" aria-label="Buscar en el historial"></div>
+      <div class="filters"><input type="search" id="qh" placeholder="Buscar en el historial…" aria-label="Buscar en el historial" data-i18n-placeholder="qhPh" data-i18n-aria="qhA"></div>
     </div>
     <div class="table-wrap"><table id="tbl-hist"></table></div>
   </section>
@@ -454,8 +455,8 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
   <section id="view-incidencias" role="tabpanel" aria-labelledby="tab-incidencias" hidden>
     <div class="toolbar" style="margin-bottom:16px">
       <div class="filters">
-        <input type="search" id="qi" placeholder="Buscar en las observaciones…" aria-label="Buscar en las observaciones">
-        <select id="fl-inc" aria-label="Filtrar por proyecto"></select>
+        <input type="search" id="qi" placeholder="Buscar en las observaciones…" aria-label="Buscar en las observaciones" data-i18n-placeholder="qiPh" data-i18n-aria="qiA">
+        <select id="fl-inc" data-i18n-aria="flProj" aria-label="Filtrar por proyecto"></select>
       </div>
       <span class="ro-note" id="inc-count"></span>
     </div>
@@ -463,13 +464,13 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
   </section>
 
   <section id="view-potencia" class="pot" role="tabpanel" aria-labelledby="tab-potencia" hidden>
-    <div class="kpis" id="pot-kpis" aria-label="Resumen de potencia"></div>
+    <div class="kpis" id="pot-kpis" data-i18n-aria="potKpisA" aria-label="Resumen de potencia"></div>
     <div class="pot-card">
-      <div class="pot-head"><h3>Reparto por fase</h3>
+      <div class="pot-head"><h3 data-i18n="phaseSplit">Reparto por fase</h3>
         <div class="pot-legend">
-          <span><i class="sw" style="background:var(--accent)"></i>Monofásicas</span>
-          <span><i class="sw" style="background:var(--p1)"></i>Trifásicas (⅓ por fase)</span>
-          <span><i class="sw avg"></i>Media de las tres fases</span>
+          <span><i class="sw" style="background:var(--accent)"></i><span data-i18n="legMono">Monofásicas</span></span>
+          <span><i class="sw" style="background:var(--p1)"></i><span data-i18n="legTri">Trifásicas (⅓ por fase)</span></span>
+          <span><i class="sw avg"></i><span data-i18n="legAvg">Media de las tres fases</span></span>
         </div>
       </div>
       <div class="ph-list" id="ph-list"></div>
@@ -481,39 +482,39 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
 
   <section id="view-consumo" class="pot" role="tabpanel" aria-labelledby="tab-consumo" hidden>
     <div class="cons-bar">
-      <div class="field"><label for="cons-mes">Mes</label><select id="cons-mes"></select></div>
+      <div class="field"><label for="cons-mes" data-i18n="month">Mes</label><select id="cons-mes"></select></div>
       <form class="field" id="cons-precio-form" novalidate autocomplete="off">
-        <label for="cons-precio">Precio del kWh (€)</label>
-        <div class="inline"><input id="cons-precio" type="number" min="0" step="0.0001" inputmode="decimal" placeholder="0,1500"><button type="submit" class="btn" id="cons-save">Guardar</button></div>
+        <label for="cons-precio" data-i18n="kwhPrice">Precio del kWh (€)</label>
+        <div class="inline"><input id="cons-precio" type="number" min="0" step="0.0001" inputmode="decimal" placeholder="0,1500" data-i18n-placeholder="pricePh"><button type="submit" class="btn" id="cons-save" data-i18n="save">Guardar</button></div>
         <span class="hint" id="cons-precio-hint"></span>
       </form>
       <span class="spacer"></span>
-      <button type="button" class="btn" id="cons-copy" title="Copia el consumo de todos los meses por proyecto para pegarlo en Excel">Copiar para Excel</button>
+      <button type="button" class="btn" id="cons-copy" title="Copia el consumo de todos los meses por proyecto para pegarlo en Excel" data-i18n="copy" data-i18n-title="consCopyT">Copiar para Excel</button>
     </div>
-    <div class="kpis" id="cons-kpis" aria-label="Resumen de consumo del mes"></div>
+    <div class="kpis" id="cons-kpis" data-i18n-aria="consKpisA" aria-label="Resumen de consumo del mes"></div>
     <div class="pot-card">
       <div class="pot-head"><h3 id="cons-proj-title">Consumo por proyecto</h3></div>
       <div class="table-wrap"><table id="tbl-cons-proj" class="tbl-num"></table></div>
     </div>
     <div class="pot-card">
-      <div class="pot-head"><h3>Histórico mes a mes</h3><span class="ro-note">Pulsa un mes para ver su detalle por proyecto</span></div>
+      <div class="pot-head"><h3 data-i18n="histMonth">Histórico mes a mes</h3><span class="ro-note" data-i18n="histMonthHint">Pulsa un mes para ver su detalle por proyecto</span></div>
       <div class="table-wrap"><table id="tbl-cons-hist" class="tbl-num"></table></div>
     </div>
     <div class="pot-card">
-      <div class="pot-head"><h3>Histórico por proyecto</h3>
-        <div class="seg" role="group" aria-label="Unidad">
+      <div class="pot-head"><h3 data-i18n="histProj">Histórico por proyecto</h3>
+        <div class="seg" role="group" data-i18n-aria="unit" aria-label="Unidad">
           <button type="button" data-cu="kwh" aria-pressed="true">kWh</button>
           <button type="button" data-cu="eur" aria-pressed="false">€</button>
         </div>
       </div>
       <div class="table-wrap"><table id="tbl-cons-mat" class="tbl-num"></table></div>
     </div>
-    <p class="pot-note">Estimación a partir de la potencia instalada de cada bomba (1 HP = 0,746 kW), funcionando las 24 horas del día, desde su fecha de inicio hasta su retirada, o hasta hoy si sigue en ensayo. El precio del kWh se guarda por mes y se aplica también a los meses siguientes hasta que se cambie. Las bombas eliminadas no cuentan; usa «Finalizar ensayo» para conservar su consumo en el histórico.</p>
+    <p class="pot-note" data-i18n="consNote">Estimación a partir de la potencia instalada de cada bomba (1 HP = 0,746 kW), funcionando las 24 horas del día, desde su fecha de inicio hasta su retirada, o hasta hoy si sigue en ensayo. El precio del kWh se guarda por mes y se aplica también a los meses siguientes hasta que se cambie. Las bombas eliminadas no cuentan; usa «Finalizar ensayo» para conservar su consumo en el histórico.</p>
   </section>
 
   <footer class="page-foot">
-    <span>Datos guardados en GitHub · <span class="mono">Polinya-LAB/endurance-data</span></span>
-    <a href="https://github.com/Polinya-LAB/endurance-data/commits/main/piscina.json" target="_blank" rel="noopener">Ver historial de cambios</a>
+    <span><span data-i18n="footData">Datos guardados en GitHub ·</span> <span class="mono">Polinya-LAB/endurance-data</span></span>
+    <a href="https://github.com/Polinya-LAB/endurance-data/commits/main/piscina.json" target="_blank" rel="noopener" data-i18n="footHist">Ver historial de cambios</a>
   </footer>
 </div>
 
@@ -522,61 +523,61 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
   <form class="sheet" id="form" novalidate autocomplete="off">
     <header>
       <div><h2 id="f-title">Nueva bomba</h2><div class="sub" id="f-sub"></div></div>
-      <button type="button" class="x" data-close aria-label="Cerrar">×</button>
+      <button type="button" class="x" data-close data-i18n-aria="close" aria-label="Cerrar">×</button>
     </header>
     <div class="sheet-body">
       <fieldset>
-        <legend>Bomba</legend>
-        <div class="field s6"><label class="req" for="f-proyecto">Proyecto</label><input id="f-proyecto" list="dl-proyectos" required></div>
-        <div class="field"><label for="f-referencia">Referencia</label><input id="f-referencia"></div>
-        <div class="field"><label for="f-serie">Nº de serie</label><input id="f-serie"><div class="hint" id="h-serie"></div></div>
-        <div class="field s2"><label for="f-fabricante">Fabricante motor</label><input id="f-fabricante" list="dl-fabricantes"></div>
-        <div class="field s2"><label class="req" for="f-potencia">Potencia (HP)</label>
-          <input id="f-potencia" type="number" step="0.01" min="0" inputmode="decimal" required placeholder="p. ej. 1,5">
+        <legend data-i18n="lgPump">Bomba</legend>
+        <div class="field s6"><label class="req" for="f-proyecto" data-i18n="fProj">Proyecto</label><input id="f-proyecto" list="dl-proyectos" required></div>
+        <div class="field"><label for="f-referencia" data-i18n="fRef">Referencia</label><input id="f-referencia"></div>
+        <div class="field"><label for="f-serie" data-i18n="fSerie">Nº de serie</label><input id="f-serie"><div class="hint" id="h-serie"></div></div>
+        <div class="field s2"><label for="f-fabricante" data-i18n="fFab">Fabricante motor</label><input id="f-fabricante" list="dl-fabricantes"></div>
+        <div class="field s2"><label class="req" for="f-potencia" data-i18n="fPot">Potencia (HP)</label>
+          <input id="f-potencia" type="number" step="0.01" min="0" inputmode="decimal" required placeholder="p. ej. 1,5" data-i18n-placeholder="potPh">
         </div>
-        <div class="field s2"><span class="flabel req" id="lbl-tipo">Mono / trifásica</span>
+        <div class="field s2"><span class="flabel req" id="lbl-tipo" data-i18n="fTipo">Mono / trifásica</span>
           <div class="seg" role="radiogroup" aria-labelledby="lbl-tipo">
-            <label><input type="radio" name="tipo" value="mono" id="f-tipo-mono" checked>Monofásica</label>
-            <label><input type="radio" name="tipo" value="tri" id="f-tipo-tri">Trifásica</label>
+            <label><input type="radio" name="tipo" value="mono" id="f-tipo-mono" checked><span data-i18n="mono">Monofásica</span></label>
+            <label><input type="radio" name="tipo" value="tri" id="f-tipo-tri"><span data-i18n="tri">Trifásica</span></label>
           </div>
         </div>
       </fieldset>
       <fieldset>
-        <legend>Ubicación en la piscina</legend>
-        <div class="field s2"><label class="req" for="f-posicion">Posición (1–120)</label><input id="f-posicion" type="number" min="1" max="120" step="1" inputmode="numeric" required><div class="hint" id="h-posicion"></div></div>
-        <div class="field s2"><label class="req" for="f-petaca">Petaca (1–60)</label><input id="f-petaca" type="number" min="1" max="60" step="1" inputmode="numeric" required><div class="hint" id="h-petaca"></div></div>
-        <div class="field s2" id="fase-wrap"><span class="flabel req" id="lbl-fase">Fase de la petaca</span>
+        <legend data-i18n="lgLoc">Ubicación en la piscina</legend>
+        <div class="field s2"><label class="req" for="f-posicion" data-i18n="fPos">Posición (1–120)</label><input id="f-posicion" type="number" min="1" max="120" step="1" inputmode="numeric" required><div class="hint" id="h-posicion"></div></div>
+        <div class="field s2"><label class="req" for="f-petaca" data-i18n="fPet">Petaca (1–60)</label><input id="f-petaca" type="number" min="1" max="60" step="1" inputmode="numeric" required><div class="hint" id="h-petaca"></div></div>
+        <div class="field s2" id="fase-wrap"><span class="flabel req" id="lbl-fase" data-i18n="fFase">Fase de la petaca</span>
           <div class="seg" role="radiogroup" aria-labelledby="lbl-fase">
             <label><input type="radio" name="fase" value="1" id="f-fase-1">.1</label>
             <label><input type="radio" name="fase" value="2" id="f-fase-2">.2</label>
             <label><input type="radio" name="fase" value="3" id="f-fase-3">.3</label>
           </div>
-          <div class="hint">Conexión: <span class="conn-preview" id="conn-preview">—</span></div>
+          <div class="hint"><span data-i18n="conn">Conexión:</span> <span class="conn-preview" id="conn-preview">—</span></div>
         </div>
       </fieldset>
       <fieldset>
-        <legend>Ensayo</legend>
-        <div class="field s2"><label class="req" for="f-inicio">Fecha de inicio</label><input id="f-inicio" type="date" required></div>
-        <div class="field s2"><label class="req" for="f-fin">Fecha fin <span style="font-weight:400;color:var(--muted)">(inicio + 6 meses)</span></label><input id="f-fin" type="date" required></div>
-        <div class="field s2"><span class="flabel">Duración prevista</span><div class="hint" id="h-dur" style="font-size:14px;color:var(--ink)">—</div></div>
-        <div class="field s6"><label for="f-notas">Notas</label><textarea id="f-notas" rows="2" placeholder="Condiciones del ensayo, incidencias…"></textarea></div>
+        <legend data-i18n="lgTest">Ensayo</legend>
+        <div class="field s2"><label class="req" for="f-inicio" data-i18n="fIni">Fecha de inicio</label><input id="f-inicio" type="date" required></div>
+        <div class="field s2"><label class="req" for="f-fin" data-i18n-html="fFin">Fecha fin <span style="font-weight:400;color:var(--muted)">(inicio + 6 meses)</span></label><input id="f-fin" type="date" required></div>
+        <div class="field s2"><span class="flabel" data-i18n="fDur">Duración prevista</span><div class="hint" id="h-dur" style="font-size:14px;color:var(--ink)">—</div></div>
+        <div class="field s6"><label for="f-notas" data-i18n="fNotas">Notas</label><textarea id="f-notas" rows="2" placeholder="Condiciones del ensayo, incidencias…" data-i18n-placeholder="notasPh"></textarea></div>
       </fieldset>
       <div class="msgs" id="f-msgs" aria-live="polite"></div>
     </div>
     <footer>
       <div class="confirm bad" id="cf-del" hidden>
-        <span>¿Eliminar esta bomba del registro? No se puede deshacer.</span>
-        <span class="foot-row"><button type="button" class="btn danger solid" id="cf-del-yes">Sí, eliminar</button><button type="button" class="btn ghost" id="cf-del-no">No</button></span>
+        <span data-i18n="cfDel">¿Eliminar esta bomba del registro? No se puede deshacer.</span>
+        <span class="foot-row"><button type="button" class="btn danger solid" id="cf-del-yes" data-i18n="yesDel">Sí, eliminar</button><button type="button" class="btn ghost" id="cf-del-no" data-i18n="no">No</button></span>
       </div>
       <div class="confirm" id="cf-fin" hidden>
-        <label for="f-retirada">Fecha de retirada</label><input type="date" id="f-retirada">
-        <span class="foot-row"><button type="button" class="btn primary" id="cf-fin-yes">Finalizar y liberar posición</button><button type="button" class="btn ghost" id="cf-fin-no">Cancelar</button></span>
+        <label for="f-retirada" data-i18n="fRet">Fecha de retirada</label><input type="date" id="f-retirada">
+        <span class="foot-row"><button type="button" class="btn primary" id="cf-fin-yes" data-i18n="finYes">Finalizar y liberar posición</button><button type="button" class="btn ghost" id="cf-fin-no" data-i18n="cancel">Cancelar</button></span>
       </div>
       <div class="foot-row">
-        <button type="button" class="btn danger" id="b-del">Eliminar</button>
-        <button type="button" class="btn" id="b-fin">Finalizar ensayo</button>
-        <button type="button" class="btn" id="b-reopen">Reactivar ensayo</button>
-        <button type="button" class="btn" id="b-obs">Observaciones</button>
+        <button type="button" class="btn danger" id="b-del" data-i18n="del">Eliminar</button>
+        <button type="button" class="btn" id="b-fin" data-i18n="endTest">Finalizar ensayo</button>
+        <button type="button" class="btn" id="b-reopen" data-i18n="reopen">Reactivar ensayo</button>
+        <button type="button" class="btn" id="b-obs" data-i18n="obs">Observaciones</button>
         <span class="spacer"></span>
         <button type="button" class="btn ghost" data-close id="b-cancel">Cancelar</button>
         <button type="submit" class="btn primary" id="b-save">Guardar</button>
@@ -590,14 +591,14 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
 <!-- Observaciones de una bomba -->
 <div class="overlay" id="ov-obs" hidden>
   <div class="sheet" role="dialog" aria-modal="true" aria-labelledby="obs-title">
-    <header><div><h2 id="obs-title">Observaciones</h2><div class="sub" id="obs-sub"></div></div><button type="button" class="x" data-close aria-label="Cerrar">×</button></header>
+    <header><div><h2 id="obs-title">Observaciones</h2><div class="sub" id="obs-sub"></div></div><button type="button" class="x" data-close data-i18n-aria="close" aria-label="Cerrar">×</button></header>
     <div class="sheet-body">
       <form id="obs-form" novalidate autocomplete="off" style="display:flex;flex-direction:column;gap:10px">
         <div class="obs-new">
-          <div class="field"><label for="obs-fecha">Fecha</label><input type="date" id="obs-fecha"></div>
-          <div class="field"><label for="obs-texto">Observación</label><textarea id="obs-texto" rows="3" placeholder="Qué se ha observado, revisado o cambiado…"></textarea></div>
+          <div class="field"><label for="obs-fecha" data-i18n="date">Fecha</label><input type="date" id="obs-fecha"></div>
+          <div class="field"><label for="obs-texto" data-i18n="obsOne">Observación</label><textarea id="obs-texto" rows="3" placeholder="Qué se ha observado, revisado o cambiado…" data-i18n-placeholder="obsPh"></textarea></div>
         </div>
-        <div class="foot-row"><span class="hint" id="obs-hint"></span><span class="spacer"></span><button type="submit" class="btn primary" id="obs-save">Añadir observación</button></div>
+        <div class="foot-row"><span class="hint" id="obs-hint"></span><span class="spacer"></span><button type="submit" class="btn primary" id="obs-save" data-i18n="obsAdd">Añadir observación</button></div>
       </form>
       <div class="obs-list" id="obs-list" aria-live="polite"></div>
     </div>
@@ -607,7 +608,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
 <!-- Panel de petaca -->
 <div class="overlay" id="ov-pet" hidden>
   <div class="sheet narrow" role="dialog" aria-modal="true" aria-labelledby="pet-title">
-    <header><div><h2 id="pet-title">Petaca</h2><div class="sub" id="pet-sub"></div></div><button type="button" class="x" data-close aria-label="Cerrar">×</button></header>
+    <header><div><h2 id="pet-title">Petaca</h2><div class="sub" id="pet-sub"></div></div><button type="button" class="x" data-close data-i18n-aria="close" aria-label="Cerrar">×</button></header>
     <div class="sheet-body"><div class="pet-list" id="pet-list"></div></div>
   </div>
 </div>
@@ -615,55 +616,56 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
 <!-- Ajustes de numeración -->
 <div class="overlay" id="ov-cfg" hidden>
   <form class="sheet narrow" id="cfg-form" novalidate>
-    <header><div><h2>Ajustes</h2><div class="sub">Se comparten con todo el equipo</div></div><button type="button" class="x" data-close aria-label="Cerrar">×</button></header>
+    <header><div><h2 data-i18n="cfg">Ajustes</h2><div class="sub" data-i18n="cfgSub">Se comparten con todo el equipo</div></div><button type="button" class="x" data-close data-i18n-aria="close" aria-label="Cerrar">×</button></header>
     <div class="sheet-body">
-      <div class="field s6"><label for="cfg-aviso">Avisar cuando falten (días)</label><input id="cfg-aviso" type="number" min="0" max="90" step="1" style="max-width:120px"></div>
+      <div class="field s6"><label for="cfg-aviso" data-i18n="aviso">Avisar cuando falten (días)</label><input id="cfg-aviso" type="number" min="0" max="90" step="1" style="max-width:120px"></div>
       <div class="field s6"><span class="flabel">HotBox</span>
         <div class="hb-list" id="hb-list"></div>
         <div class="hb-add" id="hb-add">
-          <input id="hb-nombre" placeholder="Nombre" aria-label="Nombre del HotBox">
-          <input id="hb-desde" type="number" min="1" max="120" inputmode="numeric" placeholder="Desde" aria-label="Primera posición">
-          <input id="hb-hasta" type="number" min="1" max="120" inputmode="numeric" placeholder="Hasta" aria-label="Última posición">
-          <button type="button" class="btn" id="hb-btn">Añadir</button>
+          <input id="hb-nombre" placeholder="Nombre" aria-label="Nombre del HotBox" data-i18n-placeholder="hbName" data-i18n-aria="hbNameA">
+          <input id="hb-desde" type="number" min="1" max="120" inputmode="numeric" placeholder="Desde" aria-label="Primera posición" data-i18n-placeholder="from" data-i18n-aria="fromA">
+          <input id="hb-hasta" type="number" min="1" max="120" inputmode="numeric" placeholder="Hasta" aria-label="Última posición" data-i18n-placeholder="to" data-i18n-aria="toA">
+          <button type="button" class="btn" id="hb-btn" data-i18n="add">Añadir</button>
         </div>
-        <div class="hint" id="hb-hint">Un HotBox agrupa posiciones seguidas de una misma fila.</div>
+        <div class="hint" id="hb-hint" data-i18n="hbHint">Un HotBox agrupa posiciones seguidas de una misma fila.</div>
       </div>
-      <p class="ro-note">Numeración perimetral. Suelo: 1–30 en el lado Valla y 31–60 de vuelta por el lado Pared. Playa: 61–90 en el lado Valla y 91–120 por el lado Pared. Cada petaca está junto a la posición de suelo con su mismo número.</p>
+      <p class="ro-note" data-i18n="numbering">Numeración perimetral. Suelo: 1–30 en el lado Valla y 31–60 de vuelta por el lado Pared. Playa: 61–90 en el lado Valla y 91–120 por el lado Pared. Cada petaca está junto a la posición de suelo con su mismo número.</p>
     </div>
-    <footer><div class="foot-row"><span class="spacer"></span><button type="button" class="btn ghost" data-close>Cancelar</button><button type="submit" class="btn primary" id="cfg-save">Guardar ajustes</button></div></footer>
+    <footer><div class="foot-row"><span class="spacer"></span><button type="button" class="btn ghost" data-close data-i18n="cancel">Cancelar</button><button type="submit" class="btn primary" id="cfg-save" data-i18n="cfgSave">Guardar ajustes</button></div></footer>
   </form>
 </div>
 
 <!-- Conexión con GitHub -->
 <div class="overlay" id="ov-gh" hidden>
   <form class="sheet narrow" id="gh-form" novalidate autocomplete="off">
-    <header><div><h2>Conectar con GitHub</h2><div class="sub">Para registrar y modificar bombas</div></div><button type="button" class="x" data-close aria-label="Cerrar">×</button></header>
+    <header><div><h2 data-i18n="ghBtn">Conectar con GitHub</h2><div class="sub" data-i18n="ghSub">Para registrar y modificar bombas</div></div><button type="button" class="x" data-close data-i18n-aria="close" aria-label="Cerrar">×</button></header>
     <div class="sheet-body">
       <div id="gh-mailbox" hidden style="display:flex;flex-direction:column;gap:12px"></div>
       <div class="hint" id="gm-hint" aria-live="polite" hidden></div>
       <div id="gh-on" hidden style="display:flex;flex-direction:column;gap:12px">
-        <p style="margin:0">Conectado como <b id="gh-login"></b>.</p>
+        <p style="margin:0"><span data-i18n="ghAs">Conectado como</span> <b id="gh-login"></b>.</p>
         <p class="ro-note" id="gh-perm" style="margin:0"></p>
-        <div><button type="button" class="btn" id="gh-out">Desconectar</button></div>
+        <div><button type="button" class="btn" id="gh-out" data-i18n="disconnect">Desconectar</button></div>
       </div>
       <div id="gh-off" style="display:flex;flex-direction:column;gap:14px">
-        <ol class="steps">
+        <ol class="steps" data-i18n-html="ghSteps">
           <li>Pide al responsable que te añada como <b>colaborador</b> del repositorio de datos <span class="mono">Polinya-LAB/endurance-data</span> y acepta la invitación que te llega por correo.</li>
           <li>Crea una clave de acceso en GitHub: <a href="https://github.com/settings/tokens/new?scopes=public_repo&amp;description=Piscina%20de%20durabilidad" target="_blank" rel="noopener">abrir el formulario</a>. Ya viene marcado el permiso <span class="mono">public_repo</span>; elige la caducidad y pulsa <i>Generate token</i>. Si también usas Control de ensayos, cuyos datos son privados, marca <span class="mono">repo</span> en su lugar: la misma clave sirve para las dos apps.</li>
           <li>Copia la clave y pégala aquí. Se guarda solo en este navegador.</li>
         </ol>
-        <div class="field s6"><label for="gh-token">Clave de acceso (token)</label><input id="gh-token" type="password" placeholder="ghp_…" autocomplete="off" spellcheck="false"></div>
+        <div class="field s6"><label for="gh-token" data-i18n="tokenLbl">Clave de acceso (token)</label><input id="gh-token" type="password" placeholder="ghp_…" autocomplete="off" spellcheck="false"></div>
         <div class="hint" id="gh-hint" aria-live="polite"></div>
-        <div id="gh-keygo" hidden><button type="button" class="btn" id="gh-key-go">Conectar</button></div>
+        <div id="gh-keygo" hidden><button type="button" class="btn" id="gh-key-go" data-i18n="connect">Conectar</button></div>
       </div>
     </div>
-    <footer><div class="foot-row"><span class="spacer"></span><button type="button" class="btn ghost" data-close>Cerrar</button><button type="submit" class="btn primary" id="gh-save">Conectar</button></div></footer>
+    <footer><div class="foot-row"><span class="spacer"></span><button type="button" class="btn ghost" data-close data-i18n="close">Cerrar</button><button type="submit" class="btn primary" id="gh-save" data-i18n="connect">Conectar</button></div></footer>
   </form>
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite" hidden></div>
 
 <script src="../acceso/config.js"></script>
+<script src="../acceso/lab-lang.js?v=20261114"></script>
 <script src="../acceso/lab-auth.js?v=20261114"></script>
 <script>
 (() => {
