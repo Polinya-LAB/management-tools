@@ -1165,95 +1165,96 @@ function exportXlsx(){
 const dlg=$('#dlg');
 function fld(id,label,inner,cls='',help=''){return `<div class="field ${cls}"><label for="${id}">${label}</label>${inner}${help?`<span class="help" id="${id}-help">${help}</span>`:''}</div>`}
 function inp(name,val,type='text',extra=''){return `<input id="f-${name}" name="${name}" type="${type}" value="${esc(val??'')}" ${extra}>`}
-function sel(name,val,opts,extra=''){return `<select id="f-${name}" name="${name}" ${extra}>${opts.map(o=>{const [v,l]=Array.isArray(o)?o:[o,o]; return `<option value="${esc(v)}" ${String(val??'')===String(v)?'selected':''}>${esc(l)}</option>`}).join('')}</select>`}
+function sel(name,val,opts,extra=''){return `<select id="f-${name}" name="${name}" ${extra}>${opts.map(o=>{const [v,l]=Array.isArray(o)?o:[o,dv(o)]; return `<option value="${esc(v)}" ${String(val??'')===String(v)?'selected':''}>${esc(l)}</option>`}).join('')}</select>`}
 function dlgShell(eyebrow,title,body,footerLeft='',narrow=false){
   dlg.classList.toggle('narrow',narrow);
   if(S.ro) footerLeft='';
-  dlg.innerHTML=`<form class="dlg-form" id="dlg-form" novalidate><header class="dlg-h"><div><p class="eyebrow">${eyebrow}</p><h2>${esc(title)}</h2></div><button type="button" class="icon-btn" data-act="close" aria-label="Close">×</button></header>
+  dlg.innerHTML=`<form class="dlg-form" id="dlg-form" novalidate><header class="dlg-h"><div><p class="eyebrow">${eyebrow}</p><h2>${esc(title)}</h2></div><button type="button" class="icon-btn" data-act="close" aria-label="${t('au_close')}">×</button></header>
   <div class="dlg-body">${body}<div id="f-err" class="form-err" hidden></div></div>
-  <footer class="dlg-f">${footerLeft}<span class="sp"></span><button type="button" class="btn ghost" data-act="close">Cancel</button><button class="btn primary" type="submit">Save</button></footer></form>`;
+  <footer class="dlg-f">${footerLeft}<span class="sp"></span><button type="button" class="btn ghost" data-act="close">${t('au_cancel')}</button><button class="btn primary" type="submit">${t('save')}</button></footer></form>`;
+  dlg.dataset.dirty='';
   if(!dlg.open) dlg.showModal();
 }
 function readForm(){const fd=new FormData($('#dlg-form')), o={}; for(const [k,v] of fd.entries()) if(!/^(pt|r)-/.test(k)) o[k]=typeof v==='string'?v.trim():v; return o;}
 function formErr(m){const el=$('#f-err'); el.textContent=m; el.hidden=!m; if(m) el.scrollIntoView({block:'nearest'}); return null;}
 const eqOptions=()=>IX.eqs.filter(e=>e.state!=='Reserved').map(e=>[e.id,`${e.code} · ${e.description||''}`]);
-const ptRow=p=>`<div class="pt-row"><input name="pt-range" value="${esc(p.range||'')}" placeholder="Working range" aria-label="Working range"><input name="pt-points" value="${esc(p.points||'')}" placeholder="Calibration points" aria-label="Calibration points"><input name="pt-tol" value="${esc(p.tolerance||'')}" placeholder="Tolerance, e.g. ±3ºC" aria-label="Tolerance"><input name="pt-detail" value="${esc(p.detail||'')}" placeholder="Detail (axis, channel…)" aria-label="Detail"><button type="button" class="icon-btn" data-act="pt-del" aria-label="Remove point">×</button></div>`;
+const ptRow=p=>`<div class="pt-row"><input name="pt-range" value="${esc(p.range||'')}" placeholder="${t('x_range')}" aria-label="${t('x_range')}"><input name="pt-points" value="${esc(p.points||'')}" placeholder="${t('x_points')}" aria-label="${t('x_points')}"><input name="pt-tol" value="${esc(p.tolerance||'')}" placeholder="${t('pt_tol_ph')}" aria-label="${t('x_tol')}"><input name="pt-detail" value="${esc(p.detail||'')}" placeholder="${t('pt_det_ph')}" aria-label="${t('pt_det')}"><button type="button" class="icon-btn" data-act="pt-del" aria-label="${t('pt_rm')}">×</button></div>`;
 function nextCode(){let n=0; IX.eqs.forEach(e=>{const m=/^FLE-(\d+)$/.exec(e.code||''); if(m) n=Math.max(n,+m[1]);}); return `FLE-${String(n+1).padStart(3,'0')}`;}
 
 function openEq(id){
   const isNew=!id, e=isNew?{code:nextCode(),group:'Auxiliary equipment',state:'In use',calMode:'Periodic',periodMonths:12,actionType:'External',location:'In situ',points:[{}],maint:{}}:clone(DATA.equipment[id]);
   if(!e) return;
-  dlg.dataset.kind='eq'; dlg.dataset.id=id||'';
+  dlg.dataset.kind='eq'; dlg.dataset.id=id||''; dlg._re=()=>openEq(id);
   const m=e.maint||{}, val=e.validation||{}, recs=isNew?[]:(IX.recs.get(id)||[]).slice().reverse(), evs=isNew?[]:(IX.evals.get(id)||[]), logs=isNew?[]:(IX.logs.get(id)||[]), iss=isNew?[]:IX.issues.get(id), info=isNew?null:IX.info.get(id);
-  const guide=isNew?`<div class="hint"><b>New equipment guide (F-IM-FM-001):</b><ol class="guide"><li>Assign the inventory code (next free: ${esc(nextCode())}).</li><li>Enter the complete information in the plan.</li><li>Set the calibration period and tolerances.</li><li>Enter the maintenance information and its period in the <a href="../mantenimiento/">Maintenance Plan</a> (Excel in SharePoint).</li><li>Upload the equipment documentation to SharePoint (certificates folder ${esc(S.cfg.certPath.replace('{code}','<code>').replace(/%20/g,' '))}).</li></ol></div>`:'';
-  const body=`${guide}${!isNew?`<div class="row">${pill(e,info)} ${info.due?`<span class="muted">Next: <b>${fmtML(info.due)}</b></span>`:''} <span class="sp"></span><a class="btn sm" href="${esc(certLink(e))}" target="_blank" rel="noopener">📁 Certificates folder</a></div>`:''}
-  <fieldset><legend>Identification</legend>
-    ${fld('f-code','Inventory code',inp('code',e.code,'text','autocomplete="off"'),'req')}
-    ${fld('f-group','Group',sel('group',e.group,GROUPS))}
-    ${fld('f-state','State',sel('state',e.state||'In use',STATES),'','Reserved = code kept without equipment.')}
-    ${fld('f-description','Description',inp('description',e.description),'req span2')}
-    ${fld('f-brand','Brand',inp('brand',e.brand))}${fld('f-model','Model',inp('model',e.model))}${fld('f-serial','Serial number',inp('serial',e.serial))}
+  const guide=isNew?`<div class="hint"><b>${t('ng_title')}</b><ol class="guide"><li>${t('ng_1',esc(nextCode()))}</li><li>${t('ng_2')}</li><li>${t('ng_3')}</li><li>${t('ng_4')}</li><li>${t('ng_5',esc(S.cfg.certPath.replace('{code}','<code>').replace(/%20/g,' ')))}</li></ol></div>`:'';
+  const body=`${guide}${!isNew?`<div class="row">${pill(e,info)} ${info.due?`<span class="muted">${t('e_next')}: <b>${fmtML(info.due)}</b></span>`:''} <span class="sp"></span><a class="btn sm" href="${esc(certLink(e))}" target="_blank" rel="noopener">📁 ${t('e_folder')}</a></div>`:''}
+  <fieldset><legend>${t('e_ident')}</legend>
+    ${fld('f-code',t('e_code'),inp('code',e.code,'text','autocomplete="off"'),'req')}
+    ${fld('f-group',t('f_group'),sel('group',e.group,GROUPS))}
+    ${fld('f-state',t('x_state'),sel('state',e.state||'In use',STATES),'',t('e_state_h'))}
+    ${fld('f-description',t('e_desc'),inp('description',e.description),'req span2')}
+    ${fld('f-brand',t('x_brand'),inp('brand',e.brand))}${fld('f-model',t('x_model'),inp('model',e.model))}${fld('f-serial',t('e_serial'),inp('serial',e.serial))}
   </fieldset>
-  <fieldset><legend>Calibration</legend>
-    ${fld('f-calMode','Type',sel('calMode',e.calMode,MODES),'','Expiry date: reference materials (pH and conductivity patterns).')}
-    ${fld('f-periodMonths','Period (months)',inp('periodMonths',e.periodMonths,'number','min="1" step="1" placeholder="12"'))}
-    ${fld('f-lastCal','Last calibration',inp('lastCal',e.lastCal,'month'))}
-    ${fld('f-nextOverride','Next calibration / expiry',inp('nextOverride',e.nextOverride,'month'),'','')}
-    ${fld('f-actionType','Action type',sel('actionType',e.actionType||'',[['','—'],'External','Internal']))}
-    ${fld('f-location','Action location',sel('location',e.location||'',[['','—'],'In situ','External']),'','In situ = the lab comes here.')}
-    ${fld('f-duration','Action duration',inp('duration',e.duration,'text','placeholder="3 days"'))}
-    ${fld('f-lab','Calibration lab',inp('lab',e.lab,'text','list="lab-list" autocomplete="off"'))}
-    ${fld('f-enac','ENAC accreditation',sel('enac',e.enac||'',[['','To define'],'Yes','No']))}
-    ${fld('f-price','Offer price (€)',inp('price',e.price,'number','min="0" step="0.01"'))}
+  <fieldset><legend>${t('e_cal')}</legend>
+    ${fld('f-calMode',t('e_type'),sel('calMode',e.calMode,MODES),'',t('e_type_h'))}
+    ${fld('f-periodMonths',t('e_per'),inp('periodMonths',e.periodMonths,'number','min="1" step="1" placeholder="12"'))}
+    ${fld('f-lastCal',t('e_last'),inp('lastCal',e.lastCal,'month'))}
+    ${fld('f-nextOverride',t('e_nextexp'),inp('nextOverride',e.nextOverride,'month'),'','')}
+    ${fld('f-actionType',t('x_atype'),sel('actionType',e.actionType||'',[['','—'],'External','Internal']))}
+    ${fld('f-location',t('x_aloc'),sel('location',e.location||'',[['','—'],'In situ','External']),'',t('e_loc_h'))}
+    ${fld('f-duration',t('x_adur'),inp('duration',e.duration,'text',`placeholder="${t('e_dur_ph')}"`))}
+    ${fld('f-lab',t('x_lab'),inp('lab',e.lab,'text','list="lab-list" autocomplete="off"'))}
+    ${fld('f-enac',t('x_enac'),sel('enac',e.enac||'',[['',t('tbd')],'Yes','No']))}
+    ${fld('f-price',t('e_price'),inp('price',e.price,'number','min="0" step="0.01"'))}
   </fieldset>
-  <fieldset class="pts"><legend>Ranges, calibration points and tolerances</legend>
-    <div class="pt-head"><span>Working range</span><span>Calibration points</span><span>Tolerance</span><span>Detail</span><span></span></div>
+  <fieldset class="pts"><legend>${t('e_pts')}</legend>
+    <div class="pt-head"><span>${t('x_range')}</span><span>${t('x_points')}</span><span>${t('x_tol')}</span><span>${t('pt_det')}</span><span></span></div>
     <div id="pt-list">${(e.points&&e.points.length?e.points:[{}]).map(ptRow).join('')}</div>
-    <button type="button" class="btn sm" data-act="pt-add">+ Add range / channel</button>
+    <button type="button" class="btn sm" data-act="pt-add">${t('e_addpt')}</button>
   </fieldset>
-  <fieldset><legend>Validation (test standards)</legend>
-    <div class="checks span2">${Object.entries(STANDARDS).map(([k,s])=>`<label class="check"><input type="checkbox" name="vstd" value="${esc(k)}" ${(val.standards||[]).includes(k)?'checked':''}> <span><b>${esc(k)}</b> · ${esc(s.title)} <span class="muted">(${Object.entries(s.tol).map(([q,t])=>`±${t} ${QU[q]}`).join(' · ')})</span></span></label>`).join('')}</div>
-    <p class="note span2">The validation sheet checks every calibrated point against the tightest tolerance of the ticked standards and lists the test conditions the calibration does not cover.</p>
-    ${fld('f-vRange','Validated range',inp('vRange',val.range,'text','placeholder="-40 to +80 ºC · 10 to 95 %RH"'))}
-    ${fld('f-vZone','Useful zone',inp('vZone',val.usefulZone,'text','placeholder="W × H × D mm"'))}
-    ${fld('f-vVolume','Volume',inp('vVolume',val.volume,'text','placeholder="litres"'))}
-    ${fld('f-vFeed','Feed-throughs',inp('vFeed',val.feedthroughs))}
-    ${isNew?'':`<div class="span2"><button type="button" class="btn sm" data-act="sheet" data-id="${esc(id)}">Open validation sheet</button></div>`}
+  <fieldset><legend>${t('e_val')}</legend>
+    <div class="checks span2">${Object.entries(STANDARDS).map(([k,s])=>`<label class="check"><input type="checkbox" name="vstd" value="${esc(k)}" ${(val.standards||[]).includes(k)?'checked':''}> <span><b>${esc(k)}</b> · ${esc(t(s.title))} <span class="muted">(${Object.entries(s.tol).map(([q,tv])=>`±${tv} ${qu(q)}`).join(' · ')})</span></span></label>`).join('')}</div>
+    <p class="note span2">${t('e_val_note')}</p>
+    ${fld('f-vRange',t('e_vrange'),inp('vRange',val.range,'text',`placeholder="${t('e_vrange_ph')}"`))}
+    ${fld('f-vZone',t('e_vzone'),inp('vZone',val.usefulZone,'text',`placeholder="${t('e_vzone_ph')}"`))}
+    ${fld('f-vVolume',t('e_vvol'),inp('vVolume',val.volume,'text',`placeholder="${t('e_vvol_ph')}"`))}
+    ${fld('f-vFeed',t('e_vfeed'),inp('vFeed',val.feedthroughs))}
+    ${isNew?'':`<div class="span2"><button type="button" class="btn sm" data-act="sheet" data-id="${esc(id)}">${t('e_opensheet')}</button></div>`}
   </fieldset>
-  <fieldset><legend>Documentation &amp; notes</legend>
-    ${fld('f-certUrl','Certificates link',inp('certUrl',e.certUrl,'url',`placeholder="${esc(certLink({...e,certUrl:''}))}"`),'span2','Leave empty to use the standard SharePoint folder for this code.')}
-    ${fld('f-notes','Notes',`<textarea id="f-notes" name="notes" rows="2">${esc(e.notes||'')}</textarea>`,'span2')}
+  <fieldset><legend>${t('e_doc')}</legend>
+    ${fld('f-certUrl',t('e_certurl'),inp('certUrl',e.certUrl,'url',`placeholder="${esc(certLink({...e,certUrl:''}))}"`),'span2',t('e_certurl_h'))}
+    ${fld('f-notes',t('e_notes'),`<textarea id="f-notes" name="notes" rows="2">${esc(e.notes||'')}</textarea>`,'span2')}
   </fieldset>
   ${isNew?'':`<div class="recs">
-    ${iss.length?`<section class="panel"><div class="panel-h"><h3>Data to review · ${iss.length}</h3></div><ul class="rev-list">${iss.map(it=>`<li><span class="iss ${it.sev==='warn'?'':'info'}">${it.sev==='warn'?'Warning':'To define'}</span><span>${esc(it.text)}</span>${it.type==='import'?`<button type="button" class="btn sm" data-act="note-done" data-id="${esc(id)}" data-n="${it.note}">Mark reviewed</button>`:'<span></span>'}</li>`).join('')}</ul></section>`:''}
-    <section class="panel"><div class="panel-h"><h3>Current certificates in SharePoint</h3><span class="muted">${(IX.certs.get(id)||[]).length?'copied from the Actuales folder':''}</span></div>
-      ${(IX.certs.get(id)||[]).length?(IX.certs.get(id)||[]).slice().reverse().map(ct=>certPanel(ct,id)).join(''):`<p class="note">No certificate copied from SharePoint yet. The certificates in the <a href="${esc(certLink(e))}" target="_blank" rel="noopener">Actuales folder</a> are copied on days 1 and 15 of each month.</p>`}</section>
-    <section class="panel"><div class="panel-h"><h3>Calibrations</h3><button type="button" class="btn sm" data-act="cal-plan" data-id="${esc(id)}">Plan calibration</button><button type="button" class="btn sm primary" data-act="cal-new" data-id="${esc(id)}">Register calibration</button></div>
-      ${recs.length?`<table class="tbl mini"><thead><tr><th>Month</th><th>Status</th><th>Lab</th><th>Closure</th><th class="num">Cost</th><th>Source</th></tr></thead><tbody>${recs.map(c=>`<tr class="click" data-act="cal-edit" data-id="${esc(c.id)}"><td>${fmtM(c.month)}</td><td>${esc(c.status)}</td><td>${esc(c.lab||'—')}</td><td>${c.status==='Done'?(isClosed(c)?'<span class="tick">Closed</span>':esc(missingClosure(c).join(', '))):''}</td><td class="num">${c.cost!==''&&c.cost!=null?money(c.cost):'—'}</td><td>${certA(IX.certByRec.get(c.id))}<span class="sub">${esc(c.source||'')}</span></td></tr>`).join('')}</tbody></table>`:'<p class="note">No calibrations recorded.</p>'}</section>
-    <section class="panel"><div class="panel-h"><h3>TU evaluations</h3><button type="button" class="btn sm" data-act="ev-new" data-id="${esc(id)}">+ Evaluation</button></div>
-      ${evs.length?`<table class="tbl mini"><thead><tr><th>Date</th><th class="num">Setpoint</th><th class="num">|e|+U</th><th class="num">TU</th><th>Result</th></tr></thead><tbody>${evs.map(v=>{const c=evalCalc(v); return `<tr class="click" data-act="ev-edit" data-id="${esc(v.id)}"><td>${fmtD(v.date)}</td><td class="num">${fmtNum(num(v.setpoint))} ${esc(v.unit||'')}</td><td class="num">${c.eu==null?'—':fmtNum(Math.round(c.eu*1000)/1000)}</td><td class="num">${fmtNum(c.tu)}</td><td>${c.res?`<span class="res ${c.res}">${c.res}</span>`:'—'}</td></tr>`}).join('')}</tbody></table>`:'<p class="note">No TU evaluations.</p>'}</section>
-    <p class="note">Source: ${esc(e.src||'manual')}${e.updated?` · last change ${new Date(e.updated).toLocaleString('en-GB')}`:''}</p></div>`}`;
+    ${iss.length?`<section class="panel"><div class="panel-h"><h3>${t('k_review')} · ${iss.length}</h3></div><ul class="rev-list">${iss.map(it=>`<li><span class="iss ${it.sev==='warn'?'':'info'}">${t(it.sev==='warn'?'rv_warn':'tbd')}</span><span>${esc(it.text)}</span>${it.type==='import'?`<button type="button" class="btn sm" data-act="note-done" data-id="${esc(id)}" data-n="${it.note}">${t('rv_mark')}</button>`:'<span></span>'}</li>`).join('')}</ul></section>`:''}
+    <section class="panel"><div class="panel-h"><h3>${t('e_sp')}</h3><span class="muted">${(IX.certs.get(id)||[]).length?t('e_sp_from'):''}</span></div>
+      ${(IX.certs.get(id)||[]).length?(IX.certs.get(id)||[]).slice().reverse().map(ct=>certPanel(ct,id)).join(''):`<p class="note">${t('e_sp_none',esc(certLink(e)))}</p>`}</section>
+    <section class="panel"><div class="panel-h"><h3>${t('tab_calibrations')}</h3><button type="button" class="btn sm" data-act="cal-plan" data-id="${esc(id)}">${t('e_plancal')}</button><button type="button" class="btn sm primary" data-act="cal-new" data-id="${esc(id)}">${t('e_regcal')}</button></div>
+      ${recs.length?`<table class="tbl mini"><thead><tr><th>${t('h_month')}</th><th>${t('f_status')}</th><th>${t('f_lab')}</th><th>${t('c_closure')}</th><th class="num">${t('h_cost')}</th><th>${t('h_source')}</th></tr></thead><tbody>${recs.map(c=>`<tr class="click" data-act="cal-edit" data-id="${esc(c.id)}"><td>${fmtM(c.month)}</td><td>${esc(dv(c.status))}</td><td>${esc(c.lab||'—')}</td><td>${c.status==='Done'?(isClosed(c)?`<span class="tick">${t('c_closed')}</span>`:esc(missingClosure(c).join(', '))):''}</td><td class="num">${c.cost!==''&&c.cost!=null?money(c.cost):'—'}</td><td>${certA(IX.certByRec.get(c.id))}<span class="sub">${esc(c.source||'')}</span></td></tr>`).join('')}</tbody></table>`:`<p class="note">${t('e_nocal')}</p>`}</section>
+    <section class="panel"><div class="panel-h"><h3>${t('e_evs')}</h3><button type="button" class="btn sm" data-act="ev-new" data-id="${esc(id)}">${t('e_addev')}</button></div>
+      ${evs.length?`<table class="tbl mini"><thead><tr><th>${t('h_date')}</th><th class="num">${t('h_setp')}</th><th class="num">|e|+U</th><th class="num">TU</th><th>${t('h_result')}</th></tr></thead><tbody>${evs.map(v=>{const c=evalCalc(v); return `<tr class="click" data-act="ev-edit" data-id="${esc(v.id)}"><td>${fmtD(v.date)}</td><td class="num">${fmtNum(num(v.setpoint))} ${esc(unitD(v.unit))}</td><td class="num">${c.eu==null?'—':fmtNum(Math.round(c.eu*1000)/1000)}</td><td class="num">${fmtNum(c.tu)}</td><td>${c.res?`<span class="res ${c.res}">${dv(c.res)}</span>`:'—'}</td></tr>`}).join('')}</tbody></table>`:`<p class="note">${t('e_noev')}</p>`}</section>
+    <p class="note">${t('h_source')}: ${esc(dv(e.src||'manual'))}${e.updated?` · ${t('e_lastchg')} ${new Date(e.updated).toLocaleString(LabLang.locale())}`:''}</p></div>`}`;
   const nRel=recs.length+evs.length+logs.length;
-  dlgShell(isNew?'New equipment':`${esc(e.group)}`,isNew?'New equipment':`${e.code} · ${e.description||''}`,body,isNew?'':`<button type="button" class="btn ghost danger" data-act="del">Delete${nRel?` (and ${nRel} records)`:''}</button>`);
+  dlgShell(isNew?t('e_new'):`${esc(dv(e.group))}`,isNew?t('e_new'):`${e.code} · ${e.description||''}`,body,isNew?'':`<button type="button" class="btn ghost danger" data-act="del">${t('e_del',nRel)}</button>`);
   eqHints();
 }
 function eqHints(){
   if(dlg.dataset.kind!=='eq') return;
   const mode=$('#f-calMode').value, per=$('#f-periodMonths'), last=$('#f-lastCal').value, calc=mode==='Periodic'?addM(last,+per.value):'', h=$('#f-nextOverride').closest('.field').querySelector('label');
   per.disabled=mode!=='Periodic'; $('#f-lastCal').disabled=!['Periodic','Expiry date'].includes(mode); $('#f-nextOverride').disabled=!['Periodic','Expiry date'].includes(mode);
-  h.textContent=mode==='Expiry date'?'Expiry date':'Next calibration (only if different)';
+  h.textContent=t(mode==='Expiry date'?'v_Expiry date':'e_nextonly');
   let help=$('#f-nextOverride-help'); if(!help){help=document.createElement('span'); help.className='help'; help.id='f-nextOverride-help'; $('#f-nextOverride').after(help);}
-  help.textContent=mode==='Periodic'?(calc?`Leave empty to use last + period = ${fmtM(calc)}.`:'Calculated from last calibration + period.'):mode==='Expiry date'?'Required: when the reference expires.':'Not used.';
+  help.textContent=mode==='Periodic'?(calc?t('e_h_calc',fmtM(calc)):t('e_h_auto')):t(mode==='Expiry date'?'e_h_exp':'e_h_none');
 }
 function saveEq(f){
   const id=dlg.dataset.id, code=String(f.code||'').toUpperCase(), prev=id?DATA.equipment[id]:null;
-  if(!code) return formErr('The inventory code is required.');
-  if(!f.description) return formErr('The description is required.');
+  if(!code) return formErr(t('er_code'));
+  if(!f.description) return formErr(t('er_desc'));
   const clash=IX.eqs.find(x=>x.id!==id&&norm(x.code)===norm(code));
-  if(clash&&(!prev||norm(prev.code)!==norm(code))) return formErr(`${code} is already used by ${clash.description}. Use another code (next free: ${nextCode()}).`);
+  if(clash&&(!prev||norm(prev.code)!==norm(code))) return formErr(t('er_clash',code,clash.description,nextCode()));
   const mode=f.calMode, per=num(f.periodMonths);
-  if(mode==='Periodic'&&f.state!=='Reserved'&&!(per>0)) return formErr('Enter the calibration period in months (12 = 1 year).');
-  if(mode==='Expiry date'&&!f.nextOverride) return formErr('Enter the expiry date.');
+  if(mode==='Periodic'&&f.state!=='Reserved'&&!(per>0)) return formErr(t('er_per'));
+  if(mode==='Expiry date'&&!f.nextOverride) return formErr(t('er_exp'));
   const calc=mode==='Periodic'?addM(f.lastCal,per):'';
   const points=[...dlg.querySelectorAll('.pt-row')].map(r=>({range:r.querySelector('[name=pt-range]').value.trim(),points:r.querySelector('[name=pt-points]').value.trim(),tolerance:r.querySelector('[name=pt-tol]').value.trim(),detail:r.querySelector('[name=pt-detail]').value.trim()})).filter(p=>p.range||p.points||p.tolerance||p.detail);
   const data={code,group:f.group,state:f.state,description:f.description,brand:f.brand||'',model:f.model||'',serial:f.serial||'',calMode:mode,
@@ -1261,9 +1262,9 @@ function saveEq(f){
     actionType:f.actionType||'',location:f.location||'',duration:f.duration||'',lab:f.lab||'',enac:f.enac||'',price:num(f.price)??'',points,
     maint:(prev&&prev.maint)||{},
     validation:{...((prev||{}).validation||{}),standards:[...dlg.querySelectorAll('[name=vstd]:checked')].map(i=>i.value),range:f.vRange||'',usefulZone:f.vZone||'',volume:f.vVolume||'',feedthroughs:f.vFeed||''},certUrl:f.certUrl||'',notes:f.notes||'',updated:nowIso()};
-  if(id) return save([{op:'update',col:'equipment',id,data}],`${code} saved.`);
+  if(id) return save([{op:'update',col:'equipment',id,data}],t('ts_saved',code));
   let nid='eq-'+slug(code); if(DATA.equipment[nid]) nid='eq-'+rid();
-  return save([{op:'set',col:'equipment',id:nid,data:{...data,src:'manual',importNotes:[],created:nowIso()}}],`${code} added.`);
+  return save([{op:'set',col:'equipment',id:nid,data:{...data,src:'manual',importNotes:[],created:nowIso()}}],t('ts_added',code));
 }
 
 function openCal(id,preset={}){
