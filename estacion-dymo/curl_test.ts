@@ -40,6 +40,7 @@ Deno.test("curl: la clave va por la entrada estándar, no en los argumentos; un 
   assertEquals([r.status, await r.text()], [409, '{"ok":true}']);
   assertEquals(args.join(" ").includes("k\""), false);
   assertStringIncludes(entrada, 'header = "x-estacion: k"');
+  assertEquals(entrada.split("\n")[0], "ssl-revoke-best-effort");
   const mal = fetchCurl(() => Promise.resolve({ ok: false, salida: "", error: "curl: (6) Could not resolve host" }));
   const e = await assertRejects(() => mal("https://x/"), TypeError);
   assertStringIncludes(String((e as Error).cause), "Could not resolve host");
@@ -55,4 +56,17 @@ Deno.test("fetchServidor: pasa a curl solo cuando falla el certificado, y se que
   assertEquals([base, alt, log.length], [1, 2, 1]);
   const g = fetchServidor(() => Promise.reject(new TypeError("fetch failed", { cause: new Error("dns error") })), () => Promise.resolve(new Response("x")), () => {});
   await assertRejects(() => g("https://x/"), TypeError);
+});
+
+Deno.test("curl: si no conoce ssl-revoke-best-effort (curl antiguo), repite con ssl-no-revoke y se queda con ella", async () => {
+  const entradas: string[] = [];
+  const f = fetchCurl((_p, _a, e) => {
+    entradas.push(e.split("\n")[0]);
+    return Promise.resolve(e.startsWith("ssl-revoke-best-effort")
+      ? { ok: false, salida: "", error: "curl: option ssl-revoke-best-effort: is unknown" }
+      : { ok: true, salida: "{}\n@@estado@@200", error: "" });
+  });
+  assertEquals((await f("https://x/")).status, 200);
+  await f("https://x/");
+  assertEquals(entradas, ["ssl-revoke-best-effort", "ssl-no-revoke", "ssl-no-revoke"]);
 });

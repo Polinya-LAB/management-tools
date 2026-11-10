@@ -12,7 +12,7 @@ import { Estacion } from "./estacion.ts";
 import { crearRegistro } from "./log.ts";
 import { prueba } from "./prueba.ts";
 
-export const VERSION = "1.0.2";
+export const VERSION = "1.0.3";
 const PUERTO_INSTANCIA = 41999;
 
 const AYUDA = `estacion-dymo ${VERSION}: imprime en la DYMO las etiquetas que se mandan desde Muestras.

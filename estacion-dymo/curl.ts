@@ -23,8 +23,15 @@ const comillas = (v: string) => `"${v.replace(/\\/g, "\\\\").replace(/"/g, '\\"'
 
 const MARCA = "\n@@estado@@";
 
+// Schannel comprueba la revocación del certificado; el de la inspección de tráfico (Netskope) apunta a una lista de
+// revocación que no se puede consultar desde la red (CRYPT_E_NO_REVOCATION_CHECK). "best-effort" la comprueba si puede
+// y no corta la conexión si el servicio no responde, como Chrome; el resto de la verificación no cambia. Los curl
+// anteriores a 7.70 no la conocen: entonces se usa ssl-no-revoke.
+const REVOCACION = ["ssl-revoke-best-effort", "ssl-no-revoke"];
+
 /** fetch mínimo (método, cabeceras, cuerpo de texto) sobre curl.exe. */
 export function fetchCurl(ejecutar: EjecutarEntrada = ejecutarConEntrada, programa = "curl.exe"): Fetch {
+  let rev = 0;
   return (async (input: string | URL | Request, init?: RequestInit) => {
     const url = String(input instanceof Request ? input.url : input);
     const cab = new Headers(init?.headers);
@@ -35,7 +42,12 @@ export function fetchCurl(ejecutar: EjecutarEntrada = ejecutarConEntrada, progra
       `write-out = ${comillas(MARCA + "%{http_code}")}`,
     ];
     if (init?.body !== undefined && init.body !== null) lineas.push(`data-binary = ${comillas(String(init.body))}`);
-    const r = await ejecutar(programa, ["--silent", "--show-error", "--max-time", "60", "--config", "-"], lineas.join("\n") + "\n");
+    const llamar = () => ejecutar(programa, ["--silent", "--show-error", "--max-time", "60", "--config", "-"], [REVOCACION[rev], ...lineas].join("\n") + "\n");
+    let r = await llamar();
+    if (!r.ok && rev === 0 && /ssl-revoke-best-effort/i.test(r.error)) {
+      rev = 1; // curl antiguo: no conoce la opción
+      r = await llamar();
+    }
     const i = r.salida.lastIndexOf(MARCA);
     const status = i >= 0 ? Number(r.salida.slice(i + MARCA.length).trim()) : 0;
     if (!r.ok || !status) throw new TypeError("fetch failed", { cause: new Error(`curl: ${(r.error || r.salida).trim().slice(0, 300)}`) });
