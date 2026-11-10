@@ -1221,10 +1221,10 @@ es:{
   linked:'Ensayos enlazados', printLot:'Imprimir etiquetas',
   log_recv:n=>`Recibida (${n} ud${n===1?'':'s'}.)`, log_state:(c,a,b)=>`${c}: ${a} → ${b}`, log_add:c=>`${c} añadida`, log_rm:c=>`${c} retirada`, log_back:c=>`${c} recuperada`, log_edit:'Datos de la recepción editados', log_print:n=>`${n} etiqueta${n===1?'':'s'} impresa${n===1?'':'s'}`,
   lb_eyebrow:'Etiquetas · DYMO LabelWriter 550', lb_title:n=>`Imprimir ${n} etiqueta${n===1?'':'s'}`, lb_units:'Unidades', lb_all:'Todas', lb_noneSel:'Ninguna',
-  lb_size:'Etiqueta', lb_code:'Código', qr:'QR (abre los ensayos del PLR en Control de ensayos)', bar:'Código de barras (Code 128)', noCode:'Sin código',
+  lb_size:'Etiqueta', lb_rot:'Giro al imprimir', lb_rot90:'90° a la derecha', lb_rot270:'90° a la izquierda', lb_rot0:'Sin giro (horizontal)', lb_rot180:'180°', lb_code:'Código', qr:'QR (abre los ensayos del PLR en Control de ensayos)', bar:'Código de barras (Code 128)', noCode:'Sin código',
   lb_show:'Contenido', lb_plr:'PLR · QTP', lb_desc:'Descripción', lb_proj:'Proyecto', lb_phase:'Fase del proyecto', lb_date:'Fecha de recepción',
   lb_preview:'Vista previa a tamaño real',
-  lb_how:'<b>En el cuadro de impresión:</b> impresora <b>DYMO LabelWriter 550</b>, tamaño de papel el de la etiqueta (p. ej. <i>11354 Multi-Purpose</i>), orientación <b>vertical</b>, márgenes <b>ninguno</b>, escala <b>100 %</b> y sin encabezados ni pies de página. Sale una etiqueta por página.',
+  lb_how:'<b>En el cuadro de impresión:</b> impresora <b>DYMO LabelWriter 550</b>, tamaño de papel el de la etiqueta (p. ej. <i>11354 Multi-Purpose</i>), orientación <b>vertical</b> (u <b>horizontal</b> si eliges giro 0° o 180°), márgenes <b>ninguno</b>, escala <b>100 %</b> y sin encabezados ni pies de página. Sale una etiqueta por página.',
   lb_print:'Imprimir', lb_done:n=>`${n} etiqueta${n===1?'':'s'} enviada${n===1?'':'s'} a la impresora.`, lb_empty:'Marca al menos una unidad.', lb_noLib:'No se ha podido cargar la librería del código. Revisa la conexión.',
   prop_h:n=>`Códigos por validar · ${n} PLR`, prop_help:'PLR activos con piezas pedidas en ARAS que aún no tienen código. Revisa la propuesta y valida: los números QTS se asignan al validar y las unidades quedan pendientes de recibir.',
   prop_all:'Validar todos', prop_ok:'Validar', prop_okPrint:'Validar e imprimir etiquetas', prop_skip:'Descartar',
@@ -1297,10 +1297,10 @@ en:{
   linked:'Linked tests', printLot:'Print labels',
   log_recv:n=>`Received (${n} unit${n===1?'':'s'})`, log_state:(c,a,b)=>`${c}: ${a} → ${b}`, log_add:c=>`${c} added`, log_rm:c=>`${c} withdrawn`, log_back:c=>`${c} restored`, log_edit:'Reception details edited', log_print:n=>`${n} label${n===1?'':'s'} printed`,
   lb_eyebrow:'Labels · DYMO LabelWriter 550', lb_title:n=>`Print ${n} label${n===1?'':'s'}`, lb_units:'Units', lb_all:'All', lb_noneSel:'None',
-  lb_size:'Label', lb_code:'Code', qr:'QR (opens the PLR tests in Control de ensayos)', bar:'Barcode (Code 128)', noCode:'No code',
+  lb_size:'Label', lb_rot:'Print rotation', lb_rot90:'90° clockwise', lb_rot270:'90° counter-clockwise', lb_rot0:'No rotation (landscape)', lb_rot180:'180°', lb_code:'Code', qr:'QR (opens the PLR tests in Control de ensayos)', bar:'Barcode (Code 128)', noCode:'No code',
   lb_show:'Content', lb_plr:'PLR · QTP', lb_desc:'Description', lb_proj:'Project', lb_phase:'Project phase', lb_date:'Reception date',
   lb_preview:'Preview at real size',
-  lb_how:'<b>In the print dialog:</b> printer <b>DYMO LabelWriter 550</b>, paper size of the label (e.g. <i>11354 Multi-Purpose</i>), orientation <b>portrait</b>, margins <b>none</b>, scale <b>100%</b> and no headers or footers. One label per page.',
+  lb_how:'<b>In the print dialog:</b> printer <b>DYMO LabelWriter 550</b>, paper size of the label (e.g. <i>11354 Multi-Purpose</i>), orientation <b>portrait</b> (or <b>landscape</b> with a 0° or 180° turn), margins <b>none</b>, scale <b>100%</b> and no headers or footers. One label per page.',
   lb_print:'Print', lb_done:n=>`${n} label${n===1?'':'s'} sent to the printer.`, lb_empty:'Tick at least one unit.', lb_noLib:'Could not load the code library. Check the connection.',
   prop_h:n=>`Codes to validate · ${n} PLR${n===1?'':'s'}`, prop_help:'Active PLRs with pieces requested in ARAS that have no code yet. Check the proposal and validate: the QTS numbers are assigned when you validate, and the units wait to be received.',
   prop_all:'Validate all', prop_ok:'Validate', prop_okPrint:'Validate and print labels', prop_skip:'Dismiss',
@@ -1714,7 +1714,7 @@ async function smpSetStates(keys,state){
 
 /* ---------- Labels (DYMO LabelWriter 550) ----------
    The browser prints them with @page set to the label size, one label per page: nothing to install. */
-const smpLblCfg=()=>{let c={}; try{c=JSON.parse(localStorage.getItem('tl.lbl')||'{}')||{};}catch(e){} return {size:'99012',code:'qr',plr:true,desc:true,proj:true,phase:true,date:true,...c};};
+const smpLblCfg=()=>{let c={}; try{c=JSON.parse(localStorage.getItem('tl.lbl')||'{}')||{};}catch(e){} return {size:'99012',code:'qr',rot:'90',plr:true,desc:true,proj:true,phase:true,date:true,...c};};
 function smpQr(text){
   if(typeof qrcode!=='function') return `<div class="noqr">QR</div>`;
   const q=qrcode(0,'L'); q.addData(text); q.make(); const n=q.getModuleCount(); let p='';
@@ -1758,6 +1758,7 @@ function smpLbSide(){
       <div class="lb-list">${S.smp.lb.keys.map(k=>{const {l,u}=smpByKey(k); return `<label><input type="checkbox" data-lbk="${esc(k)}" ${S.smp.lb.checked.has(k)?'checked':''}> ${esc(smpCode(l,u))}${u.printed?' ✓':''}</label>`;}).join('')}</div></div>
     ${fld('smp-lb-size',esc(tx('lb_size')),`<select id="smp-lb-size">${Object.entries(SMP_LABELS).map(([k,v])=>`<option value="${k}" ${c.size===k?'selected':''}>${esc(v.n)}</option>`).join('')}</select>`)}
     <div class="field"><span class="lbl">${esc(tx('lb_code'))}</span><div class="checks" style="flex-direction:column;align-items:flex-start">${[['qr',tx('qr')],['bar',tx('bar')],['none',tx('noCode')]].map(([v,lab])=>`<label><input type="radio" name="smp-lb-code" value="${v}" ${c.code===v?'checked':''}> ${esc(lab)}</label>`).join('')}</div></div>
+    ${fld('smp-lb-rot',esc(tx('lb_rot')),`<select id="smp-lb-rot">${['90','270','0','180'].map(v=>`<option value="${v}" ${c.rot===v?'selected':''}>${esc(tx('lb_rot'+v))}</option>`).join('')}</select>`)}
     <div class="field"><span class="lbl">${esc(tx('lb_show'))}</span><div class="checks" style="flex-direction:column;align-items:flex-start">${ck('plr',tx('lb_plr'))}${ck('desc',tx('lb_desc'))}${ck('proj',tx('lb_proj'))}${ck('phase',tx('lb_phase'))}${ck('date',tx('lb_date'))}</div></div>`;
 }
 function smpLbPreview(){
@@ -1772,9 +1773,13 @@ function smpPrint(){
   const c=smpLblCfg(), keys=S.smp.lb.keys.filter(k=>S.smp.lb.checked.has(k)); if(!keys.length) return toast(tx('lb_empty'));
   if((c.code==='qr'&&typeof qrcode!=='function')||(c.code==='bar'&&typeof JsBarcode!=='function')) toast(tx('lb_noLib'));
   const sz=SMP_LABELS[c.size]||SMP_LABELS['99012'];
-  /* One page per label, short side across the print head, with the label turned 90° to fill it. */
-  $('#smp-page-size').textContent=`@page{size:${sz.h}mm ${sz.w}mm;margin:0}`;
-  const area=$('#smp-print'); area.innerHTML=keys.map(k=>`<div class="pg" style="width:${sz.h}mm;height:${sz.w}mm"><div class="rot" style="width:${sz.w}mm;height:${sz.h}mm;transform:translateX(${sz.h}mm) rotate(90deg)">${smpLabel(k,c)}</div></div>`).join(''); smpBarcodes(area);
+  /* One page per label. Printer drivers differ in how they feed the label, so the turn is chosen in the dialog:
+     90/270 print on a portrait page (short side across the head), 0/180 on a landscape page. */
+  const rot=['90','270','0','180'].includes(c.rot)?c.rot:'90', tall=rot==='90'||rot==='270';
+  const pw=tall?sz.h:sz.w, ph=tall?sz.w:sz.h;
+  const tf={'90':`translateX(${sz.h}mm) rotate(90deg)`,'270':`translateY(${sz.w}mm) rotate(-90deg)`,'0':'none','180':`translate(${sz.w}mm,${sz.h}mm) rotate(180deg)`}[rot];
+  $('#smp-page-size').textContent=`@page{size:${pw}mm ${ph}mm;margin:0}`;
+  const area=$('#smp-print'); area.innerHTML=keys.map(k=>`<div class="pg" style="width:${pw}mm;height:${ph}mm"><div class="rot" style="width:${sz.w}mm;height:${sz.h}mm;transform:${tf}">${smpLabel(k,c)}</div></div>`).join(''); smpBarcodes(area);
   dlg.close();
   setTimeout(()=>{
     window.print(); area.innerHTML='';
@@ -1852,6 +1857,7 @@ document.addEventListener('change',ev=>{
   else if(el.dataset.pq){const [p,k]=el.dataset.pq.split('|'), st=V.prop[p]=V.prop[p]||{}; st.qty={...(st.qty||{}),[k]:Math.max(0,Math.min(200,parseInt(el.value)||0))}; smpPropRerender();}
   else if(el.id==='smp-lb-size') smpLbSet('size',el.value);
   else if(el.name==='smp-lb-code') smpLbSet('code',el.value);
+  else if(el.id==='smp-lb-rot') smpLbSet('rot',el.value);
 });
 /* A barcode or QR scanner types the code and Enter in the search box: open that sample at once. */
 document.addEventListener('keydown',ev=>{
