@@ -262,11 +262,20 @@ async function entrar(page, email, nombre, es = false) {
       // Impresora del laboratorio: la cola (función impresion real) y la estación simulada en lab.impresion.
       const { ctx, page, lab, errores } = await abrir(browser, MUESTRAS, { idioma: 'es' });
       const imp = lab.impresion;
-      Object.assign(imp.est, { token_hash: 'x', visto: new Date().toISOString(), estado: { dymo: true, conectada: true, impresora: 'DYMO LabelWriter 550' } });
       await entrar(page, 'marta.m@fluidra.com', 'Marta Muestras', true);
       await page.click('#tabs [data-view="samples"]');
       await page.click('[data-sa="prop-ok"][data-plr="PLR900004"]');
       await waitFor(() => lab.puts.length === 1);
+      await check('Sin estación configurada: el cuadro de etiquetas sigue como siempre (imprimir aquí, con giro)', async () => {
+        await page.click('[data-sa="labels-pending"]');
+        await page.waitForSelector('#smp-lb-rot');
+        await new Promise((r) => setTimeout(r, 800));
+        assert.equal(await page.locator('input[name="smp-lb-dest"]').count(), 0);
+        assert.match(await page.textContent('[data-sa="do-print"]'), /Imprimir/);
+        await page.click('#dlg [data-act="close"]');
+      });
+      Object.assign(imp.est, { token_hash: 'x', visto: new Date().toISOString(), estado: { dymo: true, conectada: true, impresora: 'DYMO LabelWriter 550' } });
+      await page.evaluate(() => impLoad());
       await check('Impresora del laboratorio: por defecto; estado conectada; envía un PNG de 1 bit por unidad sin marcarlas aún', async () => {
         await page.click('[data-sa="labels-pending"]');
         await page.waitForSelector('input[name="smp-lb-dest"][value="lab"]:checked');

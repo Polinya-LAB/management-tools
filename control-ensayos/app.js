@@ -2172,12 +2172,12 @@ function smpOpenLabels(keys){
   dlg.innerHTML=smpShell(tx('lb_eyebrow'),tx('lb_title',keys.length),`<div class="lb-grid"><div class="lb-side" id="smp-lb-side"></div><div><p class="eyebrow" style="margin-bottom:6px">${esc(tx('lb_preview'))}</p><div class="lb-prev" id="smp-lb-prev"></div><p class="note lb-how" style="margin-top:10px">${tx('lb_how')}</p></div></div>`,
     `<span class="sp"></span><button type="button" class="btn ghost" data-act="close">${esc(tx('close'))}</button><button type="button" class="btn primary" data-sa="do-print">🖨 ${esc(tx('lb_print'))}</button>`);
   if(!dlg.open) dlg.showModal(); smpLbSide(); smpLbPreview();
-  if(impDest(smpLblCfg())==='lab'){impLoad(); impPoll();}
+  if(impOn()){impLoad(); if(impDest(smpLblCfg())==='lab') impPoll();}
 }
 function smpLbSide(){
   const c=smpLblCfg(), ck=(k,lab)=>`<label><input type="checkbox" data-lbc="${k}" ${c[k]?'checked':''}> ${esc(lab)}</label>`;
   const lab=impDest(c)==='lab', E=IMP.est;
-  const dest=impOn()?`<div class="field"><span class="lbl">${esc(tx('imp_dest'))}</span><div class="checks" style="flex-direction:column;align-items:flex-start">
+  const dest=impAvail()?`<div class="field"><span class="lbl">${esc(tx('imp_dest'))}</span><div class="checks" style="flex-direction:column;align-items:flex-start">
       <label><input type="radio" name="smp-lb-dest" value="lab" ${lab?'checked':''}> ${esc(tx('imp_lab'))}</label>
       <label><input type="radio" name="smp-lb-dest" value="here" ${lab?'':'checked'}> ${esc(tx('imp_here'))}</label></div>
       ${lab?`<div id="imp-status" class="imp-status">${impStatusHtml()}</div>`:''}</div>`:'';
@@ -2242,7 +2242,10 @@ function smpMarkPrinted(keys){
 const IMP={est:null,trab:[],impresos:[],loaded:false,busy:false,timer:0,css:null,prev:0,ids:null};
 const IMP_APL='tl.imp.apl';
 const impOn=()=>APP==='samples'&&!!LA&&typeof LA.apiImpresion==='function'&&byMail()&&canWrite()&&!S.ro;
-const impDest=c=>impOn()&&c.dest!=='here'?'lab':'here';
+/* The lab printer is offered once the queue answers and the station has a key; until then (or if the queue is not
+   there) the dialog stays as before, printing here. */
+const impAvail=()=>impOn()&&!!IMP.est&&IMP.est.configurada;
+const impDest=c=>impAvail()&&c.dest!=='here'?'lab':'here';
 async function impFetch(path,opt={}){
   const h=await LA.cabeceras(), init={method:opt.method||'GET',headers:h};
   if(opt.body!==undefined){h['Content-Type']='application/json'; init.body=JSON.stringify(opt.body);}
@@ -2259,10 +2262,12 @@ const impErr=e=>{
 const impErrTxt=m=>m==='interrupted'?tx('imp_int'):m==='print_error'?tx('imp_perr'):m;
 /* Reads the station and the person's recent jobs; jobs the station confirmed mark their units printed (once). */
 async function impLoad(){
-  if(!impOn()) return;
-  try{const j=await impFetch('/estado'); IMP.est=j.estacion; IMP.trab=j.trabajos||[]; IMP.impresos=j.impresos||[]; IMP.loaded=true;}
-  catch(e){IMP.loaded=true; IMP.err=impErr(e); impPaint(); return;}
-  IMP.err=''; await impApply(); impPaint();
+  if(!impOn()) return; const antes=impAvail();
+  try{const j=await impFetch('/estado'); IMP.est=j.estacion; IMP.trab=j.trabajos||[]; IMP.impresos=j.impresos||[]; IMP.loaded=true; IMP.err='';}
+  catch(e){IMP.loaded=true; if(e.status===404) IMP.est=null; IMP.err=e.status===404?'':impErr(e);}
+  if(antes!==impAvail()&&dlg.open&&dlg.dataset.kind==='smp-lb'){smpLbSide(); smpLbPreview(); if(impAvail()) impPoll();}
+  if(!IMP.err&&IMP.est) await impApply();
+  impPaint();
 }
 async function impApply(){
   let apl=[]; try{apl=JSON.parse(localStorage.getItem(IMP_APL)||'[]')||[];}catch(e){}
