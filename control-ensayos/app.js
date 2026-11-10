@@ -1153,13 +1153,15 @@ const SMP=['expected','received','waiting','testing','tested','stored','returned
 const SMP_CLS={expected:'exp',received:'plan',waiting:'cola',testing:'curso',tested:'inf',stored:'cerr',returned:'endu',scrapped:'canc'};
 const SMP_DEFAULT=['expected','received','waiting','testing','tested','stored'];
 const SMP_PHASES=['Feasibility','MSL','ESL','Pilot','Production','N/A'];
-/* Sizes in mm per label: qr = side of the QR; id, l2 (PLR · QTP), ds (description) and ft (footer) = font sizes.
-   The QR stays readable (about 0.4 mm per module at 17 mm) and leaves at least 30 mm of width for the text. */
+/* Labels are designed lying down (w = long side, h = short side). The LabelWriter feeds them short side first, so the
+   printed page is h wide and w long and the label is turned 90° on it (see smpPrint).
+   Sizes in mm: qr = side of the QR (about 0.35 mm per module at 14 mm with error correction L); id, l2 (PLR · QTP),
+   ds (description) and ft (footer) = font sizes. */
 const SMP_LABELS={
-  '99012':{w:89,h:36,n:'99012 Large Address · 89 × 36 mm',qr:28,id:5.6,l2:3.2,ds:3.6,ft:2.9},
-  '99010':{w:89,h:28,n:'99010 Standard Address · 89 × 28 mm',qr:22,id:5,l2:2.9,ds:3.2,ft:2.6},
-  '11354':{w:57,h:32,n:'11354 Multi-purpose · 57 × 32 mm',qr:19,id:4.2,l2:2.3,ds:3,ft:2.4},
-  '11352':{w:54,h:25,n:'11352 Return Address · 54 × 25 mm',qr:17,id:3.9,l2:2.2,ds:2.7,ft:2.2}};
+  '99012':{w:89,h:36,n:'99012 Large Address · 36 × 89 mm',qr:22,id:6.4,l2:3.6,ds:4,ft:3.2},
+  '99010':{w:89,h:28,n:'99010 Standard Address · 28 × 89 mm',qr:18,id:5.6,l2:3.2,ds:3.4,ft:2.8},
+  '11354':{w:57,h:32,n:'11354 Multi-purpose · 32 × 57 mm',qr:15,id:4.8,l2:2.6,ds:3.3,ft:2.6},
+  '11352':{w:54,h:25,n:'11352 Return Address · 25 × 54 mm',qr:14,id:4.5,l2:2.5,ds:3,ft:2.4}};
 const SMP_CODE_RE=/QTS-\d{5}(?:-\d+)?/i;
 const SMP_I18N={
 es:{
@@ -1222,7 +1224,7 @@ es:{
   lb_size:'Etiqueta', lb_code:'Código', qr:'QR (abre los ensayos del PLR en Control de ensayos)', bar:'Código de barras (Code 128)', noCode:'Sin código',
   lb_show:'Contenido', lb_plr:'PLR · QTP', lb_desc:'Descripción', lb_proj:'Proyecto', lb_phase:'Fase del proyecto', lb_date:'Fecha de recepción',
   lb_preview:'Vista previa a tamaño real',
-  lb_how:'<b>En el cuadro de impresión:</b> impresora <b>DYMO LabelWriter 550</b>, tamaño de papel el de la etiqueta (p. ej. <i>99012 Large Address</i>), márgenes <b>ninguno</b>, escala <b>100 %</b> y sin encabezados ni pies de página. Sale una etiqueta por página.',
+  lb_how:'<b>En el cuadro de impresión:</b> impresora <b>DYMO LabelWriter 550</b>, tamaño de papel el de la etiqueta (p. ej. <i>11354 Multi-Purpose</i>), orientación <b>vertical</b>, márgenes <b>ninguno</b>, escala <b>100 %</b> y sin encabezados ni pies de página. Sale una etiqueta por página.',
   lb_print:'Imprimir', lb_done:n=>`${n} etiqueta${n===1?'':'s'} enviada${n===1?'':'s'} a la impresora.`, lb_empty:'Marca al menos una unidad.', lb_noLib:'No se ha podido cargar la librería del código. Revisa la conexión.',
   prop_h:n=>`Códigos por validar · ${n} PLR`, prop_help:'PLR activos con piezas pedidas en ARAS que aún no tienen código. Revisa la propuesta y valida: los números QTS se asignan al validar y las unidades quedan pendientes de recibir.',
   prop_all:'Validar todos', prop_ok:'Validar', prop_okPrint:'Validar e imprimir etiquetas', prop_skip:'Descartar',
@@ -1298,7 +1300,7 @@ en:{
   lb_size:'Label', lb_code:'Code', qr:'QR (opens the PLR tests in Control de ensayos)', bar:'Barcode (Code 128)', noCode:'No code',
   lb_show:'Content', lb_plr:'PLR · QTP', lb_desc:'Description', lb_proj:'Project', lb_phase:'Project phase', lb_date:'Reception date',
   lb_preview:'Preview at real size',
-  lb_how:'<b>In the print dialog:</b> printer <b>DYMO LabelWriter 550</b>, paper size of the label (e.g. <i>99012 Large Address</i>), margins <b>none</b>, scale <b>100%</b> and no headers or footers. One label per page.',
+  lb_how:'<b>In the print dialog:</b> printer <b>DYMO LabelWriter 550</b>, paper size of the label (e.g. <i>11354 Multi-Purpose</i>), orientation <b>portrait</b>, margins <b>none</b>, scale <b>100%</b> and no headers or footers. One label per page.',
   lb_print:'Print', lb_done:n=>`${n} label${n===1?'':'s'} sent to the printer.`, lb_empty:'Tick at least one unit.', lb_noLib:'Could not load the code library. Check the connection.',
   prop_h:n=>`Codes to validate · ${n} PLR${n===1?'':'s'}`, prop_help:'Active PLRs with pieces requested in ARAS that have no code yet. Check the proposal and validate: the QTS numbers are assigned when you validate, and the units wait to be received.',
   prop_all:'Validate all', prop_ok:'Validate', prop_okPrint:'Validate and print labels', prop_skip:'Dismiss',
@@ -1715,7 +1717,7 @@ async function smpSetStates(keys,state){
 const smpLblCfg=()=>{let c={}; try{c=JSON.parse(localStorage.getItem('tl.lbl')||'{}')||{};}catch(e){} return {size:'99012',code:'qr',plr:true,desc:true,proj:true,phase:true,date:true,...c};};
 function smpQr(text){
   if(typeof qrcode!=='function') return `<div class="noqr">QR</div>`;
-  const q=qrcode(0,'M'); q.addData(text); q.make(); const n=q.getModuleCount(); let p='';
+  const q=qrcode(0,'L'); q.addData(text); q.make(); const n=q.getModuleCount(); let p='';
   for(let r=0;r<n;r++) for(let c=0;c<n;c++) if(q.isDark(r,c)) p+=`M${c} ${r}h1v1h-1z`;
   return `<svg viewBox="-1 -1 ${n+2} ${n+2}" shape-rendering="crispEdges" role="img" aria-label="QR"><rect x="-1" y="-1" width="${n+2}" height="${n+2}" fill="#fff"/><path d="${p}" fill="#000"/></svg>`;
 }
@@ -1770,8 +1772,9 @@ function smpPrint(){
   const c=smpLblCfg(), keys=S.smp.lb.keys.filter(k=>S.smp.lb.checked.has(k)); if(!keys.length) return toast(tx('lb_empty'));
   if((c.code==='qr'&&typeof qrcode!=='function')||(c.code==='bar'&&typeof JsBarcode!=='function')) toast(tx('lb_noLib'));
   const sz=SMP_LABELS[c.size]||SMP_LABELS['99012'];
-  $('#smp-page-size').textContent=`@page{size:${sz.w}mm ${sz.h}mm;margin:0}`;
-  const area=$('#smp-print'); area.innerHTML=keys.map(k=>smpLabel(k,c)).join(''); smpBarcodes(area);
+  /* One page per label, short side across the print head, with the label turned 90° to fill it. */
+  $('#smp-page-size').textContent=`@page{size:${sz.h}mm ${sz.w}mm;margin:0}`;
+  const area=$('#smp-print'); area.innerHTML=keys.map(k=>`<div class="pg" style="width:${sz.h}mm;height:${sz.w}mm"><div class="rot" style="width:${sz.w}mm;height:${sz.h}mm;transform:translateX(${sz.h}mm) rotate(90deg)">${smpLabel(k,c)}</div></div>`).join(''); smpBarcodes(area);
   dlg.close();
   setTimeout(()=>{
     window.print(); area.innerHTML='';

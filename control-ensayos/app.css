@@ -421,8 +421,10 @@ details summary{cursor:pointer;font-weight:600;font-size:14px}
   html,body{background:#fff!important;margin:0!important;padding:0!important}
   body>*:not(#smp-print){display:none!important}
   #smp-print{display:block}
-  #smp-print .dlbl{border-radius:0;box-shadow:none;break-after:page;page-break-after:always}
-  #smp-print .dlbl:last-child{break-after:auto;page-break-after:auto}
+  #smp-print .pg{position:relative;overflow:hidden;break-after:page;page-break-after:always}
+  #smp-print .pg:last-child{break-after:auto;page-break-after:auto}
+  #smp-print .rot{position:absolute;top:0;left:0;transform-origin:top left}
+  #smp-print .dlbl{border-radius:0;box-shadow:none}
 }
 
 /* Codes to validate (proposals from the ARAS requests) */
