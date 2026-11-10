@@ -28,13 +28,13 @@ jobs:
           deno-version: "2.9.6"
 
       - name: Pruebas
-        run: deno test estacion-dymo/
+        run: deno test --allow-run=curl --allow-net=127.0.0.1 estacion-dymo/
 
       - name: Compilar para Windows
         run: |
           mkdir -p dist
           deno compile --target x86_64-pc-windows-msvc --no-terminal --output dist/estacion-dymo.exe \
-            '--allow-net=127.0.0.1,localhost,*.supabase.co' --allow-read --allow-write --allow-env=ESTACION_DYMO_DIR --allow-run=powershell.exe \
+            '--allow-net=127.0.0.1,localhost,*.supabase.co' --allow-read --allow-write --allow-env=ESTACION_DYMO_DIR --allow-run=powershell.exe,curl.exe \
             --unsafely-ignore-certificate-errors=127.0.0.1,localhost \
             estacion-dymo/main.ts
 

@@ -226,6 +226,6 @@ export function mensaje(e: unknown): string {
   if (e.name === "TimeoutError") return "no responde (tiempo agotado)";
   // fetch solo dice "fetch failed": el motivo real va en la causa.
   const causa = e.cause instanceof Error ? e.cause.message : typeof e.cause === "string" ? e.cause : "";
-  if (/UnknownIssuer|certificate/i.test(causa)) return `certificado no reconocido (${causa.slice(0, 160)}): revisa certificados.pem junto al exe`;
+  if (/UnknownIssuer|certificate/i.test(causa)) return `certificado no reconocido (${causa.slice(0, 400)})`;
   return causa && !e.message.includes(causa) ? `${e.message}: ${causa.slice(0, 200)}` : e.message;
 }
