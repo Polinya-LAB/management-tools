@@ -1778,8 +1778,10 @@ function smpPrint(){
   const rot=['90','270','0','180'].includes(c.rot)?c.rot:'90', tall=rot==='90'||rot==='270';
   const pw=tall?sz.h:sz.w, ph=tall?sz.w:sz.h;
   const tf={'90':`translateX(${sz.h}mm) rotate(90deg)`,'270':`translateY(${sz.w}mm) rotate(-90deg)`,'0':'none','180':`translate(${sz.w}mm,${sz.h}mm) rotate(180deg)`}[rot];
+  /* The real DYMO stock is a fraction of a mm off the nominal size (11354 is 31.75 × 57.15 mm), so each label box is
+     kept 0.8 mm under the page: a box even slightly taller than the paper spills onto a second, blank label. */
   $('#smp-page-size').textContent=`@page{size:${pw}mm ${ph}mm;margin:0}`;
-  const area=$('#smp-print'); area.innerHTML=keys.map(k=>`<div class="pg" style="width:${pw}mm;height:${ph}mm"><div class="rot" style="width:${sz.w}mm;height:${sz.h}mm;transform:${tf}">${smpLabel(k,c)}</div></div>`).join(''); smpBarcodes(area);
+  const area=$('#smp-print'); area.innerHTML=keys.map(k=>`<div class="pg" style="width:${pw-.8}mm;height:${ph-.8}mm"><div class="rot" style="width:${sz.w}mm;height:${sz.h}mm;transform:${tf}">${smpLabel(k,c)}</div></div>`).join(''); smpBarcodes(area);
   dlg.close();
   setTimeout(()=>{
     window.print(); area.innerHTML='';
