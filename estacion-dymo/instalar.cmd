@@ -20,7 +20,16 @@ goto :sinjson
 :copiar
 echo Cerrando la estación si estaba en marcha...
 taskkill /im estacion-dymo.exe /f >nul 2>&1
-timeout /t 2 /nobreak >nul
+rem Espera hasta 10 s a que se cierre del todo: Windows no deja sustituir un programa en marcha.
+set /a ESPERA=0
+:esperar
+tasklist /fi "imagename eq estacion-dymo.exe" 2>nul | find /i "estacion-dymo.exe" >nul
+if errorlevel 1 goto :cerrada
+set /a ESPERA+=1
+if %ESPERA% geq 10 goto :sigue
+timeout /t 1 /nobreak >nul
+goto :esperar
+:cerrada
 
 if not exist "%DESTINO%" mkdir "%DESTINO%"
 copy /y "%ORIGEN%estacion-dymo.exe" "%DESTINO%\estacion-dymo.exe" >nul
@@ -62,6 +71,15 @@ goto :error
 :sinjson
 echo No encuentro estacion-dymo.json ni junto a instalar.cmd ni en %DESCARGAS%.
 echo Descárgalo en la página de accesos: "Generar clave de la estación".
+goto :error
+
+:sigue
+echo.
+echo La estación anterior sigue en marcha y Windows no deja cerrarla desde aquí
+echo (suele pasar si se abrió como administrador). Ciérrala así y vuelve a ejecutar instalar.cmd:
+echo   1. Ctrl+Mayús+Esc para abrir el Administrador de tareas, pestaña Detalles.
+echo   2. Clic derecho en cada estacion-dymo.exe y "Finalizar tarea".
+echo Si no te deja, reinicia el ordenador y ejecuta instalar.cmd nada más entrar.
 goto :error
 
 :fallo
