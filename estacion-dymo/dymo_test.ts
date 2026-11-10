@@ -1,5 +1,5 @@
 import { assert, assertEquals, assertRejects, assertStringIncludes, assertThrows } from "jsr:@std/assert@1";
-import { ClienteDymo, escapar, leerImpresoras, papelDe, twips, xmlEtiqueta, xmlParametros } from "./dymo.ts";
+import { AVISO_NO_CONECTADA, ClienteDymo, escapar, leerImpresoras, papelDe, twips, xmlEtiqueta, xmlParametros } from "./dymo.ts";
 import { IMPRESORAS, PNG, simulador } from "./simulador_test.ts";
 
 Deno.test("papel de fábrica: medidas en twips por rollo", () => {
@@ -103,7 +103,8 @@ Deno.test("estado: impresora configurada, primera conectada, sin servicio", asyn
   assertEquals([otra.ok, otra.conectada], [true, false]);
   assertStringIncludes(otra.error, "Otra");
   s.impresoras = JSON.stringify(IMPRESORAS.replace("<IsConnected>True", "<IsConnected>False"));
-  assertEquals(await new ClienteDymo(fetch).estado(), { ok: true, conectada: false, impresora: "DYMO LabelWriter 550", error: "La impresora no está conectada" });
+  // La 550 puede decir IsConnected=False funcionando: se intenta igualmente, con aviso.
+  assertEquals(await new ClienteDymo(fetch).estado(), { ok: true, conectada: true, impresora: "DYMO LabelWriter 550", error: AVISO_NO_CONECTADA });
   s.dymoVivo = false;
   assertEquals((await new ClienteDymo(fetch).estado()).ok, false);
 });

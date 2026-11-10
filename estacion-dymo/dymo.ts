@@ -188,11 +188,11 @@ export class ClienteDymo {
     if (this.impresora) {
       const p = lista.find((x) => x.nombre.toLowerCase() === this.impresora!.toLowerCase());
       if (!p) return { ok: true, conectada: false, impresora: this.impresora, error: `No se encuentra la impresora «${this.impresora}»` };
-      return { ok: true, conectada: p.conectada, impresora: p.nombre, error: p.conectada ? "" : "La impresora no está conectada" };
+      return { ok: true, conectada: true, impresora: p.nombre, error: p.conectada ? "" : AVISO_NO_CONECTADA };
     }
     const p = lista.find((x) => x.conectada) ?? lista[0];
     if (!p) return { ok: true, conectada: false, impresora: "", error: "No hay ninguna LabelWriter instalada" };
-    return { ok: true, conectada: p.conectada, impresora: p.nombre, error: p.conectada ? "" : "La impresora no está conectada" };
+    return { ok: true, conectada: true, impresora: p.nombre, error: p.conectada ? "" : AVISO_NO_CONECTADA };
   }
 
   /** Lanza Error con el texto de DYMO si no la acepta. */
@@ -217,7 +217,15 @@ export class ClienteDymo {
   }
 }
 
+// Algunas versiones de DYMO Connect dicen IsConnected=False de una 550 que imprime bien: se intenta igualmente y,
+// si de verdad está apagada o sin etiquetas, el error de PrintLabel queda en el trabajo.
+export const AVISO_NO_CONECTADA = "DYMO la marca como no conectada; se intenta imprimir igualmente";
+
 export function mensaje(e: unknown): string {
-  if (e instanceof Error) return e.name === "TimeoutError" ? "no responde (tiempo agotado)" : e.message;
-  return String(e);
+  if (!(e instanceof Error)) return String(e);
+  if (e.name === "TimeoutError") return "no responde (tiempo agotado)";
+  // fetch solo dice "fetch failed": el motivo real va en la causa.
+  const causa = e.cause instanceof Error ? e.cause.message : typeof e.cause === "string" ? e.cause : "";
+  if (/UnknownIssuer|certificate/i.test(causa)) return `certificado no reconocido (${causa.slice(0, 160)}): revisa certificados.pem junto al exe`;
+  return causa && !e.message.includes(causa) ? `${e.message}: ${causa.slice(0, 200)}` : e.message;
 }

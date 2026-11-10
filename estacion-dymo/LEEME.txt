@@ -50,10 +50,14 @@ Problemas frecuentes
 --------------------
 * "El servicio de DYMO Connect no responde": abre DYMO Connect una vez, o reinicia el servicio "DYMO Connect Web
   Service" (services.msc). La estación lo busca en https://127.0.0.1:41951 a 41960 y en localhost.
-* "La impresora no está conectada" / "No hay ninguna LabelWriter instalada": revisa el cable USB y que la impresora
-  aparezca en DYMO Connect. Mientras tanto no recoge trabajos: se quedan esperando.
+* "No hay ninguna LabelWriter instalada": revisa el cable USB y que la impresora aparezca en DYMO Connect. Mientras
+  tanto no recoge trabajos: se quedan esperando.
+* "DYMO la marca como no conectada; se intenta imprimir igualmente": aviso normal con algunas versiones de DYMO
+  Connect. Si la impresora está apagada o sin etiquetas, el envío queda con error en Muestras y se puede reintentar.
 * "La clave de la estación no es válida": alguien generó otra clave. Genera una nueva en la página de accesos,
   vuelve a ejecutar instalar.cmd con el estacion-dymo.json nuevo y borra el de Descargas.
+* "certificado no reconocido": la red inspecciona el tráfico cifrado (Netskope en Fluidra). La estación copia al
+  arrancar los certificados de Windows a certificados.pem; si sigue fallando, reinicia la estación (o el ordenador).
 * "Sin conexión con el servidor": falta Internet o un proxy lo bloquea. La estación reintenta sola (cada vez más
   espaciado, como mucho cada minuto).
 * "El trabajo es para el rollo X y está puesto Y": se cambió el rollo puesto mientras el trabajo esperaba. Quien lo

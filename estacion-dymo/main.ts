@@ -4,13 +4,14 @@
 
 import { ApiEstacion } from "./api.ts";
 import { ARCHIVO_LOG, carpeta, enCursoEn, leerTexto, plantillaEn, unir } from "./archivos.ts";
+import { exportarCertificados, fetchConCertificados } from "./certificados.ts";
 import { ARCHIVO_CONFIG, type Config, validarConfig } from "./config.ts";
 import { ClienteDymo, mensaje } from "./dymo.ts";
 import { Estacion } from "./estacion.ts";
 import { crearRegistro } from "./log.ts";
 import { prueba } from "./prueba.ts";
 
-export const VERSION = "1.0.0";
+export const VERSION = "1.0.1";
 const PUERTO_INSTANCIA = 41999;
 
 const AYUDA = `estacion-dymo ${VERSION}: imprime en la DYMO las etiquetas que se mandan desde Muestras.
@@ -57,7 +58,9 @@ async function main(args: string[]): Promise<number> {
   }
 
   const dymo = new ClienteDymo(fetch, cfg.impresora);
-  const api = new ApiEstacion(fetch, cfg.url, cfg.clave);
+  // Con inspección de tráfico (Netskope en Fluidra), el servidor solo se reconoce con los certificados de Windows.
+  await exportarCertificados(dir, log);
+  const api = new ApiEstacion(fetchConCertificados(dir, log), cfg.url, cfg.clave);
   const plantilla = plantillaEn(dir);
 
   if (modoPrueba) return (await prueba(cfg, api, dymo, log, plantilla)) ? 0 : 1;

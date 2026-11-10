@@ -1,8 +1,9 @@
 import { assert, assertEquals, assertStringIncludes, assertThrows } from "jsr:@std/assert@1";
 import { ApiEstacion } from "./api.ts";
-import { decodificar, enCursoEn, plantillaEn } from "./archivos.ts";
+import { decodificar, enCursoEn, plantillaEn, unir } from "./archivos.ts";
 import { validarConfig } from "./config.ts";
-import { ClienteDymo } from "./dymo.ts";
+import { bloquesPem, exportarCertificados } from "./certificados.ts";
+import { ClienteDymo, mensaje } from "./dymo.ts";
 import { crearRegistro, marca, recortar } from "./log.ts";
 import { crc32, png1bit, pngPrueba } from "./png.ts";
 import { prueba } from "./prueba.ts";
@@ -117,4 +118,25 @@ Deno.test("--prueba: registra impresoras y consumibles e imprime una etiqueta en
   s.dymoVivo = false;
   assertEquals(await prueba(cfg, new ApiEstacion(fetch, cfg.url, "mala"), new ClienteDymo(fetch), (m) => lineas.push(m), () => null), false);
   assertStringIncludes(lineas.at(-1)!, "clave de la estación no es válida");
+});
+
+Deno.test("certificados: exporta los de Windows a certificados.pem; si falla, deja los guardados", async () => {
+  const fs = fsMemoria();
+  const PEM = "-----BEGIN CERTIFICATE-----\nAAAA\n-----END CERTIFICATE-----";
+  const log: string[] = [];
+  const n = await exportarCertificados("C:\\e", (m) => log.push(m), () => Promise.resolve({ ok: true, salida: `${PEM}\r\n${PEM}\r\n` }), fs);
+  assertEquals(n, 2);
+  assertEquals(bloquesPem(fs.texto(unir("C:\\e", "certificados.pem"))).length, 2);
+  const m = await exportarCertificados("C:\\e", (x) => log.push(x), () => Promise.resolve({ ok: false, salida: "" }), fs);
+  assertEquals(m, 2);
+  assertEquals(log.length, 1);
+  const sinPs = await exportarCertificados("C:\\otra", () => {}, () => Promise.reject(new Error("no existe")), fs);
+  assertEquals(sinPs, 0);
+});
+
+Deno.test("mensaje: incluye la causa de 'fetch failed' y explica el certificado no reconocido", () => {
+  const e = new TypeError("fetch failed", { cause: new Error("client error (Connect): invalid peer certificate: UnknownIssuer") });
+  assertStringIncludes(mensaje(e), "certificado no reconocido");
+  const r = new TypeError("fetch failed", { cause: new Error("dns error: no such host") });
+  assertEquals(mensaje(r), "fetch failed: dns error: no such host");
 });
