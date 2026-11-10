@@ -34,9 +34,9 @@
       [['i18nTitle','title'],['i18nPlaceholder','placeholder'],['i18nAria','aria-label']].forEach(([d,attr])=>
         r.querySelectorAll(`[data-${d.replace(/[A-Z]/g,c=>'-'+c.toLowerCase())}]`).forEach(el=>el.setAttribute(attr,L.t(dict,el.dataset[d]))));
     },
-    set(l){
+    set(l,fromOtherTab){
       if(l!=='es'&&l!=='en'||l===L.lang) return;
-      L.lang=l; try{localStorage.setItem(KEY,l);}catch(e){}
+      L.lang=l; if(!fromOtherTab) try{localStorage.setItem(KEY,l);}catch(e){}
       document.documentElement.lang=l; paint();
       if(!handlers.length){location.reload(); return;}
       handlers.forEach(fn=>{try{fn(l);}catch(e){console.error(e);}});
@@ -47,6 +47,8 @@
   };
   window.LabLang=L;
   document.documentElement.lang=L.lang;
+  /* Other open tabs of the lab apps follow a change made in one of them. */
+  window.addEventListener('storage',e=>{if(e.key===KEY) L.set(e.newValue,true);});
 
   const CSS=`.lab-lang{display:inline-flex;align-items:center;border:1px solid currentColor;border-radius:999px;overflow:hidden;font:600 11px/1 system-ui,sans-serif;letter-spacing:.04em;opacity:.85;flex:none;vertical-align:middle}
 .lab-lang button{all:unset;cursor:pointer;padding:4px 8px;color:inherit}

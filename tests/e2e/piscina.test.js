@@ -44,9 +44,11 @@ async function averiarUser(ctx, estado) {
 }
 
 async function abrir(browser, opts = {}) {
-  const { reloj, clave, ...labOpts } = opts;
+  const { reloj, clave, lang = 'es', ...labOpts } = opts;
   const ctx = await browser.newContext({ serviceWorkers: 'block' });
   const lab = await setupLab(ctx, { usuarios: USUARIOS, ...labOpts });
+  // Chromium arranca en inglés (en-US): las pruebas en español fijan el idioma si nadie lo ha elegido aún.
+  await ctx.addInitScript((l) => { try { if (!localStorage.getItem('lab.lang')) localStorage.setItem('lab.lang', l); } catch (e) { /* */ } }, lang);
   if (clave) await ctx.addInitScript((t) => { try { if (!sessionStorage.getItem('__k')) { localStorage.setItem('pd-gh-token', t); sessionStorage.setItem('__k', '1'); } } catch (e) { /* */ } }, clave);
   const page = await ctx.newPage();
   page.setDefaultTimeout(8000);
@@ -417,6 +419,65 @@ const enviarSinPermiso = (page) => page.evaluate(() => {
         assert.deepEqual(lab.bloqueadas, []);
         assert.deepEqual(erroresReales(errores), []);
         assert.deepEqual(errores.otros404(), []);
+      });
+      await ctx.close();
+    }
+
+    // ---------- Idioma: el interruptor ES | EN cambia los textos sin recargar y sin escribir nada ----------
+    {
+      const { ctx, page, lab, errores, peticiones } = await abrir(browser, { reloj: true });
+      await check('idioma: ES → EN → ES cambia pestañas, botones, cifras y el diálogo abierto, sin recargar ni escribir', async () => {
+        await entrar(page, 'ana.ruiz@fluidra.com', 'Ana Ruiz');
+        await page.waitForFunction(() => document.querySelector('#cnt-act').textContent.trim() === '2');
+        await page.evaluate(() => { window.__sinRecarga = 1; });
+        const escrituras = () => peticiones.filter((p) => p.method !== 'GET' && p.method !== 'OPTIONS' && !/\/auth\/v1\/token/.test(p.url)).length;
+        const w0 = escrituras(), lect0 = peticiones.length;
+        assert.equal(await page.locator('#tab-listado span[data-i18n]').textContent(), 'En ensayo');
+        assert.equal(await page.locator('#btn-new span').textContent(), 'Nueva bomba');
+        await page.click('.lab-lang button[data-l="en"]');
+        assert.equal(await page.evaluate(() => document.documentElement.lang), 'en');
+        assert.equal(await page.locator('#tab-listado span[data-i18n]').textContent(), 'On test');
+        assert.equal(await page.locator('#btn-new span').textContent(), 'New pump');
+        assert.match(await page.locator('#kpis').textContent(), /Occupied positions/);
+        assert.match(await page.locator('#pool').textContent(), /Socket boxes/);
+        assert.equal(await page.title(), 'Endurance pool');
+        assert.equal(await page.locator('#btn-gh-label').textContent(), 'Ana Ruiz');
+        await page.click('#tab-potencia');
+        assert.match(await page.locator('#tbl-pot').textContent(), /Phase 1/);
+        // Con un diálogo abierto (el interruptor queda debajo; otra vía llama a LabLang.set): se retitula y conserva lo escrito.
+        await page.click('#btn-new');
+        assert.equal(await page.locator('#f-title').textContent(), 'New pump');
+        assert.equal(await page.locator('#b-save').textContent(), 'Register pump');
+        await page.fill('#f-proyecto', 'Proyecto a medias');
+        await page.evaluate(() => window.LabLang.set('es'));
+        assert.equal(await page.locator('#f-title').textContent(), 'Nueva bomba');
+        assert.equal(await page.locator('#b-save').textContent(), 'Registrar bomba');
+        assert.equal(await page.inputValue('#f-proyecto'), 'Proyecto a medias', 'lo escrito se conserva');
+        await page.click('#ov-form .x');
+        await page.click('.lab-lang button[data-l="en"]');
+        assert.equal(await page.evaluate(() => window.__sinRecarga), 1, 'sin recarga');
+        assert.equal(await page.evaluate(() => localStorage.getItem('lab.lang')), 'en');
+        await page.click('.lab-lang button[data-l="es"]');
+        assert.equal(await page.locator('#tab-listado span[data-i18n]').textContent(), 'En ensayo');
+        assert.match(await page.locator('#tbl-pot').textContent(), /Fase 1/);
+        assert.equal(await page.title(), 'Piscina de durabilidad');
+        await page.waitForTimeout(300);
+        assert.equal(escrituras(), w0, 'cambiar de idioma no envía ninguna escritura');
+        assert.equal(lab.puts.length, 0);
+        assert.ok(peticiones.length - lect0 <= 1, 'cambiar de idioma no recarga datos');
+        assert.deepEqual(lab.bloqueadas, []);
+        assert.deepEqual(erroresReales(errores), []);
+      });
+      await ctx.close();
+    }
+    {
+      const { ctx, page, lab, errores } = await abrir(browser, { lang: 'en' });
+      await check('idioma: en inglés desde el arranque, sin sesión: aviso y botón en inglés', async () => {
+        await page.waitForFunction(() => /Sign in with your email to see the pool\./.test(document.querySelector('#banners').textContent));
+        assert.equal(await textoBoton(page), 'Sign in with your email');
+        assert.equal(await page.locator('#tab-consumo span[data-i18n]').textContent(), 'Energy consumption');
+        assert.deepEqual(lab.bloqueadas, []);
+        assert.deepEqual(erroresReales(errores), []);
       });
       await ctx.close();
     }

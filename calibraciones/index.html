@@ -657,22 +657,22 @@ function vEquipment(){
   const rows=list.map(e=>{const i=IX.info.get(e.id), iss=IX.issues.get(e.id), w=iss.filter(x=>x.sev==='warn').length, off=OFF_KEYS.includes(i.key);
     const nextCls=i.key==='overdue'?'crit':i.key==='soon'?'warn':'';
     return `<tr class="click ${off?'off':''}" data-act="eq" data-id="${esc(e.id)}">
-      <td><span class="code">${esc(e.code)}</span><span class="sub">${esc(e.group==='Test equipment'?'Test eq.':'Auxiliary')}</span></td>
+      <td><span class="code">${esc(e.code)}</span><span class="sub">${t(e.group==='Test equipment'?'g_test':'g_aux')}</span></td>
       <td>${esc(e.description||'—')}<span class="sub">${esc([e.brand,e.model].filter(Boolean).join(' · '))}</span></td>
       <td class="mono">${esc(e.serial||'—')}</td>
-      <td class="nowrap">${e.calMode==='Periodic'?perLabel(+e.periodMonths):`<span class="muted">${esc(e.calMode)}</span>`}</td>
+      <td class="nowrap">${e.calMode==='Periodic'?perLabel(+e.periodMonths):`<span class="muted">${esc(dv(e.calMode))}</span>`}</td>
       <td class="nowrap">${fmtM(e.lastCal)}</td>
-      <td class="nowrap"><span class="due ${nextCls}">${off?'—':fmtM(i.due)}</span>${e.nextOverride&&e.calMode==='Periodic'?'<span class="sub" title="Next date entered by hand">manual</span>':''}</td>
-      <td>${pill(e,i)}${i.planned&&!off?`<span class="sub">planned ${fmtM(i.planned.month)}</span>`:''}</td>
+      <td class="nowrap"><span class="due ${nextCls}">${off?'—':fmtM(i.due)}</span>${e.nextOverride&&e.calMode==='Periodic'?`<span class="sub" title="${t('manual_t')}">${t('manual')}</span>`:''}</td>
+      <td>${pill(e,i)}${i.planned&&!off?`<span class="sub">${t('al_plan',fmtM(i.planned.month))}</span>`:''}</td>
       <td>${esc(e.lab||'—')}${e.enac==='Yes'?'<span class="sub">ENAC</span>':''}</td>
       <td>${iss.length?`<span class="iss ${w?'':'info'}" title="${esc(iss.map(x=>x.text).join('\n'))}">${iss.length}</span>`:''}</td>
-      <td><a class="folder" href="${esc(certLink(e))}" target="_blank" rel="noopener" title="Certificates folder in SharePoint">📁 Certs</a></td></tr>`}).join('');
-  return `<div class="view-h"><h2>Equipment</h2><button class="btn" data-act="export-xlsx">Export plan to Excel</button></div>
+      <td><a class="folder" href="${esc(certLink(e))}" target="_blank" rel="noopener" title="${t('certs_t')}">📁 ${t('certs')}</a></td></tr>`}).join('');
+  return `<div class="view-h"><h2>${t('tab_equipment')}</h2><button class="btn" data-act="export-xlsx">${t('export_x')}</button></div>
   ${filterBar()}
-  <p class="note">${list.length} of ${IX.eqs.length} equipment. Click a row to see its points, history and data issues.</p>
+  <p class="note">${t('eq_count',list.length,IX.eqs.length)}</p>
   <div class="panel scroll-x" style="padding:6px 10px"><table class="tbl">
-    <thead>${sortHead([['code','Code'],['desc','Equipment'],['','Serial'],['','Period'],['last','Last'],['next','Next'],['status','Status'],['lab','Lab'],['iss','Data'],['','']])}</thead>
-    <tbody>${rows||'<tr><td colspan="10" class="muted">No equipment matches the filters.</td></tr>'}</tbody></table></div>`;
+    <thead>${sortHead([['code',t('h_code')],['desc',t('h_eq')],['',t('h_serial')],['',t('h_period')],['last',t('h_last')],['next',t('h_next')],['status',t('f_status')],['lab',t('f_lab')],['iss',t('h_data')],['','']])}</thead>
+    <tbody>${rows||`<tr><td colspan="10" class="muted">${t('eq_nomatch')}</td></tr>`}</tbody></table></div>`;
 }
 
 function vPlan(){
@@ -689,29 +689,29 @@ function vPlan(){
       if(pl) plannedN.set(m,(plannedN.get(m)||0)+1);
       const cls=['m',m%12===0?'jan':'',m===n?'now':''].join(' ');
       let mk='', tip=[];
-      if(dn){mk=`<span class="mk done ${isClosed(dn)?'':'open'} ${dk==='first'?'due':''}">✓</span>`; tip.push(`Calibrated ${fmtM(ms)}${isClosed(dn)?'':' (not closed)'}`);}
-      else if(pl){mk=`<span class="mk plan ${dk?'due':''}">P</span>`; tip.push(`Planned ${fmtM(ms)}${pl.lab?' · '+pl.lab:''}`);}
+      if(dn){mk=`<span class="mk done ${isClosed(dn)?'':'open'} ${dk==='first'?'due':''}">✓</span>`; tip.push(t(isClosed(dn)?'pt_done':'pt_open',fmtM(ms)));}
+      else if(pl){mk=`<span class="mk plan ${dk?'due':''}">P</span>`; tip.push(t('pt_plan',fmtM(ms))+(pl.lab?' · '+pl.lab:''));}
       else if(dk){mk=`<span class="mk due ${dk==='proj'?'proj':''} ${dk==='first'&&m<n?'late':''}">E</span>`;}
-      if(dk) tip.push(dk==='first'?`${e.calMode==='Expiry date'?'Expires':'Calibration due'} ${fmtM(ms)}`:`Following due date ${fmtM(ms)} (projected)`);
-      return `<td class="${cls}" data-act="cell" data-id="${esc(e.id)}" data-m="${ms}" title="${esc(e.code+' · '+fmtML(ms)+(tip.length?'\n'+tip.join('\n'):'\nClick to plan a calibration'))}">${mk}</td>`;
+      if(dk) tip.push(t(dk==='first'?(e.calMode==='Expiry date'?'pt_exp':'pt_due'):'pt_proj',fmtM(ms)));
+      return `<td class="${cls}" data-act="cell" data-id="${esc(e.id)}" data-m="${ms}" title="${esc(e.code+' · '+fmtML(ms)+'\n'+(tip.length?tip.join('\n'):t('pt_click')))}">${mk}</td>`;
     }).join('');
   };
   const sec=g=>{const es=list.filter(e=>e.group===g); if(!es.length) return '';
-    return `<tr class="sec"><th colspan="${span+1}"><span>${esc(g)} · ${es.length}</span></th></tr>`+es.map(e=>{const i=IX.info.get(e.id), s=sevOf(i.key);
+    return `<tr class="sec"><th colspan="${span+1}"><span>${esc(dv(g))} · ${es.length}</span></th></tr>`+es.map(e=>{const i=IX.info.get(e.id), s=sevOf(i.key);
       return `<tr><th class="rh ${s==='crit'?'crit':s==='warn'?'warn':''}"><button data-act="eq" data-id="${esc(e.id)}"><b>${esc(e.code)}</b>${pill(e,i)}<span class="d">${esc(e.description)}${e.lab?' · '+esc(e.lab):''}</span></button></th>${cells(e)}</tr>`}).join('');};
   const body=GROUPS.map(sec).join('')+sec(undefined);
-  const head=`<tr><th class="rh">Equipment</th>${months.map(m=>`<th class="${m%12===0?'jan':''} ${m===n?'now':''}">${MN[m%12]}<small>${m%12===0||m===start?Math.floor(m/12):'&nbsp;'}</small></th>`).join('')}</tr>`;
-  const foot=`<tr><th class="rh">Due</th>${months.map(m=>`<td class="${m%12===0?'jan':''}">${due.get(m)||''}</td>`).join('')}</tr>
-    <tr><th class="rh">Planned</th>${months.map(m=>`<td class="${m%12===0?'jan':''}">${plannedN.get(m)||''}</td>`).join('')}</tr>
-    <tr><th class="rh">Est. cost (offer price)</th>${months.map(m=>`<td class="${m%12===0?'jan':''}">${cost.get(m)?Math.round(cost.get(m)):''}</td>`).join('')}</tr>`;
-  return `<div class="view-h"><h2>Annual calibration plan</h2>
-    <div class="pg-ctl"><button class="btn sm" data-act="plan-nav" data-d="-1" aria-label="Previous year">←</button><b>${y0}${span>12?'–'+(y0+1):''}</b><button class="btn sm" data-act="plan-nav" data-d="1" aria-label="Next year">→</button><button class="btn sm ghost" data-act="plan-nav" data-d="0">This year</button>
-    <span class="zoom"><button data-act="plan-span" data-s="12" aria-pressed="${span===12}">12 months</button><button data-act="plan-span" data-s="24" aria-pressed="${span===24}">24 months</button></span></div></div>
+  const head=`<tr><th class="rh">${t('h_eq')}</th>${months.map(m=>`<th class="${m%12===0?'jan':''} ${m===n?'now':''}">${mn(m%12)}<small>${m%12===0||m===start?Math.floor(m/12):'&nbsp;'}</small></th>`).join('')}</tr>`;
+  const foot=`<tr><th class="rh">${t('pf_due')}</th>${months.map(m=>`<td class="${m%12===0?'jan':''}">${due.get(m)||''}</td>`).join('')}</tr>
+    <tr><th class="rh">${t('pf_plan')}</th>${months.map(m=>`<td class="${m%12===0?'jan':''}">${plannedN.get(m)||''}</td>`).join('')}</tr>
+    <tr><th class="rh">${t('pf_cost')}</th>${months.map(m=>`<td class="${m%12===0?'jan':''}">${cost.get(m)?Math.round(cost.get(m)):''}</td>`).join('')}</tr>`;
+  return `<div class="view-h"><h2>${t('pl_title')}</h2>
+    <div class="pg-ctl"><button class="btn sm" data-act="plan-nav" data-d="-1" aria-label="${t('pl_prev')}">←</button><b>${y0}${span>12?'–'+(y0+1):''}</b><button class="btn sm" data-act="plan-nav" data-d="1" aria-label="${t('pl_next')}">→</button><button class="btn sm ghost" data-act="plan-nav" data-d="0">${t('pl_this')}</button>
+    <span class="zoom"><button data-act="plan-span" data-s="12" aria-pressed="${span===12}">${t('pl_m',12)}</button><button data-act="plan-span" data-s="24" aria-pressed="${span===24}">${t('pl_m',24)}</button></span></div></div>
   ${filterBar()}
-  <div class="row"><label class="check"><input type="checkbox" id="plan-all" ${S.plan.all?'checked':''}> Show equipment without calibration</label><span class="sp"></span>
-  <div class="legend"><span><span class="mk due">E</span>Due / expiry</span><span><span class="mk due late">E</span>Overdue</span><span><span class="mk due proj">E</span>Projected</span><span><span class="mk plan">P</span>Planned</span><span><span class="mk done">✓</span>Done &amp; closed</span><span><span class="mk done open">✓</span>Done, not closed</span></div></div>
-  <p class="note">Generated from the last calibration and the period, so it always matches the equipment data. Click an empty month to plan a calibration; click a mark to open it.</p>
-  ${list.length?`<div class="pg-wrap"><table class="pg"><thead>${head}</thead><tbody>${body}</tbody><tfoot>${foot}</tfoot></table></div>`:'<div class="empty-ok">No equipment matches the filters.</div>'}`;
+  <div class="row"><label class="check"><input type="checkbox" id="plan-all" ${S.plan.all?'checked':''}> ${t('pl_all')}</label><span class="sp"></span>
+  <div class="legend"><span><span class="mk due">E</span>${t('lg_due')}</span><span><span class="mk due late">E</span>${t('cl_overdue')}</span><span><span class="mk due proj">E</span>${t('lg_proj')}</span><span><span class="mk plan">P</span>${t('v_Planned')}</span><span><span class="mk done">✓</span>${t('lg_closed')}</span><span><span class="mk done open">✓</span>${t('lg_open')}</span></div></div>
+  <p class="note">${t('pl_note')}</p>
+  ${list.length?`<div class="pg-wrap"><table class="pg"><thead>${head}</thead><tbody>${body}</tbody><tfoot>${foot}</tfoot></table></div>`:`<div class="empty-ok">${t('eq_nomatch')}</div>`}`;
 }
 
 const calIs=(c,v,n)=>v==='Planned'?c.status==='Planned':v==='late'?c.status==='Planned'&&mIdx(c.month)<n:v==='closed'?isClosed(c):v==='open'?c.status==='Done'&&!isClosed(c):false;
@@ -725,26 +725,26 @@ function vCalibrations(){
     return matchQ(e&&e.code,e&&e.description,c.lab,c.certRef,c.notes);
   }).sort((a,b)=>String(b.month).localeCompare(String(a.month))||byCode(eqById(a.equipmentId)||{},eqById(b.equipmentId)||{}));
   const o=(v,l,cur)=>`<option value="${esc(v)}" ${cur===v?'selected':''}>${esc(l)}</option>`;
-  const box=(c,k)=>`<input type="checkbox" data-tog="${k}" data-id="${esc(c.id)}" ${c[k]?'checked':''} aria-label="${k}">`;
+  const box=(c,k)=>`<input type="checkbox" data-tog="${k}" data-id="${esc(c.id)}" ${c[k]?'checked':''} aria-label="${t(k==='label'?'c_label':'certificate')}">`;
   const rows=list.map(c=>{const e=eqById(c.equipmentId), done=c.status==='Done', late=!done&&mIdx(c.month)<n;
     return `<tr class="click" data-act="cal-edit" data-id="${esc(c.id)}">
       <td class="nowrap">${fmtM(c.month)}</td>
-      <td><span class="code">${esc(e?e.code:'?')}</span><span class="sub">${esc(e?e.description:'(deleted equipment)')}</span></td>
-      <td>${done?'<span class="pill k-valid">Done</span>':`<span class="pill ${late?'k-overdue':'k-beforeuse'}">${late?'Planned · passed':'Planned'}</span>`}</td>
+      <td><span class="code">${esc(e?e.code:'?')}</span><span class="sub">${esc(e?e.description:t('deleted_eq'))}</span></td>
+      <td>${done?`<span class="pill k-valid">${t('v_Done')}</span>`:`<span class="pill ${late?'k-overdue':'k-beforeuse'}">${t(late?'c_passed':'v_Planned')}</span>`}</td>
       <td>${esc(c.lab||'—')}</td>
       <td>${done?box(c,'certificate'):''}</td>
-      <td>${done?`<select class="cell-sel" data-tol="${esc(c.id)}" aria-label="In tolerance">${o('','—',c.inTolerance||'')}${o('Yes','Yes',c.inTolerance||'')}${o('No','No',c.inTolerance||'')}</select>`:''}</td>
+      <td>${done?`<select class="cell-sel" data-tol="${esc(c.id)}" aria-label="${t('c_intol')}">${o('','—',c.inTolerance||'')}${o('Yes',t('v_Yes'),c.inTolerance||'')}${o('No',t('v_No'),c.inTolerance||'')}</select>`:''}</td>
       <td>${done?box(c,'label'):''}</td>
-      <td>${done?(isClosed(c)?'<span class="tick">Closed</span>':'<span class="muted">Open</span>'):''}</td>
+      <td>${done?(isClosed(c)?`<span class="tick">${t('c_closed')}</span>`:`<span class="muted">${t('c_open')}</span>`):''}</td>
       <td class="num">${c.cost!==''&&c.cost!=null?money(c.cost):'—'}</td>
       <td>${certA(IX.certByRec.get(c.id))}<span class="sub">${esc(c.source||'')}</span></td></tr>`}).join('');
-  return `<div class="view-h"><h2>Calibrations</h2><button class="btn primary" data-act="cal-new">+ Register calibration</button></div>
-  <div class="filters multi"><div class="row">${searchBox('Search code, equipment, lab, certificate…')}${S.q||f.status.length||f.year.length?'<button class="link" data-act="clear-calf">Clear filters</button>':''}</div>
-    ${chips('calf','status','Status',[['Planned','Planned'],['late','Planned, month passed'],['open','Done, not closed'],['closed','Done & closed']].map(([v,l])=>[v,l,all.filter(c=>calIs(c,v,n)).length]))}
-    ${chips('calf','year','Year',years.map(y=>[y,y,all.filter(c=>String(c.month).startsWith(y)).length]))}</div>
-  <p class="note">A calibration is closed (“Calibration OK”) when the certificate has been received, the results are within tolerance and the label is on the equipment. Tick the boxes directly in the table.</p>
-  <div class="panel scroll-x" style="padding:6px 10px"><table class="tbl"><thead><tr><th>Month</th><th>Equipment</th><th>Status</th><th>Lab</th><th>Certificate</th><th>In tolerance</th><th>Label</th><th>Closure</th><th class="num">Cost</th><th>Source</th></tr></thead>
-  <tbody>${rows||'<tr><td colspan="10" class="muted">No calibrations match the filters.</td></tr>'}</tbody></table></div>`;
+  return `<div class="view-h"><h2>${t('tab_calibrations')}</h2><button class="btn primary" data-act="cal-new">${t('c_new')}</button></div>
+  <div class="filters multi"><div class="row">${searchBox(t('ph_search_c'))}${S.q||f.status.length||f.year.length?`<button class="link" data-act="clear-calf">${t('clear_f')}</button>`:''}</div>
+    ${chips('calf','status',t('f_status'),[['Planned',t('v_Planned')],['late',t('c_f_late')],['open',t('lg_open')],['closed',t('lg_closed')]].map(([v,l])=>[v,l,all.filter(c=>calIs(c,v,n)).length]))}
+    ${chips('calf','year',t('f_year'),years.map(y=>[y,y,all.filter(c=>String(c.month).startsWith(y)).length]))}</div>
+  <p class="note">${t('c_note')}</p>
+  <div class="panel scroll-x" style="padding:6px 10px"><table class="tbl"><thead><tr><th>${t('h_month')}</th><th>${t('h_eq')}</th><th>${t('f_status')}</th><th>${t('f_lab')}</th><th>${t('certificate')}</th><th>${t('c_intol')}</th><th>${t('c_label')}</th><th>${t('c_closure')}</th><th class="num">${t('h_cost')}</th><th>${t('h_source')}</th></tr></thead>
+  <tbody>${rows||`<tr><td colspan="10" class="muted">${t('c_nomatch')}</td></tr>`}</tbody></table></div>`;
 }
 
 function vEvaluation(){
@@ -753,15 +753,15 @@ function vEvaluation(){
   const rows=list.map(v=>{const e=eqById(v.equipmentId), c=evalCalc(v), tol=e?tolNum(e):null, u=v.unit||'';
     return `<tr class="click" data-act="ev-edit" data-id="${esc(v.id)}">
       <td class="nowrap">${fmtD(v.date)}</td><td><span class="code">${esc(e?e.code:'?')}</span><span class="sub">${esc(e?e.description:'')}</span></td>
-      <td class="num">${fmtNum(num(v.setpoint))} ${esc(u)}</td><td class="num">${fmtNum(num(v.obtained))}</td><td class="num">${c.e==null?'—':fmtNum(Math.round(c.e*1000)/1000)}</td>
-      <td class="num">${fmtNum(c.U)}</td><td class="num"><b>${c.eu==null?'—':fmtNum(Math.round(c.eu*1000)/1000)}</b></td><td class="num">${c.tu==null?'—':'≤ '+fmtNum(c.tu)}${tol!=null&&c.tu!=null&&tol!==c.tu&&u!=='%RH'?`<span class="sub" title="Plan tolerance">plan ±${fmtNum(tol)}</span>`:''}</td>
-      <td>${c.res?`<span class="res ${c.res}">${c.res}</span>`:'<span class="res NA">Incomplete</span>'}</td>
+      <td class="num">${fmtNum(num(v.setpoint))} ${esc(unitD(u))}</td><td class="num">${fmtNum(num(v.obtained))}</td><td class="num">${c.e==null?'—':fmtNum(Math.round(c.e*1000)/1000)}</td>
+      <td class="num">${fmtNum(c.U)}</td><td class="num"><b>${c.eu==null?'—':fmtNum(Math.round(c.eu*1000)/1000)}</b></td><td class="num">${c.tu==null?'—':'≤ '+fmtNum(c.tu)}${tol!=null&&c.tu!=null&&tol!==c.tu&&u!=='%RH'?`<span class="sub" title="${t('plan_tol')}">${t('plan_pm',fmtNum(tol))}</span>`:''}</td>
+      <td>${c.res?`<span class="res ${c.res}">${dv(c.res)}</span>`:`<span class="res NA">${t('ev_incomplete')}</span>`}</td>
       <td>${esc(v.relatedTest||'—')}</td><td>${esc(v.by||'—')}</td></tr>`}).join('');
-  return `<div class="view-h"><h2>TU evaluation</h2><button class="btn primary" data-act="ev-new">+ New evaluation</button></div>
-  <div class="filters">${searchBox('Search code, equipment, related test…')}</div>
-  <p class="note">Decision rule <b>|e| + U ≤ TU</b>: the indication error (obtained − setpoint) plus the expanded uncertainty (k=2) of the certificate must not exceed the tolerance of use. The result is calculated, not typed.</p>
-  <div class="panel scroll-x" style="padding:6px 10px"><table class="tbl"><thead><tr><th>Date</th><th>Equipment</th><th class="num">Setpoint</th><th class="num">Obtained</th><th class="num">e</th><th class="num">U (k=2)</th><th class="num">|e|+U</th><th class="num">TU</th><th>Result</th><th>Related test</th><th>By</th></tr></thead>
-  <tbody>${rows||'<tr><td colspan="11" class="muted">No evaluations yet.</td></tr>'}</tbody></table></div>`;
+  return `<div class="view-h"><h2>${t('tab_evaluation')}</h2><button class="btn primary" data-act="ev-new">${t('ev_new')}</button></div>
+  <div class="filters">${searchBox(t('ph_search_e'))}</div>
+  <p class="note">${t('ev_note')}</p>
+  <div class="panel scroll-x" style="padding:6px 10px"><table class="tbl"><thead><tr><th>${t('h_date')}</th><th>${t('h_eq')}</th><th class="num">${t('h_setp')}</th><th class="num">${t('h_obt')}</th><th class="num">e</th><th class="num">U (k=2)</th><th class="num">|e|+U</th><th class="num">TU</th><th>${t('h_result')}</th><th>${t('h_reltest')}</th><th>${t('h_by')}</th></tr></thead>
+  <tbody>${rows||`<tr><td colspan="11" class="muted">${t('ev_none')}</td></tr>`}</tbody></table></div>`;
 }
 
 /* ---------- Validation sheets ----------
@@ -771,8 +771,9 @@ function vEvaluation(){
    With a setpoint correction of −e (ISO/IEC 17025 §6.4.11) the error expected until the next calibration is the drift, so A becomes U + drift ≤ TU. */
 const DRIFT_WARN=0.25;  // drift above this share of TU asks for intermediate checks or a shorter interval
 const EPS=1e-9;
-const fx=(v,d=2)=>v==null||!isFinite(v)?'—':(v<0?'−':'')+Math.abs(v).toFixed(d);
-const fsg=(v,d=2)=>v==null||!isFinite(v)?'—':(v>0?'+':v<0?'−':'±')+Math.abs(v).toFixed(d);
+const fxd=(v,d)=>Math.abs(v).toLocaleString(LabLang.locale(),{minimumFractionDigits:d,maximumFractionDigits:d,useGrouping:false});
+const fx=(v,d=2)=>v==null||!isFinite(v)?'—':(v<0?'−':'')+fxd(v,d);
+const fsg=(v,d=2)=>v==null||!isFinite(v)?'—':(v>0?'+':v<0?'−':'±')+fxd(v,d);
 const yearOf=c=>c?String(c.month||'').slice(0,4):'';
 function planTol(e,q){
   const re=q==='RH'?/±\s*(\d+(?:[.,]\d+)?)\s*%\s*(?:RH|HR)/i:/±\s*(\d+(?:[.,]\d+)?)\s*(?:º|°)\s*C/i;
@@ -786,7 +787,7 @@ function eqTU(e,q){
   const p=planTol(e,q); return {tu:p,src:p==null?'':'plan'};
 }
 const ptKey=r=>r.q==='RH'?`RH${num(r.nominal)}@${num(r.atT)}`:`T${num(r.nominal)}`;
-const ptLabel=r=>r.q==='RH'?`${fmtNum(num(r.nominal))} %RH at ${fmtNum(num(r.atT))} ºC`:`${fmtNum(num(r.nominal))} ºC`;
+const ptLabel=r=>r.q==='RH'?t('rh_at',fmtNum(num(r.nominal)),fmtNum(num(r.atT))):`${fmtNum(num(r.nominal))} ºC`;
 function judge(x,T){
   if(T==null||x.e1==null||x.U==null) return {passA:false,passB:false,passC:false,v:'na'};
   const passA=x.A<=T+EPS, passB=Math.abs(x.e1)<=T+EPS, passC=x.C<=T+EPS;
@@ -818,11 +819,11 @@ function sheetData(e){
     const s=STANDARDS[k], sev=s.sev.map(v=>{
       if(v.ramp) return {...v,pts:[],missing:[],ramp:true};
       let pts=[], missing=[];
-      if(v.T==='cold'){pts=Tp.filter(x=>x.nom<=0); if(!pts.length) missing.push('a point ≤ 0 ºC');}
-      else if(v.T==='heat'){pts=Tp.filter(x=>x.nom>30); if(!pts.length) missing.push('a point > 30 ºC');}
-      else if(v.T==='ends'){pts=Tp.filter(x=>x.nom===lo||x.nom===hi); if(pts.length<2) missing.push('the lowest and highest temperatures');}
-      else{const t=Tp.find(x=>near(x.nom,v.T)); if(t) pts.push(t); else missing.push(`${v.T} ºC`);
-        if(v.RH!=null){const h=Hp.find(x=>near(x.nom,v.RH)&&near(x.atT,v.T)); if(h) pts.push(h); else missing.push(`${v.RH} %RH at ${v.T} ºC`);}}
+      if(v.T==='cold'){pts=Tp.filter(x=>x.nom<=0); if(!pts.length) missing.push(t('ms_cold'));}
+      else if(v.T==='heat'){pts=Tp.filter(x=>x.nom>30); if(!pts.length) missing.push(t('ms_heat'));}
+      else if(v.T==='ends'){pts=Tp.filter(x=>x.nom===lo||x.nom===hi); if(pts.length<2) missing.push(t('ms_ends'));}
+      else{const tp=Tp.find(x=>near(x.nom,v.T)); if(tp) pts.push(tp); else missing.push(`${v.T} ºC`);
+        if(v.RH!=null){const h=Hp.find(x=>near(x.nom,v.RH)&&near(x.atT,v.T)); if(h) pts.push(h); else missing.push(t('rh_at',v.RH,v.T));}}
       return {...v,pts,missing};
     });
     const pts=[...new Set(sev.flatMap(v=>v.pts))].map(x=>({x,...judge(x,s.tol[x.q])}));
@@ -833,23 +834,23 @@ function sheetData(e){
   return {cur,prev,stds,tu,rows,lost,std,Tp,Hp,y1:yearOf(cur),y0:yearOf(prev)};
 }
 function sheetActions(e,d){
-  const out=[], add=(text,ref)=>out.push({text,ref}), u=q=>QU[q], y0=d.y0||'previous';
-  for(const x of d.rows.filter(x=>x.v==='corr')) add(`<b>${x.label}</b>: apply a setpoint correction of <b>${fsg(x.corr)} ${u(x.q)}</b> (set ${fx(x.nom+x.corr,2)} ${u(x.q)} to obtain ${fmtNum(x.nom)} ${u(x.q)}) and record it in the test instructions. Rule A is then met: U + drift = ${fx(x.C)} ≤ ${fmtNum(x.T)} ${u(x.q)}.`,'§6.4.11');
-  for(const x of d.rows.filter(x=>x.v==='nok')) add(`<b>${x.label}</b> is out of tolerance even with a correction (|e| = ${fx(Math.abs(x.e1))}, U + drift = ${fx(x.C)} > ${fmtNum(x.T)} ${u(x.q)}). Do not use the chamber at this point; review the tests run since the last calibration.`,'§6.4.9 · §7.10');
-  for(const x of d.rows.filter(x=>x.drift!=null&&x.T!=null&&x.drift>DRIFT_WARN*x.T+EPS)) add(`<b>${x.label}</b>: the error grew ${fx(x.drift)} ${u(x.q)} since ${y0} (more than ${DRIFT_WARN*100} % of TU). Add an intermediate check or shorten the calibration interval.`,'§6.4.7 · §6.4.10 · §8.5');
+  const out=[], add=(text,ref)=>out.push({text,ref}), u=q=>qu(q), y0=d.y0||t('sa_prev');
+  for(const x of d.rows.filter(x=>x.v==='corr')) add(t('sa_corr',x.label,`${fsg(x.corr)} ${u(x.q)}`,`${fx(x.nom+x.corr,2)} ${u(x.q)}`,`${fmtNum(x.nom)} ${u(x.q)}`,fx(x.C),`${fmtNum(x.T)} ${u(x.q)}`),'§6.4.11');
+  for(const x of d.rows.filter(x=>x.v==='nok')) add(t('sa_nok',x.label,fx(Math.abs(x.e1)),fx(x.C),`${fmtNum(x.T)} ${u(x.q)}`),'§6.4.9 · §7.10');
+  for(const x of d.rows.filter(x=>x.drift!=null&&x.T!=null&&x.drift>DRIFT_WARN*x.T+EPS)) add(t('sa_drift',x.label,`${fx(x.drift)} ${u(x.q)}`,y0,DRIFT_WARN*100),'§6.4.7 · §6.4.10 · §8.5');
   for(const x of d.rows.filter(x=>x.zOut.length)){
-    const pos=x.zOut.map(i=>{const again=x.pz[i]!=null&&Math.abs(x.pz[i]-x.nom)>x.T+EPS; return `P${i+1} at ${fx(x.zones[i])} ${u(x.q)} (e ${fsg(x.zones[i]-x.nom)})${again?`, also outside in ${y0} (${fx(x.pz[i])} ${u(x.q)}, e ${fsg(x.pz[i]-x.nom)})`:''}`;});
-    add(`<b>${x.label}</b>: position ${pos.join('; ')} is outside ±${fmtNum(x.T)} ${u(x.q)}. Exclude it from the useful zone or check the air circulation and door seal; with the correction the mean is centred but the spread stays.`,'§6.4.5');
+    const pos=x.zOut.map(i=>{const again=x.pz[i]!=null&&Math.abs(x.pz[i]-x.nom)>x.T+EPS; return t('sa_pos1',i+1,`${fx(x.zones[i])} ${u(x.q)}`,fsg(x.zones[i]-x.nom))+(again?t('sa_pos2',y0,`${fx(x.pz[i])} ${u(x.q)}`,fsg(x.pz[i]-x.nom)):'');});
+    add(t('sa_zone',x.label,pos.join('; '),`${fmtNum(x.T)} ${u(x.q)}`),'§6.4.5');
   }
   for(const q of ['T','RH']){const xs=d.rows.filter(x=>x.q===q&&x.T!=null&&x.U!=null&&x.U>=x.T-EPS);
-    if(xs.length) add(`${q==='RH'?'Humidity':'Temperature'}: the certificate uncertainty (U up to ${fx(Math.max(...xs.map(x=>x.U)),1)} ${u(q)}) is not smaller than TU ±${fmtNum(xs[0].T)} ${u(q)}, so rule A cannot be met even after a correction. Decide the decision rule (simple acceptance, rule B, or a tolerance agreed with the test requester) or ask the lab for a lower-uncertainty method.`,'§7.1.3 · §7.8.6 · ILAC-G8');}
+    if(xs.length) add(t('sa_unc',t(q==='RH'?'q_RH':'q_T'),`${fx(Math.max(...xs.map(x=>x.U)),1)} ${u(q)}`,`${fmtNum(xs[0].T)} ${u(q)}`),'§7.1.3 · §7.8.6 · ILAC-G8');}
   const gap=new Map(); for(const s of d.std) for(const v of s.gaps) gap.set(`${s.k}|${v.label}`,{s,v});
-  for(const {s,v} of gap.values()) add(`${esc(s.k)} · ${esc(v.label)}: not covered by the calibration (missing ${esc(v.missing.join(' and '))}). Add the point at the next calibration${IX.info.get(e.id).planned?` (planned ${fmtM(IX.info.get(e.id).planned.month)})`:''}, or do not use the chamber for this severity.`,'§6.4.6 · §6.4.7');
-  if(d.std.some(s=>s.ramp)) add('IEC 60068-2-14 Nb: the rate of temperature change is not in the certificate. Verify it with a logged ramp before use (1, 3 or 5 K/min ± 20 %, measured in the useful zone).','§6.4.4 · §6.4.10');
-  for(const q of ['T','RH']){const tp=planTol(e,q), ts=d.tu[q].tu; if(d.tu[q].src==='standard'&&tp!=null&&Math.abs(tp-ts)>EPS&&d.rows.some(x=>x.q===q)) add(`The plan tolerance for ${q==='RH'?'humidity':'temperature'} (±${fmtNum(tp)} ${u(q)}) is not the standards' tolerance (±${fmtNum(ts)} ${u(q)}). Use one acceptance criterion in the calibration plan.`,'§6.4.13');}
-  if(d.cur&&d.prev&&+d.cur.zonesN&&+d.prev.zonesN&&+d.cur.zonesN!==+d.prev.zonesN) add(`The number of positions changed (${d.prev.zonesN} → ${d.cur.zonesN}): uniformity and uncertainty are not directly comparable between certificates.`,'§7.6');
-  for(const r of d.lost) add(`${ptLabel(r)} was calibrated in ${y0} but is not in the ${d.y1} certificate.`,'§6.4.7');
-  if(!d.prev) add('There is only one certificate with results: the drift cannot be evaluated until the next calibration.','§6.4.7');
+  for(const {s,v} of gap.values()) add(t('sa_gap',esc(s.k),esc(t(v.label)),esc(v.missing.join(t('and'))),IX.info.get(e.id).planned?fmtM(IX.info.get(e.id).planned.month):''),'§6.4.6 · §6.4.7');
+  if(d.std.some(s=>s.ramp)) add(t('sa_ramp'),'§6.4.4 · §6.4.10');
+  for(const q of ['T','RH']){const tp=planTol(e,q), ts=d.tu[q].tu; if(d.tu[q].src==='standard'&&tp!=null&&Math.abs(tp-ts)>EPS&&d.rows.some(x=>x.q===q)) add(t('sa_tol',t(q==='RH'?'q_rh':'q_t'),`${fmtNum(tp)} ${u(q)}`,`${fmtNum(ts)} ${u(q)}`),'§6.4.13');}
+  if(d.cur&&d.prev&&+d.cur.zonesN&&+d.prev.zonesN&&+d.cur.zonesN!==+d.prev.zonesN) add(t('sa_npos',d.prev.zonesN,d.cur.zonesN),'§7.6');
+  for(const r of d.lost) add(t('sa_lost',ptLabel(r),y0,d.y1),'§6.4.7');
+  if(!d.prev) add(t('sa_one'),'§6.4.7');
   return out;
 }
 function niceTicks(lo,hi,n=5){
@@ -859,7 +860,7 @@ function niceTicks(lo,hi,n=5){
 /* Error per point with U as error bars, inside the ±TU band. The previous certificate is a hollow marker, the current one a filled marker. */
 function errChart(rows,q,T,y0,y1){
   if(!rows.length) return '';
-  const W=480,H=230,m={l:46,r:12,t:12,b:40}, iw=W-m.l-m.r, ih=H-m.t-m.b, u=QU[q];
+  const W=480,H=230,m={l:46,r:12,t:12,b:40}, iw=W-m.l-m.r, ih=H-m.t-m.b, u=qu(q);
   const vals=[T!=null?T:0,T!=null?-T:0]; for(const x of rows){ if(x.e1!=null) vals.push(x.e1+(x.U||0),x.e1-(x.U||0)); if(x.e0!=null) vals.push(x.e0+(x.U0||0),x.e0-(x.U0||0)); }
   const ticks=niceTicks(Math.min(...vals),Math.max(...vals)), y0v=ticks[0], y1v=ticks[ticks.length-1];
   const Y=v=>m.t+ih-(v-y0v)/(y1v-y0v)*ih, bw=iw/rows.length, X=i=>m.l+bw*(i+.5);
@@ -870,73 +871,73 @@ function errChart(rows,q,T,y0,y1){
     const dot=filled?`<circle cx="${cx}" cy="${Y(e)}" r="5" fill="${c}" stroke="#fff" stroke-width="2"/>`:`<circle cx="${cx}" cy="${Y(e)}" r="4.5" fill="#fff" stroke="${c}" stroke-width="2"/>`;
     return `<g>${bar}${dot}<circle cx="${cx}" cy="${Y(e)}" r="11" fill="transparent"><title>${x.label} · ${yr}: e ${fsg(e)} ${u}, U ${fx(U)} ${u} → |e|+U ${fx(Math.abs(e)+(U||0))}</title></circle></g>`;};
   const marks=rows.map((x,i)=>mark(i,x.e0,x.U0,-9,false,y0,x)+mark(i,x.e1,x.U,9,true,y1,x)).join('');
-  const xl=rows.map((x,i)=>`<text x="${X(i)}" y="${H-m.b+16}" text-anchor="middle" font-size="10.5" fill="#1A1A1A">${q==='RH'?`${fmtNum(x.nom)} %`:`${fmtNum(x.nom)} ºC`}</text>${q==='RH'?`<text x="${X(i)}" y="${H-m.b+29}" text-anchor="middle" font-size="9.5" fill="#5B6272">at ${fmtNum(x.atT)} ºC</text>`:''}`).join('');
-  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${q==='RH'?'Humidity':'Temperature'} error per point, ${y0||''} and ${y1}"><text x="12" y="${m.t+ih/2}" transform="rotate(-90 12 ${m.t+ih/2})" text-anchor="middle" font-size="10" fill="#5B6272">e (${u})</text>${band}${grid}${marks}${xl}</svg>`;
+  const xl=rows.map((x,i)=>`<text x="${X(i)}" y="${H-m.b+16}" text-anchor="middle" font-size="10.5" fill="#1A1A1A">${q==='RH'?`${fmtNum(x.nom)} %`:`${fmtNum(x.nom)} ºC`}</text>${q==='RH'?`<text x="${X(i)}" y="${H-m.b+29}" text-anchor="middle" font-size="9.5" fill="#5B6272">${t('at_c',fmtNum(x.atT))}</text>`:''}`).join('');
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="${t('ch_aria',t(q==='RH'?'q_RH':'q_T'),y0||'',y1)}"><text x="12" y="${m.t+ih/2}" transform="rotate(-90 12 ${m.t+ih/2})" text-anchor="middle" font-size="10" fill="#5B6272">e (${u})</text>${band}${grid}${marks}${xl}</svg>`;
 }
-const legendHtml=(y0,y1)=>`<div class="lg">${y0?`<span><svg width="14" height="14"><circle cx="7" cy="7" r="4.5" fill="#fff" stroke="#5184E4" stroke-width="2"/></svg>${esc(y0)}</span>`:''}<span><svg width="14" height="14"><circle cx="7" cy="7" r="5" fill="#3A45B5"/></svg>${esc(y1)}</span><span><svg width="18" height="12"><rect width="18" height="12" fill="#EEF0F8" stroke="#8C93A6" stroke-dasharray="3 2"/></svg>±TU</span><span>Bars: U (k=2)</span></div>`;
-const vTag=v=>`<span class="v ${v}">${V_LABEL[v]}</span>`;
-const yn=(ok,na)=>na?'<span class="mut">—</span>':ok?'Yes':'<span class="bad">No</span>';
+const legendHtml=(y0,y1)=>`<div class="lg">${y0?`<span><svg width="14" height="14"><circle cx="7" cy="7" r="4.5" fill="#fff" stroke="#5184E4" stroke-width="2"/></svg>${esc(y0)}</span>`:''}<span><svg width="14" height="14"><circle cx="7" cy="7" r="5" fill="#3A45B5"/></svg>${esc(y1)}</span><span><svg width="18" height="12"><rect width="18" height="12" fill="#EEF0F8" stroke="#8C93A6" stroke-dasharray="3 2"/></svg>±TU</span><span>${t('ch_bars')}</span></div>`;
+const vTag=v=>`<span class="v ${v}">${t('vl_'+v)}</span>`;
+const yn=(ok,na)=>na?'<span class="mut">—</span>':ok?t('v_Yes'):`<span class="bad">${t('v_No')}</span>`;
 
 function vSheets(){
   const cands=IX.eqs.filter(e=>((e.validation||{}).standards||[]).length||(IX.recs.get(e.id)||[]).some(c=>(c.results||[]).length));
-  if(!cands.length) return `<div class="view-h"><h2>Validation sheets</h2></div><div class="empty"><h3>No validation sheets yet</h3><p>Open a chamber in <b>Equipment</b>, tick the test standards it is used for under <b>Validation</b>, and enter the certificate results when you register its calibration.</p></div>`;
+  if(!cands.length) return `<div class="view-h"><h2>${t('tab_sheets')}</h2></div><div class="empty"><h3>${t('vs_none')}</h3><p>${t('vs_none_p')}</p></div>`;
   if(!cands.some(e=>e.id===S.sheet)) S.sheet=cands[0].id;
   const e=eqById(S.sheet);
-  return `<div class="view-h no-print"><h2>Validation sheets</h2><select class="fsel" id="sheet-pick" aria-label="Equipment">${cands.map(x=>`<option value="${esc(x.id)}" ${x.id===e.id?'selected':''}>${esc(x.code)} · ${esc(x.description||'')}</option>`).join('')}</select><button class="btn" data-act="eq" data-id="${esc(e.id)}">Edit equipment</button><button class="btn primary" data-act="print">Print / PDF</button></div>
-  <p class="note no-print">The sheet is calculated from the results of the last two certificates and the test standards set in the equipment. Draft: the form code and the signatures are still pending.</p>
+  return `<div class="view-h no-print"><h2>${t('tab_sheets')}</h2><select class="fsel" id="sheet-pick" aria-label="${t('h_eq')}">${cands.map(x=>`<option value="${esc(x.id)}" ${x.id===e.id?'selected':''}>${esc(x.code)} · ${esc(x.description||'')}</option>`).join('')}</select><button class="btn" data-act="eq" data-id="${esc(e.id)}">${t('vs_edit')}</button><button class="btn primary" data-act="print">${t('vs_print')}</button></div>
+  <p class="note no-print">${t('vs_note')}</p>
   ${sheetHtml(e)}`;
 }
 function sheetHtml(e){
   const d=sheetData(e), v=e.validation||{}, info=IX.info.get(e.id), today=fmtD(todayIso()), {y0,y1}=d;
-  const acts=sheetActions(e,d), byQ=q=>d.rows.filter(x=>x.q===q), qName={T:'Temperature',RH:'Humidity'};
-  const head=`<div class="dh"><img src="img/fluidra-polinya.png" alt="Fluidra · Polinyà Design Center"><div class="t"><b>Equipment validation sheet</b><span>${esc(e.code)} · ${esc(e.description||'')}</span></div><div class="meta">Form: <b>pending</b><br>Version 0 · draft<br>Generated ${today}</div></div>`;
-  const foot=`<div class="df"><span>Doc. nº ${esc(e.code)}-VAL</span><span>Issued by: <b>pending</b></span><span>Approved by: <b>pending</b></span><span>Version: 0 (draft)</span><span>Date: ${today}</span><div class="conf"><span>Fluidra Confidential</span><span>HARDCOPIES OF THIS DOCUMENT ARE UNCONTROLLED</span></div></div>`;
-  if(!d.cur) return `<article class="sheet"><table class="doc"><thead><tr><td>${head}</td></tr></thead><tfoot><tr><td>${foot}</td></tr></tfoot><tbody><tr><td><div class="db"><div class="concl">No certificate results yet. Register the calibration of ${esc(e.code)} and enter the results of each point (mean, U, stability, uniformity and positions).</div></div></td></tr></tbody></table></article>`;
+  const acts=sheetActions(e,d), byQ=q=>d.rows.filter(x=>x.q===q), qName={T:t('q_T'),RH:t('q_RH')};
+  const head=`<div class="dh"><img src="img/fluidra-polinya.png" alt="Fluidra · Polinyà Design Center"><div class="t"><b>${t('sh_title')}</b><span>${esc(e.code)} · ${esc(e.description||'')}</span></div><div class="meta">${t('sh_meta',today)}</div></div>`;
+  const foot=`<div class="df"><span>${t('sh_doc')} ${esc(e.code)}-VAL</span><span>${t('sh_issued')}: <b>${t('sh_pend')}</b></span><span>${t('sh_appr')}: <b>${t('sh_pend')}</b></span><span>${t('sh_ver')}</span><span>${t('h_date')}: ${today}</span><div class="conf"><span>${t('sh_conf')}</span><span>${t('sh_unctrl')}</span></div></div>`;
+  if(!d.cur) return `<article class="sheet"><table class="doc"><thead><tr><td>${head}</td></tr></thead><tfoot><tr><td>${foot}</td></tr></tfoot><tbody><tr><td><div class="db"><div class="concl">${t('sh_nores',esc(e.code))}</div></div></td></tr></tbody></table></article>`;
   /* Conclusion: one line per quantity and the severities not covered. */
   const qLine=q=>{const xs=byQ(q); if(!xs.length) return ''; const c=k=>xs.filter(x=>x.v===k);
-    const part=[c('ok').length&&`${c('ok').length} of ${xs.length} points conform as calibrated (rule A)`,c('corr').length&&`${c('corr').map(x=>x.label).join(', ')} conform${c('corr').length===1?'s':''} with a setpoint correction`,c('b').length&&`${c('b').length===xs.length?'all points':c('b').map(x=>x.label).join(', ')} pass only simple acceptance (rule B)`,c('nok').length&&`<span class="bad">${c('nok').map(x=>x.label).join(', ')} not conforming</span>`].filter(Boolean);
-    return `<li><b>${qName[q]}</b> (TU ±${fmtNum(xs[0].T)} ${QU[q]}): ${part.join('; ')}.</li>`;};
-  const gaps=d.std.flatMap(s=>s.gaps.map(g=>`${s.k} ${g.label}`));
+    const part=[c('ok').length&&t('cn_ok',c('ok').length,xs.length),c('corr').length&&t('cn_corr',c('corr').map(x=>x.label).join(', '),c('corr').length),c('b').length&&t('cn_b',c('b').length===xs.length?t('cn_all'):c('b').map(x=>x.label).join(', ')),c('nok').length&&`<span class="bad">${t('cn_nok',c('nok').map(x=>x.label).join(', '))}</span>`].filter(Boolean);
+    return `<li><b>${qName[q]}</b> (TU ±${fmtNum(xs[0].T)} ${qu(q)}): ${part.join('; ')}.</li>`;};
+  const gaps=d.std.flatMap(s=>s.gaps.map(g=>`${s.k} ${t(g.label)}`));
   const worst=d.rows.reduce((w,x)=>V_RANK[x.v]>V_RANK[w]?x.v:w,'ok');
-  const concl=`<div class="concl"><b>Result: ${V_LABEL[worst]}</b>${gaps.length?' · some severities not verified':''}<ul style="margin:4px 0 0;padding-left:18px">${qLine('T')}${qLine('RH')}${gaps.length?`<li><b>Not covered by the calibration:</b> ${esc(gaps.join('; '))}.</li>`:''}${byQ('RH').some(x=>x.v==='b')?'<li>The decision rule for humidity is still to be decided; the sheet shows both rules.</li>':''}</ul></div>`;
+  const concl=`<div class="concl"><b>${t('cn_result',t('vl_'+worst))}</b>${gaps.length?t('cn_sev'):''}<ul style="margin:4px 0 0;padding-left:18px">${qLine('T')}${qLine('RH')}${gaps.length?`<li><b>${t('cn_notcov')}</b> ${esc(gaps.join('; '))}.</li>`:''}${byQ('RH').some(x=>x.v==='b')?`<li>${t('cn_rh')}</li>`:''}</ul></div>`;
   const kv=(k,val)=>`<div><dt>${k}</dt><dd>${val||'—'}</dd></div>`;
   const certTxt=c=>c?`${esc(c.certRef||'—')} · ${fmtM(c.month)}${c.lab?` · ${esc(c.lab)}`:''}`:'—';
-  const eqBox=`<dl class="kv">${kv('Code',esc(e.code))}${kv('Description',esc(e.description))}${kv('Brand / model',esc([e.brand,e.model].filter(Boolean).join(' · ')))}${kv('Serial number',esc(e.serial))}
-    ${kv('Validated range',esc(v.range||(e.points||[]).map(p=>p.range).filter(Boolean).join('; ')))}${kv('Useful zone',esc(v.usefulZone))}${kv('Volume',esc(v.volume))}${kv('Feed-throughs',esc(v.feedthroughs))}
-    ${kv(`Current certificate (${y1})`,certTxt(d.cur))}${kv(`Previous certificate${y0?` (${y0})`:''}`,certTxt(d.prev))}${kv('Traceability',e.enac==='Yes'?'ENAC accredited (ILAC MRA)':e.enac==='No'?'Not accredited':'To define')}${kv('Interval · next',`${perLabel(+e.periodMonths)} · ${fmtM(info.due)}`)}
-    ${kv('Positions measured',esc(d.cur.zonesN||(d.rows[0]?d.rows[0].zones.length:'')))}${kv('Status in the plan',esc(calLabel(e,info)))}</dl>`;
+  const eqBox=`<dl class="kv">${kv(t('h_code'),esc(e.code))}${kv(t('e_desc'),esc(e.description))}${kv(t('sh_brand'),esc([e.brand,e.model].filter(Boolean).join(' · ')))}${kv(t('e_serial'),esc(e.serial))}
+    ${kv(t('e_vrange'),esc(v.range||(e.points||[]).map(p=>p.range).filter(Boolean).join('; ')))}${kv(t('e_vzone'),esc(v.usefulZone))}${kv(t('e_vvol'),esc(v.volume))}${kv(t('e_vfeed'),esc(v.feedthroughs))}
+    ${kv(t('sh_cur',y1),certTxt(d.cur))}${kv(t('sh_prevc',y0),certTxt(d.prev))}${kv(t('sh_trace'),t(e.enac==='Yes'?'sh_enac':e.enac==='No'?'sh_noenac':'tbd'))}${kv(t('sh_int'),`${perLabel(+e.periodMonths)} · ${fmtM(info.due)}`)}
+    ${kv(t('c_zonesN'),esc(d.cur.zonesN||(d.rows[0]?d.rows[0].zones.length:'')))}${kv(t('sh_stat'),esc(calLabel(e,info)))}</dl>`;
   const stdRows=d.std.map(s=>{
-    const tol=Object.entries(s.s.tol).map(([q,t])=>`±${fmtNum(t)} ${QU[q]}`).join(' · '), cov=s.sev.map(v=>v.ramp?`<span class="wn">${esc(v.label)}: internal check</span>`:v.missing.length?`<span class="${v.optional?'mut':'bad'}">${esc(v.label)}: not covered${v.optional?' (optional)':''}</span>`:`${esc(v.label)}: ${v.pts.map(p=>p.label).join(', ')}`).join('<br>');
+    const tol=Object.entries(s.s.tol).map(([q,tv])=>`±${fmtNum(tv)} ${qu(q)}`).join(' · '), cov=s.sev.map(v=>v.ramp?`<span class="wn">${esc(t(v.label))}: ${t('sv_int')}</span>`:v.missing.length?`<span class="${v.optional?'mut':'bad'}">${esc(t(v.label))}: ${t(v.optional?'sv_nc_opt':'sv_nc')}</span>`:`${esc(t(v.label))}: ${v.pts.map(p=>p.label).join(', ')}`).join('<br>');
     const na=!s.pts.length, nc=s.pts.filter(p=>p.v==='corr').map(p=>p.x.label), nb=s.pts.filter(p=>p.v==='b').map(p=>p.x.label), nn=s.pts.filter(p=>p.v==='nok').map(p=>p.x.label);
-    const use=[na?'Not verified':s.v==='ok'?'Usable as calibrated':'',nc.length&&`Correction at ${nc.join(', ')}`,nb.length&&`Rule B only at ${nb.join(', ')}`,nn.length&&`<span class="bad">Not usable at ${nn.join(', ')}</span>`,s.gaps.length&&!na&&'<span class="bad">Severity not verified</span>',s.ramp&&'Ramp to verify'].filter(Boolean).join('<br>');
-    return `<tr><td class="l"><b>${esc(s.k)}</b><br><span class="mut">${esc(s.s.title)}</span></td><td>${tol}</td><td class="l">${cov}</td><td>${yn(s.allA,na)}</td><td>${yn(s.allC,na)}</td><td>${yn(s.allB,na)}</td><td class="l">${use}</td></tr>`;}).join('');
-  const stdBox=d.std.length?`<div class="tw"><table class="t"><thead><tr><th class="l">Standard</th><th>TU</th><th class="l">Severities and calibrated points</th><th>Rule A<br>as calibrated</th><th>Rule A<br>with correction</th><th>Rule B</th><th class="l">Use</th></tr></thead><tbody>${stdRows}</tbody></table></div>`:'<p class="fn">No test standards set for this equipment: the plan tolerance is used. Set them in the equipment, under Validation.</p>';
-  const resTable=q=>{const xs=byQ(q); if(!xs.length) return ''; const T=xs[0].T, u=QU[q];
+    const use=[na?t('u_nover'):s.v==='ok'?t('u_ok'):'',nc.length&&t('u_corr',nc.join(', ')),nb.length&&t('u_b',nb.join(', ')),nn.length&&`<span class="bad">${t('u_nok',nn.join(', '))}</span>`,s.gaps.length&&!na&&`<span class="bad">${t('u_sev')}</span>`,s.ramp&&t('u_ramp')].filter(Boolean).join('<br>');
+    return `<tr><td class="l"><b>${esc(s.k)}</b><br><span class="mut">${esc(t(s.s.title))}</span></td><td>${tol}</td><td class="l">${cov}</td><td>${yn(s.allA,na)}</td><td>${yn(s.allC,na)}</td><td>${yn(s.allB,na)}</td><td class="l">${use}</td></tr>`;}).join('');
+  const stdBox=d.std.length?`<div class="tw"><table class="t"><thead><tr><th class="l">${t('sh_std')}</th><th>TU</th><th class="l">${t('sh_sevpts')}</th><th>${t('sh_ra')}</th><th>${t('sh_rac')}</th><th>${t('sh_rb')}</th><th class="l">${t('sh_use')}</th></tr></thead><tbody>${stdRows}</tbody></table></div>`:`<p class="fn">${t('sh_nostd')}</p>`;
+  const resTable=q=>{const xs=byQ(q); if(!xs.length) return ''; const T=xs[0].T, u=qu(q);
     const tr=xs.map(x=>`<tr><td class="l"><b>${x.label}</b></td><td>${fsg(x.e0)}</td><td><b>${fsg(x.e1)}</b></td><td class="${x.T!=null&&x.drift>DRIFT_WARN*x.T+EPS?'wn':''}">${x.drift==null?'—':fx(x.drift)}</td><td>${fx(x.U)}</td>
       <td class="${x.passA?'':'bad'}">${fx(x.A)}</td><td class="${x.passB?'':'bad'}">${x.e1==null?'—':fx(Math.abs(x.e1))}</td><td class="${x.passC?'':'bad'}">${fx(x.C)}</td><td>${fx(x.stab)}</td><td class="${x.zOut.length?'wn':''}">${fx(x.unif)}</td>
       <td class="${x.v==='corr'?'':'mut'}">${x.v==='corr'||x.v==='b'||x.v==='nok'?`<b>${fsg(x.corr)}</b>`:fsg(x.corr)}</td><td>${vTag(x.v)}</td></tr>`).join('');
-    return `<h3>${qName[q]} <small>TU ±${fmtNum(T)} ${u} (${d.tu[q].src==='standard'?'tightest standard':'plan tolerance'}) · values in ${u}</small></h3><div class="tw"><table class="t"><thead><tr><th class="l">Point</th><th>e ${esc(y0||'prev.')}</th><th>e ${esc(y1)}</th><th>Drift</th><th>U (k=2)</th><th>A: |e|+U</th><th>B: |e|</th><th>U + drift</th><th>Stability</th><th>Uniformity</th><th>Setpoint correction</th><th>Result</th></tr></thead><tbody>${tr}</tbody></table></div>`;};
-  const charts=['T','RH'].filter(q=>byQ(q).length).map(q=>`<div class="chart"><div class="ct">${qName[q]}: error per point</div>${errChart(byQ(q),q,byQ(q)[0].T,y0,y1)}</div>`).join('');
+    return `<h3>${qName[q]} <small>${t('rt_sub',`${fmtNum(T)} ${u}`,t(d.tu[q].src==='standard'?'rt_std':'plan_tol').toLowerCase(),u)}</small></h3><div class="tw"><table class="t"><thead><tr><th class="l">${t('h_point')}</th><th>e ${esc(y0||t('rt_prev'))}</th><th>e ${esc(y1)}</th><th>${t('rt_drift')}</th><th>U (k=2)</th><th>A: |e|+U</th><th>B: |e|</th><th>U + ${t('rt_drift').toLowerCase()}</th><th>${t('rt_stab')}</th><th>${t('rt_unif')}</th><th>${t('rt_corr')}</th><th>${t('h_result')}</th></tr></thead><tbody>${tr}</tbody></table></div>`;};
+  const charts=['T','RH'].filter(q=>byQ(q).length).map(q=>`<div class="chart"><div class="ct">${t('ch_title',qName[q])}</div>${errChart(byQ(q),q,byQ(q)[0].T,y0,y1)}</div>`).join('');
   const nz=Math.max(0,...d.rows.map(x=>x.zones.length));
   const zRows=d.rows.filter(x=>x.zones.length).map(x=>`<tr><td class="l"><b>${x.label}</b></td>${Array.from({length:nz},(_,i)=>{const z=x.zones[i], p=x.pz[i], out=x.zOut.includes(i);
     return `<td class="${out?'bad':''}">${z==null?'—':fsg(z-x.nom)}${p!=null?`<br><span class="${x.T!=null&&Math.abs(p-x.nom)>x.T+EPS?'bad':'mut'}">${fsg(p-x.nom)}</span>`:''}</td>`}).join('')}<td>${x.zones.length?fx(Math.max(...x.zones.filter(z=>z!=null))-Math.min(...x.zones.filter(z=>z!=null))):'—'}</td></tr>`).join('');
   const cnt=(q,f)=>{const xs=byQ(q); return xs.length?`${qName[q]} ${xs.filter(f).length}/${xs.length}`:''};
   const cnts=f=>['T','RH'].map(q=>cnt(q,f)).filter(Boolean).join(' · ');
-  const rules=`<div class="rules"><div><b>Rule A · guard band: |e| + U ≤ TU</b>The error plus the expanded uncertainty stays inside the tolerance (ILAC-G8, risk of a false accept ≤ 2.5 %). Strict rule, used by default.<br><b style="margin-top:6px">${cnts(x=>x.passA)}</b></div>
-    <div><b>Rule A with setpoint correction: U + drift ≤ TU</b>The known error is compensated with a setpoint offset of −e from the current certificate (§6.4.11). What is left until the next calibration is the drift plus U.<br><b style="margin-top:6px">${cnts(x=>x.passA||x.passC)}</b></div>
-    <div><b>Rule B · simple acceptance: |e| ≤ TU</b>Only the error is compared with the tolerance; the uncertainty is not deducted (higher risk of a false accept). Must be agreed and stated when it is used (§7.1.3).<br><b style="margin-top:6px">${cnts(x=>x.passB)}</b></div></div>`;
-  const iso=[['§6.4.4','Equipment verified against the specified requirements before being put (back) into service.'],['§6.4.5','Equipment capable of the accuracy and uncertainty the test needs.'],['§6.4.6 · §6.4.7','Calibration of the points that affect the results; calibration programme reviewed and adjusted.'],['§6.4.9','Equipment that gives questionable results taken out of service until it is shown to work correctly.'],['§6.4.10','Intermediate checks to keep confidence in the performance.'],['§6.4.11','Correction factors from the calibration updated and applied.'],['§6.4.13','Equipment records: results, adjustments, acceptance criteria and due date.'],['§6.5','Metrological traceability through an accredited calibration lab.'],['§7.1.3 · §7.8.6','Decision rule agreed and stated with any statement of conformity (ILAC-G8:09/2019).'],['§7.6','Evaluation of measurement uncertainty.'],['§7.10','Nonconforming work: effect on the tests already done.'],['§8.5','Actions to address risks: drift and calibration interval.']];
+  const rules=`<div class="rules"><div>${t('ru_a')}<br><b style="margin-top:6px">${cnts(x=>x.passA)}</b></div>
+    <div>${t('ru_ac')}<br><b style="margin-top:6px">${cnts(x=>x.passA||x.passC)}</b></div>
+    <div>${t('ru_b')}<br><b style="margin-top:6px">${cnts(x=>x.passB)}</b></div></div>`;
+  const iso=['§6.4.4','§6.4.5','§6.4.6 · §6.4.7','§6.4.9','§6.4.10','§6.4.11','§6.4.13','§6.5','§7.1.3 · §7.8.6','§7.6','§7.10','§8.5'];
   const body=`${concl}
-    <h3>1 · Equipment</h3>${eqBox}
-    <h3>2 · Test standards and use <small>tolerance of each standard; severities matched to the calibrated points</small></h3>${stdBox}
+    <h3>${t('sh_1')}</h3>${eqBox}
+    <h3>${t('sh_2')} <small>${t('sh_2s')}</small></h3>${stdBox}
     ${resTable('T')}${resTable('RH')}
-    <p class="fn">e = mean of all positions − nominal. Drift = increase of |e| since ${esc(y0||'the previous certificate')} (0 if it decreased). Setpoint correction = −e, to be added to the setpoint. Stability and uniformity as stated in the certificate. Values in red do not meet TU.</p>
-    <h3>${d.prev?`${esc(y0)} vs ${esc(y1)}`:esc(y1)} · error and uncertainty</h3><div class="charts">${charts}</div>${legendHtml(d.prev?y0:'',y1)}
-    ${zRows?`<h3>Positions <small>error of each position (position − nominal); ${esc(y1)} on top${d.rows.some(x=>x.pz.length)?`, ${esc(y0)} below`:d.prev?`; ${esc(y0)} not compared (different number of positions)`:''}</small></h3><div class="tw"><table class="t"><thead><tr><th class="l">Point</th>${Array.from({length:nz},(_,i)=>`<th>P${i+1}</th>`).join('')}<th>Spread</th></tr></thead><tbody>${zRows}</tbody></table></div><p class="fn">Positions in the order of the certificate. In red: outside ±TU. Spread = highest − lowest position.</p>`:''}
-    <h3>Decision rules${byQ('RH').length?' <small>both shown; the rule for humidity is still to be decided</small>':''}</h3>${rules}
-    <h3>Actions</h3>${acts.length?`<ol class="acts">${acts.map(a=>`<li>${a.text}<span class="ref">ISO/IEC 17025 ${a.ref}</span></li>`).join('')}</ol>`:'<p class="fn">No actions: every point conforms as calibrated.</p>'}
-    <h3>ISO/IEC 17025:2017 references</h3><ul class="iso">${iso.map(([k,t])=>`<li><b>${k}</b> ${t}</li>`).join('')}</ul>
-    <h3>Approval</h3><dl class="sig"><div><dt>Issued by</dt><dd>Pending</dd></div><div><dt>Approved by</dt><dd>Pending</dd></div><div><dt>Date and signature</dt><dd>Pending</dd></div></dl>`;
+    <p class="fn">${t('sh_fn',esc(y0||t('sh_prevcert')))}</p>
+    <h3>${d.prev?`${esc(y0)} vs ${esc(y1)}`:esc(y1)} · ${t('sh_eu')}</h3><div class="charts">${charts}</div>${legendHtml(d.prev?y0:'',y1)}
+    ${zRows?`<h3>${t('h_pos')} <small>${t('sh_pos',esc(y1))}${d.rows.some(x=>x.pz.length)?t('sh_pos_b',esc(y0)):d.prev?t('sh_pos_nc',esc(y0)):''}</small></h3><div class="tw"><table class="t"><thead><tr><th class="l">${t('h_point')}</th>${Array.from({length:nz},(_,i)=>`<th>P${i+1}</th>`).join('')}<th>${t('sh_spread')}</th></tr></thead><tbody>${zRows}</tbody></table></div><p class="fn">${t('sh_pos_fn')}</p>`:''}
+    <h3>${t('sh_rules')}${byQ('RH').length?` <small>${t('sh_rules_s')}</small>`:''}</h3>${rules}
+    <h3>${t('sh_acts')}</h3>${acts.length?`<ol class="acts">${acts.map(a=>`<li>${a.text}<span class="ref">ISO/IEC 17025 ${a.ref}</span></li>`).join('')}</ol>`:`<p class="fn">${t('sh_noacts')}</p>`}
+    <h3>${t('sh_iso')}</h3><ul class="iso">${iso.map(k=>`<li><b>${k}</b> ${t('iso_'+k)}</li>`).join('')}</ul>
+    <h3>${t('sh_appr_h')}</h3><dl class="sig"><div><dt>${t('sh_issued')}</dt><dd>${t('sh_pend_c')}</dd></div><div><dt>${t('sh_appr')}</dt><dd>${t('sh_pend_c')}</dd></div><div><dt>${t('sh_sign')}</dt><dd>${t('sh_pend_c')}</dd></div></dl>`;
   return `<article class="sheet" id="sheet"><table class="doc"><thead><tr><td>${head}</td></tr></thead><tfoot><tr><td>${foot}</td></tr></tfoot><tbody><tr><td><div class="db">${body}</div></td></tr></tbody></table></article>`;
 }
 
@@ -945,26 +946,27 @@ function vReview(){
   if(!IX.eqs.length) return emptyState();
   const groups=new Map();
   for(const e of IX.eqs) for(const it of IX.issues.get(e.id)){ if(!groups.has(it.type)) groups.set(it.type,[]); groups.get(it.type).push({e,it}); }
-  const order=Object.keys(ISSUE).filter(k=>groups.has(k));
+  const order=ISSUE.filter(k=>groups.has(k));
   const total=order.reduce((n,k)=>n+groups.get(k).length,0);
-  return `<div class="view-h"><h2>Data review</h2><span class="muted">${total} findings</span></div>
-  <p class="note">Checks run live on the data. <b>Warnings</b> affect dates and traceability; <b>to define</b> are fields still empty or TBD in the Excel. Notes from the Excel import can be marked as reviewed once fixed.</p>
-  ${order.length?`<div class="rev-sum">${order.map(k=>`<a href="#rev-${k}" data-open="rev-${k}" class="iss ${ISSUE_WARN.has(k)?'':'info'}">${esc(ISSUE[k])} · ${groups.get(k).length}</a>`).join('')}</div>`:'<div class="empty-ok">No findings. The data is complete and consistent.</div>'}
-  ${order.map(k=>`<details class="panel" id="rev-${k}" ${ISSUE_WARN.has(k)?'open':''}><summary class="panel-h"><h2>${esc(ISSUE[k])}</h2><span class="${ISSUE_WARN.has(k)?'iss':'iss info'}">${ISSUE_WARN.has(k)?'Warning':'To define'} · ${groups.get(k).length}</span></summary>
-    <ul class="rev-list">${groups.get(k).map(({e,it})=>`<li><button class="codebtn" data-act="eq" data-id="${esc(e.id)}">${esc(e.code)}</button><span>${esc(it.text)} <span class="muted">— ${esc(e.description)}</span></span>${it.type==='import'?`<button class="btn sm" data-act="note-done" data-id="${esc(e.id)}" data-n="${it.note}">Mark reviewed</button>`:'<span></span>'}</li>`).join('')}</ul></details>`).join('')}`;
+  return `<div class="view-h"><h2>${t('tab_review')}</h2><span class="muted">${t('rv_n',total)}</span></div>
+  <p class="note">${t('rv_note')}</p>
+  ${order.length?`<div class="rev-sum">${order.map(k=>`<a href="#rev-${k}" data-open="rev-${k}" class="iss ${ISSUE_WARN.has(k)?'':'info'}">${esc(t('is_'+k))} · ${groups.get(k).length}</a>`).join('')}</div>`:`<div class="empty-ok">${t('rv_none')}</div>`}
+  ${order.map(k=>`<details class="panel" id="rev-${k}" ${ISSUE_WARN.has(k)?'open':''}><summary class="panel-h"><h2>${esc(t('is_'+k))}</h2><span class="${ISSUE_WARN.has(k)?'iss':'iss info'}">${t(ISSUE_WARN.has(k)?'rv_warn':'tbd')} · ${groups.get(k).length}</span></summary>
+    <ul class="rev-list">${groups.get(k).map(({e,it})=>`<li><button class="codebtn" data-act="eq" data-id="${esc(e.id)}">${esc(e.code)}</button><span>${esc(it.text)} <span class="muted">— ${esc(e.description)}</span></span>${it.type==='import'?`<button class="btn sm" data-act="note-done" data-id="${esc(e.id)}" data-n="${it.note}">${t('rv_mark')}</button>`:'<span></span>'}</li>`).join('')}</ul></details>`).join('')}`;
 }
 
 function vData(){
   const nEq=Object.keys(DATA.equipment).length, nCal=Object.keys(DATA.calibrations).length, nEv=Object.keys(DATA.evaluations).length;
-  return `<div class="view-h"><h2>Import &amp; data</h2><button class="btn" data-act="settings">Settings</button></div>
+  const gh=`https://github.com/${REPO.owner}/${REPO.repo}`;
+  return `<div class="view-h"><h2>${t('tab_data')}</h2><button class="btn" data-act="settings">${t('settings')}</button></div>
   ${S.imp?importPanel():''}
-  <section class="panel"><div class="panel-h"><h2>Import the Excel calibration plan</h2></div>
-    <ol class="steps"><li>Download <b>Calibration Plan 2026_hipervinculos.xlsx</b> from SharePoint (File → Save as → Download a copy).</li><li>Drop it here. The sheets <i>Equipos</i>, <i>Equipos AUX</i> and <i>EVALUACION (TU)</i> are read, including the colours of the annual plan.</li><li>Check the preview and confirm. Equipment is matched by inventory code; calibrations and evaluations already imported are not duplicated.</li></ol>
-    <label class="drop-zone" data-dz="xlsx" style="margin-top:12px"><input type="file" id="file-xlsx" accept=".xlsx,.xlsm,.xls"><b>Drop the calibration plan Excel here</b><span class="muted">or click to choose the file</span></label>
+  <section class="panel"><div class="panel-h"><h2>${t('im_title')}</h2></div>
+    <ol class="steps"><li>${t('im_s1')}</li><li>${t('im_s2')}</li><li>${t('im_s3')}</li></ol>
+    <label class="drop-zone" data-dz="xlsx" style="margin-top:12px"><input type="file" id="file-xlsx" accept=".xlsx,.xlsm,.xls"><b>${t('im_drop')}</b><span class="muted">${t('im_click')}</span></label>
   </section>
-  <section class="panel"><div class="panel-h"><h2>Data file</h2><span class="muted">${nEq} equipment · ${nCal} calibrations · ${nEv} evaluations</span></div>
-    <p class="note" style="margin-bottom:10px">The data is kept in <a href="https://github.com/${REPO.owner}/${REPO.repo}/blob/${REPO.branch}/${REPO.path}" target="_blank" rel="noopener"><span class="mono">${REPO.path}</span></a> of the private repository <span class="mono">${REPO.owner}/${REPO.repo}</span>. Every change is saved as a commit: the <a href="https://github.com/${REPO.owner}/${REPO.repo}/commits/${REPO.branch}/${REPO.path}" target="_blank" rel="noopener">history</a> shows who changed what and when.</p>
-    <div class="row"><button class="btn" data-act="download">Download a copy (JSON)</button><button class="btn" data-act="export-xlsx">Export plan to Excel</button></div>
+  <section class="panel"><div class="panel-h"><h2>${t('df_title')}</h2><span class="muted">${t('df_n',nEq,nCal,nEv)}</span></div>
+    <p class="note" style="margin-bottom:10px">${t('df_note',`<a href="${gh}/blob/${REPO.branch}/${REPO.path}" target="_blank" rel="noopener"><span class="mono">${REPO.path}</span></a>`,`<span class="mono">${REPO.owner}/${REPO.repo}</span>`,`${gh}/commits/${REPO.branch}/${REPO.path}`)}</p>
+    <div class="row"><button class="btn" data-act="download">${t('df_dl')}</button><button class="btn" data-act="export-xlsx">${t('export_x')}</button></div>
   </section>`;
 }
 
@@ -1101,7 +1103,7 @@ function parseWorkbook(wb){
   const out={equipment:{},calibrations:{},evaluations:{}}, now=nowIdx(); let sheets=0;
   for(const name of wb.SheetNames){const k=norm(name), group=k==='equipos'?'Test equipment':k==='equipos aux'?'Auxiliary equipment':null; if(group){parsePlanSheet(wb.Sheets[name],name.trim(),group,out,now); sheets++;}}
   const ev=wb.SheetNames.find(x=>norm(x).startsWith('evaluacion')); if(ev) parseEvalSheet(wb.Sheets[ev],ev.trim(),out);
-  if(!sheets) throw new Error('No “Equipos” or “Equipos AUX” sheet found. Is this the calibration plan (F-IM-FM-001)?');
+  if(!sheets) throw new Error(t('im_nosheet'));
   return out;
 }
 const XL_FIELDS=['code','group','description','brand','model','serial','calMode','periodMonths','lastCal','nextOverride','actionType','location','duration','lab','enac','price','points','certUrl','src'];
@@ -1122,40 +1124,41 @@ function importOps(P){
 }
 async function onXlsx(f){
   if(!f) return;
-  if(!window.XLSX){toast('The Excel reader could not load (no internet connection?). Try again online.'); return;}
+  if(!window.XLSX){toast(t('im_noxlsx')); return;}
   try{
     const wb=XLSX.read(await f.arrayBuffer(),{type:'array',cellStyles:true,sheetStubs:true});
     const P=parseWorkbook(wb); S.imp={name:f.name,P,...importOps(P)}; S.view='data'; render(); window.scrollTo(0,0);
-  }catch(e){toast('Could not read the file: '+(e.message||e));}
+  }catch(e){toast(t('im_err')+(e.message||e));}
 }
 function importPanel(){
   const {st,P}=S.imp, notes=Object.values(P.equipment).reduce((n,e)=>n+e.importNotes.length,0);
-  const tag={new:'<span class="tag-st new">New</span>',update:'<span class="tag-st update">Update</span>',same:'<span class="tag-st same">No change</span>'};
-  return `<section class="panel" style="border-color:var(--accent)"><div class="panel-h"><h2>Preview · ${esc(S.imp.name)}</h2></div>
-  <div class="imp-sum"><span class="chip">${st.eqNew} new equipment</span><span class="chip">${st.eqUpd} updated</span><span class="chip">${st.eqSame} unchanged</span><span class="chip">${st.calNew} calibrations (done + planned)</span><span class="chip">${st.evNew} TU evaluations</span><span class="chip">${notes} import notes</span></div>
-  ${st.eqUpd?'<p class="note" style="margin-top:8px">Fields that come from the Excel overwrite the values in the app for updated equipment. Maintenance, notes and records added in the app are kept.</p>':''}
-  <div class="scroll-x" style="max-height:340px;overflow:auto;margin-top:10px"><table class="tbl mini"><thead><tr><th></th><th>Code</th><th>Equipment</th><th>Mode</th><th>Last</th><th>Next</th><th>Points</th><th>Notes</th></tr></thead><tbody>
-  ${st.rows.map(({e,tag:t,fields})=>`<tr><td>${tag[t]}</td><td class="code">${esc(e.code)}</td><td>${esc(e.description||'—')}${fields?`<span class="sub">${esc(fields.join(', '))}</span>`:''}</td><td>${esc(e.state==='Reserved'?'Reserved':e.calMode)}${e.calMode==='Periodic'&&e.state!=='Reserved'?' · '+perLabel(+e.periodMonths):''}</td><td>${fmtM(e.lastCal)}</td><td>${fmtM(e.nextOverride||(e.calMode==='Periodic'?addM(e.lastCal,+e.periodMonths):''))}</td><td>${e.points.length}</td><td>${e.importNotes.map(n=>`<span class="sub">${esc(n.text)}</span>`).join('')}</td></tr>`).join('')}
+  const tag={new:`<span class="tag-st new">${t('ip_new')}</span>`,update:`<span class="tag-st update">${t('ip_upd')}</span>`,same:`<span class="tag-st same">${t('ip_same')}</span>`};
+  return `<section class="panel" style="border-color:var(--accent)"><div class="panel-h"><h2>${t('ip_title')} · ${esc(S.imp.name)}</h2></div>
+  <div class="imp-sum"><span class="chip">${t('ip_c_new',st.eqNew)}</span><span class="chip">${t('ip_c_upd',st.eqUpd)}</span><span class="chip">${t('ip_c_same',st.eqSame)}</span><span class="chip">${t('ip_c_cal',st.calNew)}</span><span class="chip">${t('ip_c_ev',st.evNew)}</span><span class="chip">${t('ip_c_notes',notes)}</span></div>
+  ${st.eqUpd?`<p class="note" style="margin-top:8px">${t('ip_note')}</p>`:''}
+  <div class="scroll-x" style="max-height:340px;overflow:auto;margin-top:10px"><table class="tbl mini"><thead><tr><th></th><th>${t('h_code')}</th><th>${t('h_eq')}</th><th>${t('ip_mode')}</th><th>${t('h_last')}</th><th>${t('h_next')}</th><th>${t('ip_pts')}</th><th>${t('e_notes')}</th></tr></thead><tbody>
+  ${st.rows.map(({e,tag:tg,fields})=>`<tr><td>${tag[tg]}</td><td class="code">${esc(e.code)}</td><td>${esc(e.description||'—')}${fields?`<span class="sub">${esc(fields.join(', '))}</span>`:''}</td><td>${esc(dv(e.state==='Reserved'?'Reserved':e.calMode))}${e.calMode==='Periodic'&&e.state!=='Reserved'?' · '+perLabel(+e.periodMonths):''}</td><td>${fmtM(e.lastCal)}</td><td>${fmtM(e.nextOverride||(e.calMode==='Periodic'?addM(e.lastCal,+e.periodMonths):''))}</td><td>${e.points.length}</td><td>${e.importNotes.map(n=>`<span class="sub">${esc(n.text)}</span>`).join('')}</td></tr>`).join('')}
   </tbody></table></div>
-  <div class="row" style="margin-top:12px"><button class="btn primary" data-act="do-import" ${st.ops?'':''} ${S.imp.ops.length?'':'disabled'}>Import ${S.imp.ops.length} change${S.imp.ops.length===1?'':'s'}</button><button class="btn ghost" data-act="cancel-import">Cancel</button></div></section>`;
+  <div class="row" style="margin-top:12px"><button class="btn primary" data-act="do-import" ${st.ops?'':''} ${S.imp.ops.length?'':'disabled'}>${t('ip_go',S.imp.ops.length)}</button><button class="btn ghost" data-act="cancel-import">${t('au_cancel')}</button></div></section>`;
 }
 
 /* ---------- Excel export (F-IM-FM-001 layout plus calculated status) ---------- */
 function exportXlsx(){
-  if(!window.XLSX){toast('The Excel writer could not load (no internet connection?).'); return;}
-  const y=Math.floor(nowIdx()/12), months=[...Array(24)].map((_,i)=>y*12+i);
+  if(!window.XLSX){toast(t('ex_noxlsx')); return;}
+  /* Headers and values follow the language; the app never re-imports this file (the import needs the Equipos sheets). */
+  const y=Math.floor(nowIdx()/12), months=[...Array(24)].map((_,i)=>y*12+i), H=k=>t('x_'+k), yn=b=>t(b?'v_Yes':'v_No'), NA=t('x_na');
   const plan=IX.eqs.map(e=>{const i=IX.info.get(e.id), recs=IX.recs.get(e.id)||[], pts=e.points||[], lr=i.lastRec;
-    const row={'Calibration OK':OFF_KEYS.includes(i.key)?'N/A':lr?(isClosed(lr)?'DONE':'PENDING'):'','Inventory Code':e.code,'Group':e.group,'State':e.state,'Mode':e.calMode,
-      'Calibration period':e.calMode==='Periodic'?perLabel(+e.periodMonths):e.calMode,'Last Calibration':fmtM(e.lastCal),'Next Calibration':OFF_KEYS.includes(i.key)?'N/A':fmtM(i.due),'Status':calLabel(e,i),
-      'Description':e.description,'Working range':pts.map(p=>p.range).filter(Boolean).join(' / '),'Calibration points':pts.map(p=>p.points).filter(Boolean).join(' / '),'Tolerance':pts.map(p=>p.tolerance).filter(Boolean).join(' / '),
-      'Brand':e.brand,'Model':e.model,'Serial number':e.serial,'Action type':e.actionType,'Action Location':e.location,'Action Duration':e.duration,'Calibration Lab':e.lab,'ENAC Accreditation':e.enac,'Offer price':e.price,'Certificates':certLink(e)};
+    const row={[H('ok')]:OFF_KEYS.includes(i.key)?NA:lr?t(isClosed(lr)?'x_done':'x_pend'):'',[H('code')]:e.code,[H('group')]:dv(e.group),[H('state')]:dv(e.state),[H('mode')]:dv(e.calMode),
+      [H('period')]:e.calMode==='Periodic'?perLabel(+e.periodMonths):dv(e.calMode),[H('last')]:fmtM(e.lastCal),[H('next')]:OFF_KEYS.includes(i.key)?NA:fmtM(i.due),[H('status')]:calLabel(e,i),
+      [H('desc')]:e.description,[H('range')]:pts.map(p=>p.range).filter(Boolean).join(' / '),[H('points')]:pts.map(p=>p.points).filter(Boolean).join(' / '),[H('tol')]:pts.map(p=>p.tolerance).filter(Boolean).join(' / '),
+      [H('brand')]:e.brand,[H('model')]:e.model,[H('serial')]:e.serial,[H('atype')]:dv(e.actionType),[H('aloc')]:dv(e.location),[H('adur')]:e.duration,[H('lab')]:e.lab,[H('enac')]:dv(e.enac),[H('price')]:e.price,[H('certs')]:certLink(e)};
     for(const m of months){const ms=mStr(m), here=recs.filter(c=>c.month===ms); row[fmtML(ms)]=[mIdx(i.due)===m&&!OFF_KEYS.includes(i.key)?'E':'',here.some(c=>c.status==='Planned')?'P':'',here.some(c=>c.status==='Done')?'D':''].join('');}
     return row;});
-  const cals=Object.values(DATA.calibrations).map(c=>{const e=eqById(c.equipmentId)||{}; return {'Month':fmtM(c.month),'Inventory Code':e.code,'Description':e.description,'Status':c.status,'Lab':c.lab,'Certificate received':c.certificate?'Yes':'No','In tolerance':c.inTolerance||'','Label placed':c.label?'Yes':'No','Closed':isClosed(c)?'Yes':'No','Cost':c.cost,'Certificate ref.':c.certRef,'Notes':c.notes,'Source':c.source}}).sort((a,b)=>String(a['Inventory Code']).localeCompare(String(b['Inventory Code']),'en',{numeric:true}));
-  const evs=Object.values(DATA.evaluations).map(v=>{const e=eqById(v.equipmentId)||{}, c=evalCalc(v); return {'Inventory Code':e.code,'Equipment Description':e.description,'Evaluated Setpoint':v.setpoint,'Unit':v.unit,'Obtained Value':v.obtained,'Related Test':v.relatedTest,'Tolerance of Use (TU)':v.tu,'Indication Error |e|':c.e,'Expanded Uncertainty (k=2)':v.uncertainty,'|e|+U':c.eu,'Decision Rule Applied':v.rule,'Conformity':c.res,'Evaluated by':v.by,'Evaluation Date':fmtD(v.date)}});
-  const wb=XLSX.utils.book_new(), add=(rows,name)=>XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows.length?rows:[{'':'No data'}]),name);
-  add(plan,'Calibration plan'); add(cals,'Calibrations'); add(evs,'EVALUACION (TU)');
-  XLSX.writeFile(wb,`Calibration_Plan_${todayIso()}.xlsx`);
+  const cals=Object.values(DATA.calibrations).map(c=>{const e=eqById(c.equipmentId)||{}; return {[H('month')]:fmtM(c.month),[H('code')]:e.code,[H('desc')]:e.description,[H('status')]:dv(c.status),[H('clab')]:c.lab,[H('crec')]:yn(c.certificate),[H('intol')]:dv(c.inTolerance||''),[H('label')]:yn(c.label),[H('closed')]:yn(isClosed(c)),[H('cost')]:c.cost,[H('cref')]:c.certRef,[H('notes')]:c.notes,[H('source')]:c.source}}).sort((a,b)=>String(a[H('code')]).localeCompare(String(b[H('code')]),'en',{numeric:true}));
+  const evs=Object.values(DATA.evaluations).map(v=>{const e=eqById(v.equipmentId)||{}, c=evalCalc(v); return {[H('code')]:e.code,[H('eqdesc')]:e.description,[H('setp')]:v.setpoint,[H('unit')]:unitD(v.unit),[H('obt')]:v.obtained,[H('rtest')]:v.relatedTest,[H('tu')]:v.tu,[H('err')]:c.e,[H('unc')]:v.uncertainty,'|e|+U':c.eu,[H('rule')]:v.rule,[H('conf')]:dv(c.res),[H('by')]:v.by,[H('date')]:fmtD(v.date)}});
+  const wb=XLSX.utils.book_new(), add=(rows,name)=>XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows.length?rows:[{'':t('x_nodata')}]),name);
+  add(plan,t('x_s_plan')); add(cals,t('tab_calibrations')); add(evs,'EVALUACION (TU)');
+  XLSX.writeFile(wb,`${t('x_file')}_${todayIso()}.xlsx`);
 }
 
 /* ---------- Dialogs ---------- */

@@ -45,8 +45,8 @@ async function averiarUser(ctx, estado) {
 }
 
 async function abrir(browser, opts = {}) {
-  const { reloj, clave, ...lab_opts } = opts;
-  const ctx = await browser.newContext({ serviceWorkers: 'block' });
+  const { reloj, clave, locale, ...lab_opts } = opts;
+  const ctx = await browser.newContext({ serviceWorkers: 'block', ...(locale ? { locale } : {}) });
   const lab = await setupLab(ctx, { usuarios: USUARIOS, ...lab_opts });
   if (clave) await ctx.addInitScript((t) => { try { if (!sessionStorage.getItem('__k')) { localStorage.setItem('pd-gh-token', t); sessionStorage.setItem('__k', '1'); } } catch (e) { /* */ } }, clave);
   const page = await ctx.newPage();
@@ -393,6 +393,82 @@ function datosSinRegistro() {
         assert.equal(lab.logins.length, logins, 'sin volver a enviar la contraseña');
         assert.deepEqual(lab.bloqueadas, []);
         assert.deepEqual(erroresReales(errores, '|429|503'), []);
+      });
+      await ctx.close();
+    }
+
+    // ---------- Idioma (ES | EN) ----------
+    {
+      const { ctx, page, lab, errores, peticiones } = await abrir(browser, { reloj: true });
+      const escrituras = () => peticiones.filter((p) => !['GET', 'OPTIONS', 'HEAD'].includes(p.method)).length;
+      const pestanas = () => page.locator('#tabs button').allTextContents();
+      await check('idioma: el selector ES | EN cambia textos, pestañas, título y diálogo abierto sin recargar ni escribir nada', async () => {
+        await entrar(page, 'ana.ruiz@fluidra.com', 'Ana Ruiz');
+        const w0 = escrituras();
+        assert.equal(await page.locator('.lab-lang').count(), 1, 'un solo selector');
+        assert.equal(await page.locator('.top-in [data-lab-lang] .lab-lang').count(), 1, 'en la cabecera');
+        assert.match((await pestanas())[0], /^Overview/);
+        await page.evaluate(() => { window.__sinRecarga = 1; });
+        await page.click('.lab-lang button[data-l="es"]');
+        await page.waitForFunction(() => /^Resumen/.test(document.querySelector('#tabs button').textContent));
+        assert.equal(await page.evaluate(() => window.__sinRecarga), 1, 'sin recargar');
+        assert.equal(await page.locator('h1').textContent(), 'Plan de mantenimiento');
+        assert.match(await page.title(), /^Plan de mantenimiento/);
+        assert.equal(await page.evaluate(() => document.documentElement.lang), 'es');
+        assert.match(await page.locator('#view').textContent(), /Resumen de mantenimiento/);
+        assert.equal(await textoBoton(page), 'Ana Ruiz');
+        assert.equal(await page.evaluate(() => localStorage.getItem('lab.lang')), 'es');
+        await page.click('#tabs [data-view="plan"]');
+        assert.deepEqual((await page.locator('#view thead th').allTextContents()).slice(0, 2), ['Equipo', 'Acciones']);
+        // Diálogo abierto: se vuelve a dibujar en el otro idioma, con lo escrito.
+        await page.evaluate(() => openRow('mp-demo-1'));
+        await page.click('#dlg [data-act="rec-plan"]');
+        assert.equal(await page.locator('#dlg h2').textContent(), 'Programar mantenimiento');
+        await page.fill('#f-notes', 'nota de prueba');
+        await page.fill('#f-month', '2027-03');
+        // Con el diálogo modal abierto el selector de la cabecera no se puede pulsar; se cambia por código.
+        await page.evaluate(() => LabLang.set('en'));
+        await page.waitForFunction(() => document.querySelector('#dlg h2').textContent === 'Programme maintenance');
+        assert.ok(await page.evaluate(() => document.querySelector('#dlg').open));
+        assert.equal(await page.inputValue('#f-notes'), 'nota de prueba');
+        assert.equal(await page.inputValue('#f-month'), '2027-03');
+        assert.equal(await page.locator('#dlg label[for="f-notes"]').textContent(), 'Notes');
+        assert.equal(await page.locator('#f-status option[value="Planned"]').textContent(), 'Programmed');
+        await page.click('#dlg [data-act="close"]');
+        assert.match((await pestanas())[0], /^Overview/);
+        await page.clock.fastForward(3000);
+        assert.equal(escrituras(), w0, 'cambiar de idioma no envía nada');
+        assert.equal(lab.puts.length, 0);
+        assert.deepEqual(lab.bloqueadas, []);
+        assert.deepEqual(erroresReales(errores), []);
+      });
+      await check('idioma: en español, guardar escribe los mismos valores (status "Planned") y el aviso sale en español', async () => {
+        await page.click('.lab-lang button[data-l="es"]');
+        await registrarPlan(page);
+        await page.waitForFunction(() => /mantenimiento programado para 06\/2027/.test(document.querySelector('#toast').textContent));
+        await page.clock.fastForward(1000);
+        await waitFor(() => lab.puts.length === 1);
+        const r = Object.values(lab.puts[0].data.records).find((x) => x.month === '2027-06');
+        assert.equal(r.status, 'Planned');
+        assert.match(lab.puts[0].message, /^Plan de mantenimiento: /);
+      });
+      await check('idioma: la elección se mantiene al recargar', async () => {
+        await page.reload();
+        await esperarCarga(page);
+        assert.equal(await page.locator('h1').textContent(), 'Plan de mantenimiento');
+        assert.equal(await page.getAttribute('.lab-lang button[data-l="es"]', 'aria-pressed'), 'true');
+      });
+      await ctx.close();
+    }
+    {
+      const { ctx, page, errores } = await abrir(browser, { locale: 'es-ES' });
+      await check('idioma: con el navegador en español arranca en español (sin sesión: "Iniciar sesión" y aviso de datos privados)', async () => {
+        assert.equal(await page.locator('h1').textContent(), 'Plan de mantenimiento');
+        assert.equal(await textoBoton(page), 'Iniciar sesión');
+        assert.match(await page.locator('#view').textContent(), /privados/);
+        await page.click('#btn-gh');
+        assert.ok(await page.locator('#dlg').getByText('Inicia sesión con tu correo').isVisible());
+        assert.deepEqual(erroresReales(errores), []);
       });
       await ctx.close();
     }

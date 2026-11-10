@@ -549,13 +549,13 @@ function rowInfo(p){
 function issuesOf(p){
   const out=[], add=(type,text)=>out.push({type,sev:ISSUE_WARN.has(type)?'warn':'info',text});
   const l=toMonth(p.last), nx=toMonth(p.next), per=+p.periodMonths||0, i=IX.info.get(p.id);
-  if((M.unmatched||[]).some(u=>norm(typeof u==='string'?u:u.name)===norm(p.equipment))) add('unmatched',`“${clean(p.equipment)}” has no FLE code in the sync table (lab-data/sharepoint-sync.md).`);
-  if(!l||!nx) add('nodates',`${!l?'Last':'Next'} maintenance missing in the Excel.`);
-  if(l&&nx&&mIdx(nx)<=mIdx(l)) add('nextbefore',`Next ${fmtM(nx)} is not after the last maintenance ${fmtM(l)} in the Excel.`);
-  else if(l&&nx&&per&&addM(l,per)!==nx) add('nextdiff',`Next ${fmtM(nx)}, but last ${fmtM(l)} + ${perLabel(per)} gives ${fmtM(addM(l,per))}.`);
-  if(l&&mIdx(l)>nowIdx()) add('lastfuture',`Last maintenance ${fmtM(l)} is in the future.`);
-  if(typeOf(p)==='External'&&isNA(p.provider)) add('noprovider','External maintenance with no provider in the Excel.');
-  if(i.planned&&mIdx(i.planned.month)<nowIdx()) add('plannedpast',`Programmed for ${fmtM(i.planned.month)} and not logged as done.`);
+  if((M.unmatched||[]).some(u=>norm(typeof u==='string'?u:u.name)===norm(p.equipment))) add('unmatched',tr('i_unmatched',clean(p.equipment)));
+  if(!l||!nx) add('nodates',tr('i_nodates',!l));
+  if(l&&nx&&mIdx(nx)<=mIdx(l)) add('nextbefore',tr('i_nextbefore',fmtM(nx),fmtM(l)));
+  else if(l&&nx&&per&&addM(l,per)!==nx) add('nextdiff',tr('i_nextdiff',fmtM(nx),fmtM(l),perLabel(per),fmtM(addM(l,per))));
+  if(l&&mIdx(l)>nowIdx()) add('lastfuture',tr('i_lastfuture',fmtM(l)));
+  if(typeOf(p)==='External'&&isNA(p.provider)) add('noprovider',tr('i_noprovider'));
+  if(i.planned&&mIdx(i.planned.month)<nowIdx()) add('plannedpast',tr('i_plannedpast',fmtM(i.planned.month)));
   return out;
 }
 function buildIndex(){
@@ -572,44 +572,44 @@ function buildIndex(){
 const sameEq=(p,ids,folder)=>(p.equipmentIds||[]).length?(ids||[]).some(x=>p.equipmentIds.includes(x)):!!folder&&norm(folder).endsWith(norm(p.equipment));
 const docsOf=p=>(M.documents||[]).filter(d=>sameEq(p,d.equipmentIds,d.folder)).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
 const corrOf=p=>(M.corrective||[]).filter(c=>(p.equipmentIds||[]).includes(c.equipmentId));
-const rowLabel=p=>p?`${clean(p.equipment)} · ${clean((p.actions||[])[0]||'')}`:'(row no longer in the Excel)';
+const rowLabel=p=>p?`${clean(p.equipment)} · ${clean((p.actions||[])[0]||'')}`:tr('row_gone');
 
 /* ---------- Render ---------- */
 function render(){
   let banner='';
-  if(LOCAL) banner=`<div class="banner"><b>Local test mode.</b> The data comes from <span class="mono">local-data.js</span>, which is not in the repository; changes stay in this browser and are never sent to GitHub. <button class="link" data-act="local-reset">Reset the test data</button></div>`;
+  if(LOCAL) banner=`<div class="banner">${tr('b_local')} <button class="link" data-act="local-reset">${tr('b_local_reset')}</button></div>`;
   else if(byMail()&&GH.noAccess) banner=`<div class="banner crit"><b>${ta('au_noapp')}</b></div>`;
   else if(byMail()&&GH.expired) banner=`<div class="banner crit">${ta('au_expired')} <button class="link" data-act="gh">${ta('au_again')}</button></div>`;
   else if(S.noDb&&LA&&!GH.login&&S.privateData) banner=`<div class="banner crit"><b>${ta('au_private')}</b> <button class="link" data-act="gh">${ta('au_btn')}</button></div>`;
   else if(S.noDb) banner=S.privateData
     ? (GH.login
-      ? `<div class="banner crit"><b>Your account ${esc(GH.login)} cannot see the maintenance data.</b> Ask the owner to add you to the private repository <span class="mono">${REPO.owner}/${REPO.repo}</span>.</div>`
-      : `<div class="banner crit"><b>The maintenance data is private.</b> Press <button class="link" data-act="gh">Connect GitHub</button> with an account that has access to see it.</div>`)
-    : `<div class="banner crit"><b>Could not load the maintenance data from GitHub.</b> Check your connection and reload the page.</div>`;
-  else if(GH.invalid) banner=`<div class="banner crit">Your GitHub key is no longer valid or has expired. <button class="link" data-act="gh">Connect GitHub</button> and paste a new one.</div>`;
-  else if(!byMail()&&GH.login&&!GH.push) banner=`<div class="banner">Your GitHub account <b>${esc(GH.login)}</b> cannot edit this repository. Ask to be added as a collaborator with the Write role.</div>`;
+      ? `<div class="banner crit">${tr('b_noread',esc(GH.login),`${REPO.owner}/${REPO.repo}`)}</div>`
+      : `<div class="banner crit">${tr('b_private',`<button class="link" data-act="gh">${tr('gh_connect')}</button>`)}</div>`)
+    : `<div class="banner crit">${tr('b_load')}</div>`;
+  else if(GH.invalid) banner=`<div class="banner crit">${tr('b_invalid',`<button class="link" data-act="gh">${tr('gh_connect')}</button>`)}</div>`;
+  else if(!byMail()&&GH.login&&!GH.push) banner=`<div class="banner">${tr('b_nopush',esc(GH.login))}</div>`;
   else if(byMail()&&GH.login&&!GH.push) banner=`<div class="banner">${ta('au_ro',esc(GH.login))}</div>`;
   else if(S.ro&&LA&&!GH.login) banner=`<div class="banner">${ta('au_ro_out')} <button class="link" data-act="gh">${ta('au_btn')}</button></div>`;
-  else if(S.ro) banner=`<div class="banner">Read-only. To programme or log maintenance, <button class="link" data-act="gh">connect GitHub</button> with an account that has write access to the repository.</div>`;
+  else if(S.ro) banner=`<div class="banner">${tr('b_ro',`<button class="link" data-act="gh">${tr('gh_connect_l')}</button>`)}</div>`;
   renderGh();
-  if(!DATA||!M){$('#tabs').innerHTML=''; $('#view').innerHTML=banner+(S.noDb?'':'<div class="empty"><h3>Loading maintenance data…</h3></div>'); return;}
+  if(!DATA||!M){$('#tabs').innerHTML=''; $('#view').innerHTML=banner+(S.noDb?'':`<div class="empty"><h3>${tr('loading')}</h3></div>`); return;}
   buildIndex();
   S.cfg={...DEFAULT_CFG,...((DATA.config||{}).settings||{})};
   $('#form-tag').textContent=S.cfg.formCode||'F-IM-FM-002';
   $('#prov-list').innerHTML=IX.providers.map(l=>`<option value="${esc(l)}">`).join('');
   const act=IX.rows.filter(p=>ACTION_KEYS.includes(IX.info.get(p.id).key)), crit=act.some(p=>IX.info.get(p.id).key==='overdue');
   const nIss=IX.rows.reduce((n,p)=>n+IX.issues.get(p.id).filter(i=>i.sev==='warn').length,0)+(M.unmatched||[]).filter(u=>!IX.rows.some(p=>norm(p.equipment)===norm(typeof u==='string'?u:u.name))).length;
-  $('#tabs').innerHTML=VIEWS.map(([k,l])=>`<button data-view="${k}" ${S.view===k?'aria-current="page"':''}>${l}${k==='overview'&&act.length?`<span class="n ${crit?'crit':'warn'}">${act.length}</span>`:''}${k==='review'&&nIss?`<span class="n warn">${nIss}</span>`:''}</button>`).join('');
+  $('#tabs').innerHTML=VIEWS.map(([k])=>`<button data-view="${k}" ${S.view===k?'aria-current="page"':''}>${esc(tr('v_'+k))}${k==='overview'&&act.length?`<span class="n ${crit?'crit':'warn'}">${act.length}</span>`:''}${k==='review'&&nIss?`<span class="n warn">${nIss}</span>`:''}</button>`).join('');
   const fn={overview:vOverview,plan:vPlan,annual:vAnnual,corrective:vCorrective,documents:vDocuments,review:vReview,data:vData}[S.view]||vOverview;
   $('#view').innerHTML=banner+fn();
 }
 function emptyState(){
-  return `<div class="empty"><p class="eyebrow">No maintenance plan yet</p><h3>Waiting for the first SharePoint sync</h3>
-  <p>The plan is copied from <b>Maintenance Plan.xlsx</b> (SharePoint · 07. Laboratory › 4. Equipment › 1. Maintenance) to <span class="mono">lab-data/${esc(REPO.main)}</span> by a scheduled task on the 1st and 15th of each month. It appears here as soon as that file has data.</p>
-  <div class="row"><a class="btn" href="${esc(S.cfg.spBase)}" target="_blank" rel="noopener">📁 Open the SharePoint folder</a></div></div>`;
+  return `<div class="empty"><p class="eyebrow">${tr('e_eyebrow')}</p><h3>${tr('e_title')}</h3>
+  <p>${tr('e_text',esc(REPO.main))}</p>
+  <div class="row"><a class="btn" href="${esc(S.cfg.spBase)}" target="_blank" rel="noopener">${tr('e_sp')}</a></div></div>`;
 }
-const pill=i=>`<span class="pill k-${i.key==='nodata'?'nodata':i.key}">${esc(i.key==='soon'&&i.months===0?'Due this month':ST_LABEL[i.key])}</span>`;
-const searchBox=(ph='Search equipment, action, provider…')=>`<input class="search" id="q" type="search" placeholder="${ph}" value="${esc(S.q)}" aria-label="Search">`;
+const pill=i=>`<span class="pill k-${i.key==='nodata'?'nodata':i.key}">${esc(i.key==='soon'&&i.months===0?tr('st_month'):stLbl(i.key))}</span>`;
+const searchBox=(ph=tr('q_plan'))=>`<input class="search" id="q" type="search" placeholder="${esc(ph)}" value="${esc(S.q)}" aria-label="${esc(tr('q_aria'))}">`;
 const matchQ=(...vals)=>!S.q||vals.some(v=>String(v??'').toLowerCase().includes(S.q.toLowerCase()));
 const matchRow=p=>matchQ(p.equipment,...(p.actions||[]),p.provider,p.components,...codesOf(p));
 function filteredRows(){
@@ -631,17 +631,17 @@ function filterBar(){
   const keys=IX.rows.map(p=>IX.info.get(p.id).key), cnt=fn=>IX.rows.filter(fn).length;
   const provs=[...IX.providers]; if(IX.rows.some(p=>isNA(p.provider))) provs.push('');
   const any=S.q||S.f.status.length||S.f.type.length||S.f.provider.length;
-  return `<div class="filters multi"><div class="row">${searchBox()}${any?'<button class="link" data-act="clear-f">Clear filters</button>':''}</div>
-    ${chips('f','status','Status',['overdue','soon','nodata','valid'].map(k=>[k,ST_LABEL[k],keys.filter(x=>x===k).length]))}
-    ${chips('f','type','Type',IX.types.map(t=>[t,t,cnt(p=>typeOf(p)===t)]))}
-    ${chips('f','provider','Provider',provs.map(v=>[v,v||'Not defined',cnt(p=>(isNA(p.provider)?'':provOf(p))===v)]))}</div>`;
+  return `<div class="filters multi"><div class="row">${searchBox()}${any?`<button class="link" data-act="clear-f">${tr('clear_f')}</button>`:''}</div>
+    ${chips('f','status',tr('f_status'),['overdue','soon','nodata','valid'].map(k=>[k,stLbl(k),keys.filter(x=>x===k).length]))}
+    ${chips('f','type',tr('f_type'),IX.types.map(t=>[t,typeLbl(t),cnt(p=>typeOf(p)===t)]))}
+    ${chips('f','provider',tr('f_prov'),provs.map(v=>[v,v||tr('not_def'),cnt(p=>(isNA(p.provider)?'':provOf(p))===v)]))}</div>`;
 }
-const eqCell=p=>`${esc(clean(p.equipment))}<span class="sub">${(p.equipmentIds||[]).length?codesOf(p).map(c=>`<span class="code">${esc(c)}</span>`).join(' · '):'Facility'}</span>`;
+const eqCell=p=>`${esc(clean(p.equipment))}<span class="sub">${(p.equipmentIds||[]).length?codesOf(p).map(c=>`<span class="code">${esc(c)}</span>`).join(' · '):tr('facility')}</span>`;
 function alertText(p,i){
-  const prov=!isNA(p.provider)?` · ${provOf(p)}`:'', plan=i.planned?(mIdx(i.planned.month)<nowIdx()?` · was programmed ${fmtM(i.planned.month)}, not logged`:` · programmed ${fmtM(i.planned.month)}`):' · not programmed';
-  if(i.key==='overdue') return `Due at the end of ${fmtML(i.due)} (${plural(-i.months,'month')} ago)${prov}${plan}`;
-  if(i.key==='soon') return `Due ${i.months===0?'this month':`in ${plural(i.months,'month')}`} (${fmtML(i.due)})${prov}${plan}`;
-  if(i.key==='nodata') return 'No dates in the Excel: enter the last and next maintenance.';
+  const prov=!isNA(p.provider)?` · ${provOf(p)}`:'', plan=i.planned?tr(mIdx(i.planned.month)<nowIdx()?'a_wasprog':'a_prog',fmtM(i.planned.month)):tr('a_noprog');
+  if(i.key==='overdue') return tr('a_over',fmtML(i.due),tr('n_month',-i.months))+prov+plan;
+  if(i.key==='soon') return (i.months===0?tr('a_soon_now',fmtML(i.due)):tr('a_soon',tr('n_month',i.months),fmtML(i.due)))+prov+plan;
+  if(i.key==='nodata') return tr('a_nodata');
   return '';
 }
 
@@ -654,24 +654,24 @@ function vOverview(){
   const kpi=(k,label,val,sub,cls)=>`<button class="kpi ${cls}" data-act="kpi" data-k="${k}"><span class="eyebrow">${label}</span><b>${val}</b><span class="muted">${sub}</span></button>`;
   /* Upcoming: overdue first, then each month with maintenance due, grouped by provider so external visits can be batched. */
   const buckets=[], over=IX.rows.filter(p=>IX.info.get(p.id).key==='overdue');
-  if(over.length) buckets.push({late:true,label:'Overdue',sub:plural(over.length,'item'),list:over});
-  for(let m=n;m<n+12;m++){const list=IX.rows.filter(p=>{const i=IX.info.get(p.id); return mIdx(i.due)===m||(i.planned&&mIdx(i.planned.month)===m&&mIdx(i.due)!==m&&i.key!=='overdue')}); if(list.length) buckets.push({label:fmtML(mStr(m)),sub:plural(list.length,'item'),list});}
-  const byProv=list=>{const g=new Map(); list.forEach(p=>{const k=isNA(p.provider)?'Provider not defined':provOf(p); if(!g.has(k)) g.set(k,[]); g.get(k).push(p)}); return [...g].sort((a,b)=>b[1].length-a[1].length).map(([l,ps])=>`<div class="labgrp"><span class="lab">${esc(l)}</span>${ps.map(p=>{const pl=IX.info.get(p.id).planned; return `<button class="codebtn ${pl?'plan':''}" data-act="row" data-id="${esc(p.id)}" title="${esc(rowLabel(p))}${pl?' · programmed '+fmtM(pl.month):''}">${esc(clean(p.equipment))}</button>`}).join('')}</div>`).join('')};
-  return `<div class="view-h"><h2>Maintenance overview</h2><span class="muted">${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</span></div>
+  if(over.length) buckets.push({late:true,label:tr('o_late'),sub:tr('n_item',over.length),list:over});
+  for(let m=n;m<n+12;m++){const list=IX.rows.filter(p=>{const i=IX.info.get(p.id); return mIdx(i.due)===m||(i.planned&&mIdx(i.planned.month)===m&&mIdx(i.due)!==m&&i.key!=='overdue')}); if(list.length) buckets.push({label:fmtML(mStr(m)),sub:tr('n_item',list.length),list});}
+  const byProv=list=>{const g=new Map(); list.forEach(p=>{const k=isNA(p.provider)?tr('o_noprov'):provOf(p); if(!g.has(k)) g.set(k,[]); g.get(k).push(p)}); return [...g].sort((a,b)=>b[1].length-a[1].length).map(([l,ps])=>`<div class="labgrp"><span class="lab">${esc(l)}</span>${ps.map(p=>{const pl=IX.info.get(p.id).planned; return `<button class="codebtn ${pl?'plan':''}" data-act="row" data-id="${esc(p.id)}" title="${esc(rowLabel(p))}${pl?esc(tr('a_prog',fmtM(pl.month))):''}">${esc(clean(p.equipment))}</button>`}).join('')}</div>`).join('')};
+  return `<div class="view-h"><h2>${tr('o_title')}</h2><span class="muted">${new Date().toLocaleDateString(LabLang.locale(),{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</span></div>
   <section class="kpis">
-    ${kpi('overdue','Overdue',cnt('overdue'),'past the next date',cnt('overdue')?'crit':'')}
-    ${kpi('soon',`Due ≤ ${S.cfg.warnMonths} month${+S.cfg.warnMonths===1?'':'s'}`,cnt('soon'),'programme them now',cnt('soon')?'warn':'')}
-    ${kpi('planned','Programmed',progr,'with a programmed month',progr?'inf':'')}
-    ${kpi('valid','Up to date',cnt('valid'),`of ${IX.rows.length} plan rows`,'ok')}
-    ${kpi('corrective','Corrective actions',corr,'in the last 12 months',corr?'warn':'')}
-    ${kpi('documents','Offers & reports',(M.documents||[]).length,'linked to SharePoint','')}
+    ${kpi('overdue',tr('k_over'),cnt('overdue'),tr('k_over_s'),cnt('overdue')?'crit':'')}
+    ${kpi('soon',esc(tr('k_soon',S.cfg.warnMonths)),cnt('soon'),tr('k_soon_s'),cnt('soon')?'warn':'')}
+    ${kpi('planned',tr('k_prog'),progr,tr('k_prog_s'),progr?'inf':'')}
+    ${kpi('valid',tr('k_valid'),cnt('valid'),tr('k_valid_s',IX.rows.length),'ok')}
+    ${kpi('corrective',tr('k_corr'),corr,tr('k_corr_s'),corr?'warn':'')}
+    ${kpi('documents',esc(tr('k_docs')),(M.documents||[]).length,tr('k_docs_s'),'')}
   </section>
   <div class="grid2">
-    <section class="panel"><div class="panel-h"><h2>Action needed</h2><span class="muted">${plural(act.length,'item')}</span></div>
-      ${act.length?`<ul class="alerts">${act.map(({p,i})=>`<li class="${i.key==='overdue'?'crit':''}" data-act="row" data-id="${esc(p.id)}"><span class="sev">${esc(ST_LABEL[i.key])}</span><span class="what"><b>${esc(codesOf(p).join(', ')||'Facility')}</b>${esc(rowLabel(p))}<small>${esc(alertText(p,i))}</small></span></li>`).join('')}</ul>`:'<div class="empty-ok">Nothing pending: every maintenance is up to date.</div>'}
+    <section class="panel"><div class="panel-h"><h2>${tr('o_action')}</h2><span class="muted">${tr('n_item',act.length)}</span></div>
+      ${act.length?`<ul class="alerts">${act.map(({p,i})=>`<li class="${i.key==='overdue'?'crit':''}" data-act="row" data-id="${esc(p.id)}"><span class="sev">${esc(stLbl(i.key))}</span><span class="what"><b>${esc(codesOf(p).join(', ')||tr('facility'))}</b>${esc(rowLabel(p))}<small>${esc(alertText(p,i))}</small></span></li>`).join('')}</ul>`:`<div class="empty-ok">${tr('o_nothing')}</div>`}
     </section>
-    <section class="panel"><div class="panel-h"><h2>Next 12 months</h2><span class="muted">by provider · blue = already programmed</span></div>
-      ${buckets.length?`<div class="months">${buckets.map(b=>`<div class="mrow ${b.late?'late':''}"><div class="ml">${esc(b.label)}<small>${esc(b.sub)}</small></div><div>${byProv(b.list)}</div></div>`).join('')}</div>`:'<div class="empty-ok">No maintenance due in the next 12 months.</div>'}
+    <section class="panel"><div class="panel-h"><h2>${tr('o_next')}</h2><span class="muted">${tr('o_next_s')}</span></div>
+      ${buckets.length?`<div class="months">${buckets.map(b=>`<div class="mrow ${b.late?'late':''}"><div class="ml">${esc(b.label)}<small>${esc(b.sub)}</small></div><div>${byProv(b.list)}</div></div>`).join('')}</div>`:`<div class="empty-ok">${tr('o_none')}</div>`}
     </section>
   </div>`;
 }
@@ -682,19 +682,19 @@ function vPlan(){
   const rows=list.map(p=>{const i=IX.info.get(p.id), a=(p.actions||[]).map(clean).filter(Boolean), nc=i.key==='overdue'?'crit':i.key==='soon'?'warn':'';
     return `<tr class="click" data-act="row" data-id="${esc(p.id)}">
       <td>${eqCell(p)}</td>
-      <td>${esc(a[0]||'—')}${a.length>1?`<span class="sub">+ ${plural(a.length-1,'more action')}</span>`:''}</td>
-      <td class="nowrap">${esc(typeOf(p)||'—')}</td>
+      <td>${esc(a[0]||'—')}${a.length>1?`<span class="sub">${tr('n_more',a.length-1)}</span>`:''}</td>
+      <td class="nowrap">${esc(typeLbl(typeOf(p))||'—')}</td>
       <td>${esc(isNA(p.provider)?'—':provOf(p))}</td>
       <td>${esc(p.periodMonths?perLabel(+p.periodMonths):clean(p.periodicity)||'—')}</td>
-      <td class="nowrap">${fmtM(i.last)}${i.fromApp?'<span class="sub" title="Logged in the app after the Excel date">app</span>':''}</td>
+      <td class="nowrap">${fmtM(i.last)}${i.fromApp?`<span class="sub" title="${esc(tr('p_app_t'))}">${tr('p_app')}</span>`:''}</td>
       <td class="nowrap"><span class="due ${nc}">${fmtM(i.due)}</span></td>
-      <td>${pill(i)}${i.planned?`<span class="sub">programmed ${fmtM(i.planned.month)}</span>`:''}</td></tr>`}).join('');
-  return `<div class="view-h"><h2>Maintenance plan</h2>${M.sources&&M.sources.plan&&M.sources.plan.url?`<a class="btn" href="${esc(M.sources.plan.url)}" target="_blank" rel="noopener">Open the Excel</a>`:''}</div>
+      <td>${pill(i)}${i.planned?`<span class="sub">${tr('p_progm',fmtM(i.planned.month))}</span>`:''}</td></tr>`}).join('');
+  return `<div class="view-h"><h2>${tr('p_title')}</h2>${M.sources&&M.sources.plan&&M.sources.plan.url?`<a class="btn" href="${esc(M.sources.plan.url)}" target="_blank" rel="noopener">${tr('open_xl')}</a>`:''}</div>
   ${filterBar()}
-  <p class="note">${list.length} of ${IX.rows.length} rows of the sheet ${esc((M.sources&&M.sources.plan&&M.sources.plan.sheet)||'')} of the Excel. Equipment, actions and periods are changed in the Excel in SharePoint (New Equipment Guide, steps 4 and 5); click a row to programme or log a maintenance.</p>
+  <p class="note">${tr('p_note',list.length,IX.rows.length,esc((M.sources&&M.sources.plan&&M.sources.plan.sheet)||''))}</p>
   <div class="panel scroll-x" style="padding:6px 10px"><table class="tbl">
-    <thead><tr><th>Equipment</th><th>Actions</th><th>Type</th><th>Provider</th><th>Periodicity</th><th>Last</th><th>Next</th><th>Status</th></tr></thead>
-    <tbody>${rows||'<tr><td colspan="8" class="muted">No rows match the filters.</td></tr>'}</tbody></table></div>`;
+    <thead><tr>${['th_eq','th_actions','th_type','th_prov','th_per','th_last','th_next','th_status'].map(k=>`<th>${tr(k)}</th>`).join('')}</tr></thead>
+    <tbody>${rows||`<tr><td colspan="8" class="muted">${tr('no_rows')}</td></tr>`}</tbody></table></div>`;
 }
 
 function vAnnual(){
@@ -713,28 +713,28 @@ function vAnnual(){
       if(pl) plannedN.set(m,(plannedN.get(m)||0)+1);
       const cls=['m',m%12===0?'jan':'',m===n?'now':''].join(' ');
       let mk='', tip=[];
-      if(dn){mk=`<span class="mk done">✓</span>`; tip.push(`Done ${fmtM(ms)}${dn.src==='Excel'?' (Excel)':dn.by?' · '+dn.by:''}`);}
-      else if(pl){mk=`<span class="mk plan ${dk?'due':''}">P</span>`; tip.push(`Programmed ${fmtM(ms)}${pl.provider?' · '+pl.provider:''}`);}
+      if(dn){mk=`<span class="mk done">✓</span>`; tip.push(tr('t_done',fmtM(ms))+(dn.src==='Excel'?' (Excel)':dn.by?' · '+dn.by:''));}
+      else if(pl){mk=`<span class="mk plan ${dk?'due':''}">P</span>`; tip.push(tr('t_prog',fmtM(ms))+(pl.provider?' · '+pl.provider:''));}
       else if(dk){mk=`<span class="mk due ${dk==='proj'?'proj':''} ${dk==='first'&&m<n?'late':''}">M</span>`;}
-      if(dk) tip.push(dk==='first'?`Maintenance due ${fmtM(ms)}`:`Following due date ${fmtM(ms)} (projected)`);
+      if(dk) tip.push(tr(dk==='first'?'t_due':'t_proj',fmtM(ms)));
       const rid2=dn&&dn.id?dn.id:pl?pl.id:'';
-      return `<td class="${cls}" data-act="cell" data-id="${esc(p.id)}" data-m="${ms}" data-r="${esc(rid2)}" title="${esc(clean(p.equipment)+' · '+fmtML(ms)+(tip.length?'\n'+tip.join('\n'):'\nClick to programme a maintenance'))}">${mk}</td>`;
+      return `<td class="${cls}" data-act="cell" data-id="${esc(p.id)}" data-m="${ms}" data-r="${esc(rid2)}" title="${esc(clean(p.equipment)+' · '+fmtML(ms)+(tip.length?'\n'+tip.join('\n'):'\n'+tr('t_click')))}">${mk}</td>`;
     }).join('');
   };
   const sec=g=>{const ps=list.filter(p=>p.group===g); if(!ps.length) return '';
-    return `<tr class="sec"><th colspan="${span+1}"><span>${esc(g)} · ${ps.length}</span></th></tr>`+ps.map(p=>{const i=IX.info.get(p.id), a=clean((p.actions||[])[0]||'');
+    return `<tr class="sec"><th colspan="${span+1}"><span>${esc(tr('grp_'+g))} · ${ps.length}</span></th></tr>`+ps.map(p=>{const i=IX.info.get(p.id), a=clean((p.actions||[])[0]||'');
       return `<tr><th class="rh ${i.key==='overdue'?'crit':i.key==='soon'?'warn':''}"><button data-act="row" data-id="${esc(p.id)}"><b>${esc(codesOf(p).join(', ')||'')}</b> ${esc(clean(p.equipment))}${pill(i)}<span class="d">${esc(a)}${!isNA(p.provider)?' · '+esc(provOf(p)):''}</span></button></th>${cells(p)}</tr>`}).join('');};
   const body=GROUPS.map(sec).join('');
-  const head=`<tr><th class="rh">Equipment</th>${months.map(m=>`<th class="${m%12===0?'jan':''} ${m===n?'now':''}">${MN[m%12]}<small>${m%12===0||m===start?Math.floor(m/12):'&nbsp;'}</small></th>`).join('')}</tr>`;
-  const foot=`<tr><th class="rh">Due</th>${months.map(m=>`<td class="${m%12===0?'jan':''}">${due.get(m)||''}</td>`).join('')}</tr>
-    <tr><th class="rh">Programmed</th>${months.map(m=>`<td class="${m%12===0?'jan':''}">${plannedN.get(m)||''}</td>`).join('')}</tr>`;
-  return `<div class="view-h"><h2>Annual maintenance plan</h2>
-    <div class="pg-ctl"><button class="btn sm" data-act="plan-nav" data-d="-1" aria-label="Previous year">←</button><b>${y0}${span>12?'–'+(y0+1):''}</b><button class="btn sm" data-act="plan-nav" data-d="1" aria-label="Next year">→</button><button class="btn sm ghost" data-act="plan-nav" data-d="0">This year</button>
-    <span class="zoom"><button data-act="plan-span" data-s="12" aria-pressed="${span===12}">12 months</button><button data-act="plan-span" data-s="24" aria-pressed="${span===24}">24 months</button></span></div></div>
+  const head=`<tr><th class="rh">${tr('th_eq')}</th>${months.map(m=>`<th class="${m%12===0?'jan':''} ${m===n?'now':''}">${tr('mn')[m%12]}<small>${m%12===0||m===start?Math.floor(m/12):'&nbsp;'}</small></th>`).join('')}</tr>`;
+  const foot=`<tr><th class="rh">${tr('ft_due')}</th>${months.map(m=>`<td class="${m%12===0?'jan':''}">${due.get(m)||''}</td>`).join('')}</tr>
+    <tr><th class="rh">${tr('ft_prog')}</th>${months.map(m=>`<td class="${m%12===0?'jan':''}">${plannedN.get(m)||''}</td>`).join('')}</tr>`;
+  return `<div class="view-h"><h2>${tr('an_title')}</h2>
+    <div class="pg-ctl"><button class="btn sm" data-act="plan-nav" data-d="-1" aria-label="${tr('an_prev')}">←</button><b>${y0}${span>12?'–'+(y0+1):''}</b><button class="btn sm" data-act="plan-nav" data-d="1" aria-label="${tr('an_next')}">→</button><button class="btn sm ghost" data-act="plan-nav" data-d="0">${tr('an_this')}</button>
+    <span class="zoom"><button data-act="plan-span" data-s="12" aria-pressed="${span===12}">${tr('an_months',12)}</button><button data-act="plan-span" data-s="24" aria-pressed="${span===24}">${tr('an_months',24)}</button></span></div></div>
   ${filterBar()}
-  <div class="legend"><span><span class="mk due">M</span>Due</span><span><span class="mk due late">M</span>Overdue</span><span><span class="mk due proj">M</span>Projected</span><span><span class="mk plan">P</span>Programmed</span><span><span class="mk done">✓</span>Done</span></div>
-  <p class="note">Generated from the last and next maintenance of the Excel and the period, plus what is programmed or logged in the app. Click an empty month to programme a maintenance; click a mark to open it.</p>
-  ${list.length?`<div class="pg-wrap"><table class="pg"><thead>${head}</thead><tbody>${body}</tbody><tfoot>${foot}</tfoot></table></div>`:'<div class="empty-ok">No rows match the filters.</div>'}`;
+  <div class="legend"><span><span class="mk due">M</span>${tr('lg_due')}</span><span><span class="mk due late">M</span>${tr('lg_over')}</span><span><span class="mk due proj">M</span>${tr('lg_proj')}</span><span><span class="mk plan">P</span>${tr('lg_prog')}</span><span><span class="mk done">✓</span>${tr('lg_done')}</span></div>
+  <p class="note">${tr('an_note')}</p>
+  ${list.length?`<div class="pg-wrap"><table class="pg"><thead>${head}</thead><tbody>${body}</tbody><tfoot>${foot}</tfoot></table></div>`:`<div class="empty-ok">${tr('no_rows')}</div>`}`;
 }
 
 function vCorrective(){
@@ -742,59 +742,60 @@ function vCorrective(){
   const list=all.filter(c=>matchQ(c.code,eqCode(c.equipmentId),(EQ.get(c.equipmentId)||{}).description,c.problem,c.action,c.rootCause,c.preventive)).sort((a,b)=>String(b.problemDate||'').localeCompare(String(a.problemDate||'')));
   const docs=(M.documents||[]).filter(d=>d.kind==='correctiva');
   const rows=list.map(c=>{const e=EQ.get(c.equipmentId), ds=docs.filter(d=>(d.equipmentIds||[]).includes(c.equipmentId));
-    return `<tr><td class="nowrap">${fmtD(c.problemDate)}${c.dateNote?`<span class="sub" title="${esc(c.dateNote)}">check date</span>`:''}</td>
+    return `<tr><td class="nowrap">${fmtD(c.problemDate)}${c.dateNote?`<span class="sub" title="${esc(c.dateNote)}">${tr('c_check')}</span>`:''}</td>
       <td><span class="code">${esc(c.code||eqCode(c.equipmentId))}</span><span class="sub">${esc(e?e.description:'')}</span></td>
-      <td>${esc(c.problem||'—')}</td><td>${esc(c.action||'—')}<span class="sub">${c.fixDate?'Fixed '+fmtD(c.fixDate):'Not fixed yet'}</span></td>
+      <td>${esc(c.problem||'—')}</td><td>${esc(c.action||'—')}<span class="sub">${c.fixDate?tr('c_fixed',fmtD(c.fixDate)):tr('c_open')}</span></td>
       <td>${esc(c.rootCause||'—')}</td><td>${esc(c.preventive||'—')}</td>
       <td>${ds.map(d=>`<a class="folder" href="${esc(d.url)}" target="_blank" rel="noopener" title="${esc(d.summary||d.file||'')}">📄 ${esc(d.date?fmtD(d.date):'PDF')}</a>`).join('<br>')}</td></tr>`}).join('');
   const url=M.sources&&M.sources.plan&&M.sources.plan.url;
-  return `<div class="view-h"><h2>Corrective actions</h2>${url?`<a class="btn" href="${esc(url)}" target="_blank" rel="noopener">Open the Excel</a>`:''}</div>
-  <div class="filters">${searchBox('Search code, problem, cause…')}</div>
-  <p class="note">From the sheet <i>Registro acciones correctivas</i> of the Excel, with the documents of <i>0. Registro acciones correctivas</i> for the same equipment. New corrective actions are added in the Excel.</p>
-  <div class="panel scroll-x" style="padding:6px 10px"><table class="tbl"><thead><tr><th>Problem date</th><th>Equipment</th><th>Problem</th><th>Corrective action</th><th>Possible root cause</th><th>Preventive action</th><th>Docs</th></tr></thead>
-  <tbody>${rows||`<tr><td colspan="7" class="muted">${all.length?'No corrective actions match the search.':'No corrective actions recorded.'}</td></tr>`}</tbody></table></div>`;
+  return `<div class="view-h"><h2>${tr('c_title')}</h2>${url?`<a class="btn" href="${esc(url)}" target="_blank" rel="noopener">${tr('open_xl')}</a>`:''}</div>
+  <div class="filters">${searchBox(tr('q_corr'))}</div>
+  <p class="note">${tr('c_note')}</p>
+  <div class="panel scroll-x" style="padding:6px 10px"><table class="tbl"><thead><tr>${['th_pdate','th_eq','th_problem','th_corr','th_root','th_prev','th_docs'].map(k=>`<th>${tr(k)}</th>`).join('')}</tr></thead>
+  <tbody>${rows||`<tr><td colspan="7" class="muted">${tr(all.length?'c_nomatch':'c_none')}</td></tr>`}</tbody></table></div>`;
 }
 
 function vDocuments(){
   const all=M.documents||[], f=S.docf;
   const eqTxt=d=>(d.equipmentIds||[]).length?(d.equipmentIds.map(eqCode).join(', ')):String(d.folder||'').split('/').pop();
   const list=all.filter(d=>(!f.kind.length||f.kind.includes(d.kind))&&matchQ(d.file,d.provider,d.ref,d.summary,d.folder,eqTxt(d))).sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
-  const rows=list.map(d=>`<tr><td class="nowrap">${fmtD(d.date)}</td><td><span class="kind ${esc(d.kind)}">${esc(KIND_LABEL[d.kind]||d.kind)}</span></td>
+  const rows=list.map(d=>`<tr><td class="nowrap">${fmtD(d.date)}</td><td><span class="kind ${esc(d.kind)}">${esc(kindLbl(d.kind))}</span></td>
     <td>${esc(String(d.folder||'').split('/').pop())}<span class="sub">${(d.equipmentIds||[]).length?d.equipmentIds.map(id=>`<span class="code">${esc(eqCode(id))}</span>`).join(' · '):''}</span></td>
     <td>${esc(d.provider||'—')}${d.ref?`<span class="sub mono">${esc(d.ref)}</span>`:''}</td>
-    <td>${d.url?`<a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.file||'Open')}</a>`:esc(d.file||'')}${d.summary?`<div class="doc-sum">${esc(d.summary)}</div>`:''}</td></tr>`).join('');
-  return `<div class="view-h"><h2>Offers &amp; work reports</h2><a class="btn" href="${esc(S.cfg.spBase)}" target="_blank" rel="noopener">📁 SharePoint folder</a></div>
-  <div class="filters multi"><div class="row">${searchBox('Search equipment, provider, reference…')}${S.q||f.kind.length?'<button class="link" data-act="clear-docf">Clear filters</button>':''}</div>
-    ${chips('docf','kind','Type',Object.entries(KIND_LABEL).map(([k,l])=>[k,l,all.filter(d=>d.kind===k).length]))}</div>
-  <p class="note">PDFs in <i>1. Mantenimientos programados</i> (offers and work reports) and <i>0. Registro acciones correctivas</i>. The summary is written by the sync task from the text of each PDF; the link opens the PDF in SharePoint with your Fluidra account.</p>
-  <div class="panel scroll-x" style="padding:6px 10px"><table class="tbl"><thead><tr><th>Date</th><th>Type</th><th>Equipment</th><th>Provider · ref.</th><th>Document</th></tr></thead>
-  <tbody>${rows||`<tr><td colspan="5" class="muted">${all.length?'No documents match the filters.':'No documents read yet.'}</td></tr>`}</tbody></table></div>`;
+    <td>${d.url?`<a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.file||tr('open'))}</a>`:esc(d.file||'')}${d.summary?`<div class="doc-sum">${esc(d.summary)}</div>`:''}</td></tr>`).join('');
+  return `<div class="view-h"><h2>${tr('d_title')}</h2><a class="btn" href="${esc(S.cfg.spBase)}" target="_blank" rel="noopener">${tr('d_sp')}</a></div>
+  <div class="filters multi"><div class="row">${searchBox(tr('q_docs'))}${S.q||f.kind.length?`<button class="link" data-act="clear-docf">${tr('clear_f')}</button>`:''}</div>
+    ${chips('docf','kind',tr('f_type'),KINDS.map(k=>[k,kindLbl(k),all.filter(d=>d.kind===k).length]))}</div>
+  <p class="note">${tr('d_note')}</p>
+  <div class="panel scroll-x" style="padding:6px 10px"><table class="tbl"><thead><tr>${['th_date','th_type','th_eq','th_provref','th_doc'].map(k=>`<th>${tr(k)}</th>`).join('')}</tr></thead>
+  <tbody>${rows||`<tr><td colspan="5" class="muted">${tr(all.length?'d_nomatch':'d_none')}</td></tr>`}</tbody></table></div>`;
 }
 
 function vReview(){
   if(!IX.rows.length) return emptyState();
   const groups=new Map(), add=(k,v)=>{if(!groups.has(k)) groups.set(k,[]); groups.get(k).push(v)};
   for(const p of IX.rows) for(const it of IX.issues.get(p.id)) add(it.type,{p,it});
-  for(const u of M.unmatched||[]){const name=typeof u==='string'?u:u.name; if(!IX.rows.some(p=>norm(p.equipment)===norm(name))) add('unmatched',{p:null,it:{text:`“${name}”${u.where?' in '+u.where:''} has no FLE code in the sync table (lab-data/sharepoint-sync.md).`}});}
-  const order=Object.keys(ISSUE).filter(k=>groups.has(k)), total=order.reduce((n,k)=>n+groups.get(k).length,0);
-  return `<div class="view-h"><h2>Data review</h2><span class="muted">${total} findings</span></div>
-  <p class="note">Checks run live on the data copied from the Excel. <b>Warnings</b> affect the dates; fix them in the Excel in SharePoint and they disappear after the next sync.</p>
-  ${order.length?`<div class="rev-sum">${order.map(k=>`<a href="#rev-${k}" data-open="rev-${k}" class="iss ${ISSUE_WARN.has(k)?'':'info'}">${esc(ISSUE[k])} · ${groups.get(k).length}</a>`).join('')}</div>`:'<div class="empty-ok">No findings. The plan dates are complete and consistent.</div>'}
-  ${order.map(k=>`<details class="panel" id="rev-${k}" ${ISSUE_WARN.has(k)?'open':''}><summary class="panel-h"><h2>${esc(ISSUE[k])}</h2><span class="${ISSUE_WARN.has(k)?'iss':'iss info'}">${ISSUE_WARN.has(k)?'Warning':'To define'} · ${groups.get(k).length}</span></summary>
+  for(const u of M.unmatched||[]){const name=typeof u==='string'?u:u.name; if(!IX.rows.some(p=>norm(p.equipment)===norm(name))) add('unmatched',{p:null,it:{text:tr('i_unmatched',name,u.where)}});}
+  const order=ISSUE.filter(k=>groups.has(k)), total=order.reduce((n,k)=>n+groups.get(k).length,0);
+  return `<div class="view-h"><h2>${tr('r_title')}</h2><span class="muted">${tr('n_find',total)}</span></div>
+  <p class="note">${tr('r_note')}</p>
+  ${order.length?`<div class="rev-sum">${order.map(k=>`<a href="#rev-${k}" data-open="rev-${k}" class="iss ${ISSUE_WARN.has(k)?'':'info'}">${esc(tr('iss_'+k))} · ${groups.get(k).length}</a>`).join('')}</div>`:`<div class="empty-ok">${tr('r_none')}</div>`}
+  ${order.map(k=>`<details class="panel" id="rev-${k}" ${ISSUE_WARN.has(k)?'open':''}><summary class="panel-h"><h2>${esc(tr('iss_'+k))}</h2><span class="${ISSUE_WARN.has(k)?'iss':'iss info'}">${tr(ISSUE_WARN.has(k)?'r_warn':'r_info')} · ${groups.get(k).length}</span></summary>
     <ul class="rev-list">${groups.get(k).map(({p,it})=>`<li>${p?`<button class="codebtn" data-act="row" data-id="${esc(p.id)}">${esc(clean(p.equipment))}</button>`:'<span></span>'}<span>${esc(it.text)}${p?` <span class="muted">— ${esc(clean((p.actions||[])[0]||''))}</span>`:''}</span><span></span></li>`).join('')}</ul></details>`).join('')}`;
 }
 
 function vData(){
   const src=(M.sources||{}).plan||{}, nRec=Object.keys(DATA.records).length;
   const gh=p=>`https://github.com/${REPO.owner}/${REPO.repo}/blob/${REPO.branch}/${p}`, hist=p=>`https://github.com/${REPO.owner}/${REPO.repo}/commits/${REPO.branch}/${p}`;
-  return `<div class="view-h"><h2>Data</h2><button class="btn" data-act="settings">Settings</button></div>
-  <section class="panel"><div class="panel-h"><h2>Copied from SharePoint</h2><span class="muted">${M.updated?'last change '+new Date(M.updated).toLocaleString('en-GB'):'not synced yet'}</span></div>
-    <dl class="kv"><div><dt>Excel</dt><dd>${src.url?`<a href="${esc(src.url)}" target="_blank" rel="noopener">Maintenance Plan.xlsx</a>`:'Maintenance Plan.xlsx'}</dd></div><div><dt>Sheet</dt><dd>${esc(src.sheet||'—')}</dd></div><div><dt>Rev. date</dt><dd>${fmtD(src.revDate)}</dd></div><div><dt>Modified in SharePoint</dt><dd>${src.modified?new Date(src.modified).toLocaleString('en-GB'):'—'}</dd></div>
-    <div><dt>Plan rows</dt><dd>${IX.rows.length}</dd></div><div><dt>Corrective actions</dt><dd>${(M.corrective||[]).length}</dd></div><div><dt>Documents</dt><dd>${(M.documents||[]).length}${M.pending?` · ${M.pending} pending`:''}</dd></div></dl>
-    <p class="note" style="margin-top:10px">A scheduled task reads the Excel and the PDFs on the 1st and 15th of each month (only what changed) and writes <a href="${gh(REPO.main)}" target="_blank" rel="noopener"><span class="mono">${REPO.main}</span></a> (<a href="${hist(REPO.main)}" target="_blank" rel="noopener">history</a>). This app never changes that file; what it does is described in <a href="${gh('sharepoint-sync.md')}" target="_blank" rel="noopener"><span class="mono">sharepoint-sync.md</span></a>.</p></section>
-  <section class="panel"><div class="panel-h"><h2>Saved by this app</h2><span class="muted">${plural(nRec,'record')}</span></div>
-    <p class="note" style="margin-bottom:10px">Programmed and logged maintenance and the settings are kept in <a href="${gh(REPO.path)}" target="_blank" rel="noopener"><span class="mono">${REPO.path}</span></a> of the private repository <span class="mono">${REPO.owner}/${REPO.repo}</span>. Every change is saved as a commit: the <a href="${hist(REPO.path)}" target="_blank" rel="noopener">history</a> shows who changed what and when. Equipment codes and descriptions come from the Calibration Plan.</p>
-    <div class="row"><button class="btn" data-act="download">Download a copy (JSON)</button></div></section>`;
+  const lnk=(u,t)=>`<a href="${u}" target="_blank" rel="noopener">${t}</a>`, loc=d=>new Date(d).toLocaleString(LabLang.locale());
+  return `<div class="view-h"><h2>${tr('dt_title')}</h2><button class="btn" data-act="settings">${tr('settings')}</button></div>
+  <section class="panel"><div class="panel-h"><h2>${tr('dt_sp')}</h2><span class="muted">${M.updated?tr('dt_last',loc(M.updated)):tr('dt_nosync')}</span></div>
+    <dl class="kv"><div><dt>Excel</dt><dd>${src.url?`<a href="${esc(src.url)}" target="_blank" rel="noopener">Maintenance Plan.xlsx</a>`:'Maintenance Plan.xlsx'}</dd></div><div><dt>${tr('dt_sheet')}</dt><dd>${esc(src.sheet||'—')}</dd></div><div><dt>${tr('dt_rev')}</dt><dd>${fmtD(src.revDate)}</dd></div><div><dt>${tr('dt_mod')}</dt><dd>${src.modified?loc(src.modified):'—'}</dd></div>
+    <div><dt>${tr('dt_rows')}</dt><dd>${IX.rows.length}</dd></div><div><dt>${tr('k_corr')}</dt><dd>${(M.corrective||[]).length}</dd></div><div><dt>${tr('dt_docs')}</dt><dd>${(M.documents||[]).length}${M.pending?tr('dt_pend',M.pending):''}</dd></div></dl>
+    <p class="note" style="margin-top:10px">${tr('dt_sync',lnk(gh(REPO.main),`<span class="mono">${REPO.main}</span>`),lnk(hist(REPO.main),tr('history')),lnk(gh('sharepoint-sync.md'),'<span class="mono">sharepoint-sync.md</span>'))}</p></section>
+  <section class="panel"><div class="panel-h"><h2>${tr('dt_saved')}</h2><span class="muted">${tr('n_record',nRec)}</span></div>
+    <p class="note" style="margin-bottom:10px">${tr('dt_saved_t',lnk(gh(REPO.path),`<span class="mono">${REPO.path}</span>`),`<span class="mono">${REPO.owner}/${REPO.repo}</span>`,lnk(hist(REPO.path),tr('history')))}</p>
+    <div class="row"><button class="btn" data-act="download">${tr('dt_dl')}</button></div></section>`;
 }
 
 /* ---------- Dialogs ---------- */
@@ -802,12 +803,13 @@ const dlg=$('#dlg');
 function fld(id,label,inner,cls='',help=''){return `<div class="field ${cls}"><label for="${id}">${label}</label>${inner}${help?`<span class="help" id="${id}-help">${help}</span>`:''}</div>`}
 function inp(name,val,type='text',extra=''){return `<input id="f-${name}" name="${name}" type="${type}" value="${esc(val??'')}" ${extra}>`}
 function sel(name,val,opts,extra=''){return `<select id="f-${name}" name="${name}" ${extra}>${opts.map(o=>{const [v,l]=Array.isArray(o)?o:[o,o]; return `<option value="${esc(v)}" ${String(val??'')===String(v)?'selected':''}>${esc(l)}</option>`}).join('')}</select>`}
+const closeX=()=>`<button type="button" class="icon-btn" data-act="close" aria-label="${esc(tr('close'))}">×</button>`;
 function dlgShell(eyebrow,title,body,footerLeft='',narrow=false,save=true){
   dlg.classList.toggle('narrow',narrow);
   if(S.ro) footerLeft='';
-  dlg.innerHTML=`<form class="dlg-form" id="dlg-form" novalidate><header class="dlg-h"><div><p class="eyebrow">${eyebrow}</p><h2>${esc(title)}</h2></div><button type="button" class="icon-btn" data-act="close" aria-label="Close">×</button></header>
+  dlg.innerHTML=`<form class="dlg-form" id="dlg-form" novalidate><header class="dlg-h"><div><p class="eyebrow">${eyebrow}</p><h2>${esc(title)}</h2></div>${closeX()}</header>
   <div class="dlg-body">${body}<div id="f-err" class="form-err" hidden></div></div>
-  <footer class="dlg-f">${footerLeft}<span class="sp"></span>${save?'<button type="button" class="btn ghost" data-act="close">Cancel</button><button class="btn primary" type="submit">Save</button>':'<button type="button" class="btn" data-act="close">Close</button>'}</footer></form>`;
+  <footer class="dlg-f">${footerLeft}<span class="sp"></span>${save?`<button type="button" class="btn ghost" data-act="close">${tr('cancel')}</button><button class="btn primary" type="submit">${tr('save')}</button>`:`<button type="button" class="btn" data-act="close">${tr('close')}</button>`}</footer></form>`;
   if(!dlg.open) dlg.showModal();
 }
 function readForm(){const fd=new FormData($('#dlg-form')), o={}; for(const [k,v] of fd.entries()) o[k]=typeof v==='string'?v.trim():v; return o;}
@@ -818,20 +820,20 @@ function openRow(id){
   dlg.dataset.kind='row'; dlg.dataset.id=id;
   const i=IX.info.get(id), iss=IX.issues.get(id), docs=docsOf(p), corr=corrOf(p), recs=i.recs.slice().sort((a,b)=>String(b.date||b.month).localeCompare(String(a.date||a.month)));
   const kv=(k,v)=>`<div><dt>${k}</dt><dd>${v}</dd></div>`;
-  const body=`<div class="row">${pill(i)} ${i.due?`<span class="muted">Next: <b>${fmtML(i.due)}</b>${i.fromApp?' (from the maintenance logged in the app)':''}</span>`:''}<span class="sp"></span>
-    <button type="button" class="btn sm" data-act="rec-plan" data-id="${esc(id)}">Programme maintenance</button><button type="button" class="btn sm primary" data-act="rec-done" data-id="${esc(id)}">Log maintenance done</button></div>
-  <section class="panel"><div class="panel-h"><h3>In the Excel</h3>${M.sources&&M.sources.plan&&M.sources.plan.url?`<a class="btn sm" href="${esc(M.sources.plan.url)}" target="_blank" rel="noopener">Open the Excel</a>`:''}</div>
-    <dl class="kv">${kv('Equipment',`${esc(clean(p.equipment))}${(p.equipmentIds||[]).length?'<br>'+p.equipmentIds.map(x=>`<span class="code">${esc(eqCode(x))}</span> <span class="muted">${esc((EQ.get(x)||{}).description||'')}</span>`).join('<br>'):'<br><span class="muted">Facility (no FLE code)</span>'}`)}
-      ${kv('Last maintenance',fmtM(toMonth(p.last)))}${kv('Next maintenance',fmtM(toMonth(p.next)))}${kv('Periodicity',esc(clean(p.periodicity)||'—'))}
-      ${kv('Action type',esc(typeOf(p)||'—'))}${kv('Provider',esc(isNA(p.provider)?'—':provOf(p)))}${kv('Components needed',esc(isNA(p.components)?'—':clean(p.components)))}${kv('Current contract',esc(isNA(p.contract)?'—':clean(p.contract)))}</dl>
-    <h3 style="margin:12px 0 4px;font-size:14px">Actions</h3><ul class="acts-l">${(p.actions||[]).map(a=>`<li>${esc(clean(a))}</li>`).join('')||'<li class="muted">—</li>'}</ul></section>
-  ${iss.length?`<section class="panel"><div class="panel-h"><h3>Data to review · ${iss.length}</h3></div><ul class="rev-list">${iss.map(it=>`<li><span class="iss ${it.sev==='warn'?'':'info'}">${it.sev==='warn'?'Warning':'To define'}</span><span>${esc(it.text)}</span><span></span></li>`).join('')}</ul></section>`:''}
-  <section class="panel"><div class="panel-h"><h3>Programmed and logged in the app</h3></div>
-    ${recs.length?`<table class="tbl mini"><thead><tr><th>When</th><th>Status</th><th>By / provider</th><th>Notes</th></tr></thead><tbody>${recs.map(r=>`<tr class="click" data-act="rec-edit" data-id="${esc(r.id)}"><td class="nowrap">${r.status==='Done'?fmtD(r.date):fmtM(r.month)}</td><td>${r.status==='Done'?'<span class="pill k-valid">Done</span>':`<span class="pill ${mIdx(r.month)<nowIdx()?'k-overdue':'k-beforeuse'}">Programmed</span>`}</td><td>${esc([r.by,r.provider].filter(Boolean).join(' · ')||'—')}</td><td>${esc(r.notes||'')}${r.docUrl?` <a href="${esc(r.docUrl)}" target="_blank" rel="noopener">📄</a>`:''}</td></tr>`).join('')}</tbody></table>`:'<p class="note">Nothing programmed or logged in the app.</p>'}</section>
-  <section class="panel"><div class="panel-h"><h3>Offers &amp; work reports</h3><span class="muted">${docs.length}</span></div>
-    ${docs.length?`<table class="tbl mini"><tbody>${docs.map(d=>`<tr><td class="nowrap">${fmtD(d.date)}</td><td><span class="kind ${esc(d.kind)}">${esc(KIND_LABEL[d.kind]||d.kind)}</span></td><td>${esc(d.provider||'')}</td><td>${d.url?`<a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.file||'Open')}</a>`:esc(d.file||'')}${d.summary?`<div class="doc-sum">${esc(d.summary)}</div>`:''}</td></tr>`).join('')}</tbody></table>`:'<p class="note">No documents in SharePoint for this equipment.</p>'}</section>
-  ${corr.length?`<section class="panel"><div class="panel-h"><h3>Corrective actions</h3><span class="muted">${corr.length}</span></div><table class="tbl mini"><tbody>${corr.map(c=>`<tr><td class="nowrap">${fmtD(c.problemDate)}</td><td>${esc(c.problem||'')}<span class="sub">${esc(c.action||'')}</span></td></tr>`).join('')}</tbody></table></section>`:''}`;
-  dlgShell(esc(p.group),rowLabel(p),body,'',false,false);
+  const body=`<div class="row">${pill(i)} ${i.due?`<span class="muted">${tr('next')} <b>${fmtML(i.due)}</b>${i.fromApp?tr('from_app'):''}</span>`:''}<span class="sp"></span>
+    <button type="button" class="btn sm" data-act="rec-plan" data-id="${esc(id)}">${tr('rec_plan')}</button><button type="button" class="btn sm primary" data-act="rec-done" data-id="${esc(id)}">${tr('rec_done')}</button></div>
+  <section class="panel"><div class="panel-h"><h3>${tr('in_xl')}</h3>${M.sources&&M.sources.plan&&M.sources.plan.url?`<a class="btn sm" href="${esc(M.sources.plan.url)}" target="_blank" rel="noopener">${tr('open_xl')}</a>`:''}</div>
+    <dl class="kv">${kv(tr('th_eq'),`${esc(clean(p.equipment))}${(p.equipmentIds||[]).length?'<br>'+p.equipmentIds.map(x=>`<span class="code">${esc(eqCode(x))}</span> <span class="muted">${esc((EQ.get(x)||{}).description||'')}</span>`).join('<br>'):`<br><span class="muted">${tr('fac_nofle')}</span>`}`)}
+      ${kv(tr('last_m'),fmtM(toMonth(p.last)))}${kv(tr('next_m'),fmtM(toMonth(p.next)))}${kv(tr('th_per'),esc(clean(p.periodicity)||'—'))}
+      ${kv(tr('act_type'),esc(typeLbl(typeOf(p))||'—'))}${kv(tr('th_prov'),esc(isNA(p.provider)?'—':provOf(p)))}${kv(tr('comps'),esc(isNA(p.components)?'—':clean(p.components)))}${kv(tr('contract'),esc(isNA(p.contract)?'—':clean(p.contract)))}</dl>
+    <h3 style="margin:12px 0 4px;font-size:14px">${tr('th_actions')}</h3><ul class="acts-l">${(p.actions||[]).map(a=>`<li>${esc(clean(a))}</li>`).join('')||'<li class="muted">—</li>'}</ul></section>
+  ${iss.length?`<section class="panel"><div class="panel-h"><h3>${tr('review_n',iss.length)}</h3></div><ul class="rev-list">${iss.map(it=>`<li><span class="iss ${it.sev==='warn'?'':'info'}">${tr(it.sev==='warn'?'r_warn':'r_info')}</span><span>${esc(it.text)}</span><span></span></li>`).join('')}</ul></section>`:''}
+  <section class="panel"><div class="panel-h"><h3>${tr('in_app')}</h3></div>
+    ${recs.length?`<table class="tbl mini"><thead><tr>${['th_when','th_status','th_by','th_notes'].map(k=>`<th>${tr(k)}</th>`).join('')}</tr></thead><tbody>${recs.map(r=>`<tr class="click" data-act="rec-edit" data-id="${esc(r.id)}"><td class="nowrap">${r.status==='Done'?fmtD(r.date):fmtM(r.month)}</td><td>${r.status==='Done'?`<span class="pill k-valid">${tr('s_done')}</span>`:`<span class="pill ${mIdx(r.month)<nowIdx()?'k-overdue':'k-beforeuse'}">${tr('s_prog')}</span>`}</td><td>${esc([r.by,r.provider].filter(Boolean).join(' · ')||'—')}</td><td>${esc(r.notes||'')}${r.docUrl?` <a href="${esc(r.docUrl)}" target="_blank" rel="noopener">📄</a>`:''}</td></tr>`).join('')}</tbody></table>`:`<p class="note">${tr('app_none')}</p>`}</section>
+  <section class="panel"><div class="panel-h"><h3>${tr('d_title')}</h3><span class="muted">${docs.length}</span></div>
+    ${docs.length?`<table class="tbl mini"><tbody>${docs.map(d=>`<tr><td class="nowrap">${fmtD(d.date)}</td><td><span class="kind ${esc(d.kind)}">${esc(kindLbl(d.kind))}</span></td><td>${esc(d.provider||'')}</td><td>${d.url?`<a href="${esc(d.url)}" target="_blank" rel="noopener">${esc(d.file||tr('open'))}</a>`:esc(d.file||'')}${d.summary?`<div class="doc-sum">${esc(d.summary)}</div>`:''}</td></tr>`).join('')}</tbody></table>`:`<p class="note">${tr('docs_none')}</p>`}</section>
+  ${corr.length?`<section class="panel"><div class="panel-h"><h3>${tr('c_title')}</h3><span class="muted">${corr.length}</span></div><table class="tbl mini"><tbody>${corr.map(c=>`<tr><td class="nowrap">${fmtD(c.problemDate)}</td><td>${esc(c.problem||'')}<span class="sub">${esc(c.action||'')}</span></td></tr>`).join('')}</tbody></table></section>`:''}`;
+  dlgShell(esc(tr('grp_'+p.group)),rowLabel(p),body,'',false,false);
 }
 function openRec(id,preset={}){
   const prev=id?DATA.records[id]:null, v={status:'Planned',...(prev||{}),...preset}, p=IX.byId.get(v.planId);
@@ -839,19 +841,19 @@ function openRec(id,preset={}){
   if(v.status==='Done'&&!v.date) v.date=todayIso();
   if(!v.month){const d=(IX.info.get(v.planId)||{}).due; v.month=d&&mIdx(d)>=nowIdx()?d:mStr(nowIdx());}  /* overdue: this month */
   if(!v.provider&&p&&!isNA(p.provider)) v.provider=provOf(p);
-  const opts=IX.rows.map(x=>[x.id,rowLabel(x)]); if(v.planId&&!IX.byId.has(v.planId)) opts.push([v.planId,'(row no longer in the Excel)']);
-  const body=`<fieldset><legend>Maintenance</legend>
-    ${fld('f-planId','Plan row',sel('planId',v.planId||'',[['','— choose —'],...opts]),'req span2')}
-    ${fld('f-status','Status',sel('status',v.status,[['Planned','Programmed'],['Done','Done']]))}
-    ${fld('f-month','Programmed month',inp('month',v.month,'month'),'req')}
-    ${fld('f-date','Date done',inp('date',v.date||'','date'),'req')}
-    ${fld('f-by','Done by',inp('by',v.by))}
-    ${fld('f-provider','Provider',inp('provider',v.provider,'text','list="prov-list" autocomplete="off"'))}
-    ${fld('f-notes','Notes',`<textarea id="f-notes" name="notes" rows="3">${esc(v.notes||'')}</textarea>`,'span2')}
-    ${fld('f-docUrl','Work report link (SharePoint)',inp('docUrl',v.docUrl,'url'),'span2')}
+  const opts=IX.rows.map(x=>[x.id,rowLabel(x)]); if(v.planId&&!IX.byId.has(v.planId)) opts.push([v.planId,tr('row_gone')]);
+  const body=`<fieldset><legend>${tr('maint')}</legend>
+    ${fld('f-planId',tr('plan_row'),sel('planId',v.planId||'',[['',tr('choose')],...opts]),'req span2')}
+    ${fld('f-status',tr('th_status'),sel('status',v.status,[['Planned',tr('s_prog')],['Done',tr('s_done')]]))}
+    ${fld('f-month',tr('prog_month'),inp('month',v.month,'month'),'req')}
+    ${fld('f-date',tr('date_done'),inp('date',v.date||'','date'),'req')}
+    ${fld('f-by',tr('done_by'),inp('by',v.by))}
+    ${fld('f-provider',tr('th_prov'),inp('provider',v.provider,'text','list="prov-list" autocomplete="off"'))}
+    ${fld('f-notes',tr('notes'),`<textarea id="f-notes" name="notes" rows="3">${esc(v.notes||'')}</textarea>`,'span2')}
+    ${fld('f-docUrl',tr('doc_url'),inp('docUrl',v.docUrl,'url'),'span2')}
   </fieldset>
-  <p class="note">A maintenance logged as done after the Excel's last date sets the next date (date + period) until the Excel is updated. Remember to update the Excel in SharePoint too.</p>`;
-  dlgShell('Maintenance',prev?(prev.status==='Done'?`Done ${fmtD(prev.date)}`:`Programmed ${fmtM(prev.month)}`):v.status==='Done'?'Log maintenance done':'Programme maintenance',body,prev?'<button type="button" class="btn ghost danger" data-act="del">Delete</button>':'',true);
+  <p class="note">${tr('rec_note')}</p>`;
+  dlgShell(tr('maint'),prev?(prev.status==='Done'?tr('t_done',fmtD(prev.date)):tr('t_prog',fmtM(prev.month))):tr(v.status==='Done'?'rec_done':'rec_plan'),body,prev?`<button type="button" class="btn ghost danger" data-act="del">${tr('del')}</button>`:'',true);
   recHints();
 }
 function recHints(){
@@ -861,25 +863,25 @@ function recHints(){
 }
 function saveRec(f){
   const id=dlg.dataset.id, p=IX.byId.get(f.planId)||(id&&DATA.records[id]&&DATA.records[id].planId===f.planId?{}:null);
-  if(!f.planId||!p) return formErr('Choose the plan row.');
+  if(!f.planId||!p) return formErr(tr('er_row'));
   const done=f.status==='Done';
-  if(done&&!f.date) return formErr('Enter the date the maintenance was done.');
-  if(!done&&!f.month) return formErr('Enter the programmed month.');
+  if(done&&!f.date) return formErr(tr('er_date'));
+  if(!done&&!f.month) return formErr(tr('er_month'));
   const data={planId:f.planId,equipment:clean(p.equipment||(DATA.records[id]||{}).equipment||''),status:f.status,month:done?f.date.slice(0,7):f.month,date:done?f.date:'',by:f.by||'',provider:f.provider||'',notes:f.notes||'',docUrl:done?f.docUrl||'':'',updated:nowIso()};
   const ops=[{op:'set',col:'records',id:id||'mt-'+rid(),data}];
   /* Logging a programmed maintenance as done (new record) closes the programmed one of the same row. */
   if(done&&!id){const pl=(IX.recs.get(f.planId)||[]).find(r=>r.status==='Planned'); if(pl) ops.push({op:'delete',col:'records',id:pl.id});}
-  return save(ops,`${clean(data.equipment)}: maintenance ${done?'logged':'programmed for '+fmtM(data.month)}.`);
+  return save(ops,done?tr('ok_logged',clean(data.equipment)):tr('ok_prog',clean(data.equipment),fmtM(data.month)));
 }
 function openSettings(){
   dlg.dataset.kind='cfg'; dlg.dataset.id='';
   const c=S.cfg;
-  dlgShell('Settings','Maintenance plan settings',`<fieldset><legend>Alerts</legend>${fld('f-warnMonths','Warn this many months before the due month',inp('warnMonths',c.warnMonths,'number','min="0" max="12" step="1"'),'','0 = only in the due month.')}</fieldset>
-  <fieldset><legend>SharePoint</legend>${fld('f-spBase','Maintenance folder link',inp('spBase',c.spBase,'url'),'span2')}</fieldset>
-  <fieldset><legend>Controlled form</legend>${fld('f-formCode','Form code',inp('formCode',c.formCode))}</fieldset>`,'',true);
+  dlgShell(tr('settings'),tr('cfg_title'),`<fieldset><legend>${tr('cfg_alerts')}</legend>${fld('f-warnMonths',tr('cfg_warn'),inp('warnMonths',c.warnMonths,'number','min="0" max="12" step="1"'),'',tr('cfg_warn_h'))}</fieldset>
+  <fieldset><legend>SharePoint</legend>${fld('f-spBase',tr('cfg_folder'),inp('spBase',c.spBase,'url'),'span2')}</fieldset>
+  <fieldset><legend>${tr('cfg_form')}</legend>${fld('f-formCode',tr('cfg_code'),inp('formCode',c.formCode))}</fieldset>`,'',true);
 }
 function saveCfg(f){
-  return save([{op:'set',col:'config',id:'settings',data:{warnMonths:Math.max(0,Math.min(12,parseInt(f.warnMonths)||0)),spBase:f.spBase||DEFAULT_CFG.spBase,formCode:f.formCode||''}}],'Settings saved.');
+  return save([{op:'set',col:'config',id:'settings',data:{warnMonths:Math.max(0,Math.min(12,parseInt(f.warnMonths)||0)),spBase:f.spBase||DEFAULT_CFG.spBase,formCode:f.formCode||''}}],tr('cfg_saved'));
 }
 function saveDialog(){
   const f=readForm(), k=dlg.dataset.kind;
@@ -887,8 +889,8 @@ function saveDialog(){
   if(r) dlg.close();
 }
 function deleteFromDialog(btn){
-  if(!btn.classList.contains('armed')){btn.classList.add('armed'); btn.textContent='Confirm delete'; return;}
-  save([{op:'delete',col:'records',id:dlg.dataset.id}],'Deleted.'); dlg.close();
+  if(!btn.classList.contains('armed')){btn.classList.add('armed'); btn.textContent=tr('del_ok'); return;}
+  save([{op:'delete',col:'records',id:dlg.dataset.id}],tr('deleted')); dlg.close();
 }
 
 /* ---------- Storage: private data repository Polinya-LAB/lab-data ----------
@@ -935,7 +937,7 @@ const httpError=res=>{const limited=res.status===429||(res.status===403&&res.hea
 function errMsg(e){const c=e&&e.code;
   if(byMail()&&(c==='auth'||c==='not_granted'&&GH.expired)) return ta('au_e_save');
   if(byMail()&&(c==='not_granted'||c==='forbidden')) return ta('au_e_perm');
-  if(c==='not_granted'||c==='forbidden') return 'You cannot change data: connect GitHub with an account that has write access to the repository.'; if(c==='auth') return 'Your GitHub key is no longer valid. Connect GitHub again with a new key.'; if(c==='conflict') return 'Someone else saved at the same time. Your change was not saved; try again.'; if(c==='rate') return 'GitHub is limiting requests right now. Wait a minute and try again.'; if(c==='unavailable') return 'Could not reach GitHub. Check your connection and try again.'; return 'Could not save: '+(e&&e.message||e)}
+  if(c==='not_granted'||c==='forbidden') return tr('e_forb'); if(c==='auth') return tr('e_auth'); if(c==='conflict') return tr('e_conflict'); if(c==='rate') return tr('e_rate'); if(c==='unavailable') return tr('e_unav'); return tr('e_save',e&&e.message||e)}
 
 /* Reads one file: {json, sha} or null when unchanged (ETag); {missing:true} when it does not exist. */
 async function fetchFile(path,useEtag){
@@ -1075,10 +1077,10 @@ async function mailSwitch(email){
   try{await connectMail(email);}catch(err){ if(err.code==='auth') mailExpired(); }
   remote.etag={}; await refresh(); render();
 }
-function disconnectGh(){Object.assign(GH,{token:'',login:null,push:false,invalid:false,modo:null}); S.ro=true; try{localStorage.removeItem(TOKEN_KEY);}catch(e){} remote.etag={}; dlg.close(); render(); toast('Disconnected from GitHub. This browser no longer has the key.');}
+function disconnectGh(){Object.assign(GH,{token:'',login:null,push:false,invalid:false,modo:null}); S.ro=true; try{localStorage.removeItem(TOKEN_KEY);}catch(e){} remote.etag={}; dlg.close(); render(); toast(tr('gh_off_ok'));}
 function renderGh(){
   const b=$('#btn-gh'); if(!b) return;
-  if(LOCAL){b.className='gh on'; b.querySelector('span').textContent='Local test data'; b.title='Local test mode: nothing is sent to GitHub.'; document.body.classList.remove('ro'); return;}
+  if(LOCAL){b.className='gh on'; b.querySelector('span').textContent=tr('gh_local'); b.title=tr('gh_local_t'); document.body.classList.remove('ro'); return;}
   if(LA&&GH.modo!=='clave'){
     b.className='gh '+(GH.expired?'bad':GH.saving?'busy':GH.login&&GH.push?'on':'');
     b.querySelector('span').textContent=GH.expired?ta('au_again'):GH.saving?ta('au_saving'):GH.login||(byMail()&&GH.email)||ta('au_btn');
@@ -1087,26 +1089,24 @@ function renderGh(){
     return;
   }
   b.className='gh '+(GH.invalid?'bad':GH.saving?'busy':GH.login&&GH.push?'on':'');
-  b.querySelector('span').textContent=GH.invalid?'GitHub key expired':GH.saving?'Saving…':GH.login?GH.login:'Connect GitHub';
-  b.title=GH.login?(GH.push?'Connected with write access. Changes are saved as commits.':'Connected, but this account cannot edit the repository.'):'Connect GitHub to see and change the maintenance plan';
+  b.querySelector('span').textContent=GH.invalid?tr('gh_expired'):GH.saving?tr('au_saving'):GH.login?GH.login:tr('gh_connect');
+  b.title=GH.login?tr(GH.push?'gh_t_push':'gh_t_ro'):tr('gh_t');
   document.body.classList.toggle('ro',!!S.ro);
 }
 function openGh(){
   dlg.dataset.kind='gh'; dlg.dataset.id=''; dlg.classList.add('narrow');
   if(LA) return openMail();
-  const body=`${GH.login?`<p class="note">Connected as <b>${esc(GH.login)}</b>${GH.push?' with write access.':', but this account cannot edit the repository.'}</p>`:''}
-  <ol class="guide">
-    <li>Create an access key in GitHub: <a href="https://github.com/settings/tokens/new?scopes=repo&amp;description=Laboratorio%20Polinya" target="_blank" rel="noopener">open the form</a>. The <span class="mono">repo</span> permission is already ticked (needed because the lab data is private); choose an expiry and press <i>Generate token</i>.</li>
-    <li>Copy the key and paste it here.</li>
-  </ol>
+  const body=`${GH.login?`<p class="note">${tr('gh_as',esc(GH.login),GH.push)}</p>`:''}
+  ${keyGuide()}
   ${keyFields()}`;
-  dlg.innerHTML=`<form class="dlg-form" id="dlg-form" novalidate><header class="dlg-h"><div><p class="eyebrow">Access</p><h2>Connect GitHub</h2></div><button type="button" class="icon-btn" data-act="close" aria-label="Close">×</button></header>
+  dlg.innerHTML=`<form class="dlg-form" id="dlg-form" novalidate><header class="dlg-h"><div><p class="eyebrow">${tr('au_eyebrow')}</p><h2>${tr('gh_connect')}</h2></div>${closeX()}</header>
   <div class="dlg-body">${body}<div id="f-err" class="form-err" hidden></div></div>
-  <footer class="dlg-f">${GH.token?'<button type="button" class="btn ghost danger" data-act="gh-off">Disconnect</button>':''}<span class="sp"></span><button type="button" class="btn ghost" data-act="close">Cancel</button><button class="btn primary gh-ok" type="submit">Connect</button></footer></form>`;
+  <footer class="dlg-f">${GH.token?`<button type="button" class="btn ghost danger" data-act="gh-off">${tr('gh_off')}</button>`:''}<span class="sp"></span><button type="button" class="btn ghost" data-act="close">${tr('cancel')}</button><button class="btn primary gh-ok" type="submit">${tr('gh_go')}</button></footer></form>`;
   if(!dlg.open) dlg.showModal(); $('#gh-token').focus();
 }
-const keyFields=()=>`<div class="field"><label for="gh-token">Access key (token)</label><input id="gh-token" type="password" placeholder="ghp_…" autocomplete="off" spellcheck="false"></div>
-  <p class="note">The key is kept only in this browser and is shared with the other lab apps. Your GitHub account must have access to the data repository <span class="mono">${REPO.owner}/${REPO.repo}</span>: Read to view, Write to edit. Every change is saved as a commit, so the history shows who changed what.</p>`;
+const keyGuide=()=>`<ol class="guide"><li>${tr('gh_step1')}</li><li>${tr('gh_step2')}</li></ol>`;
+const keyFields=()=>`<div class="field"><label for="gh-token">${tr('gh_key')}</label><input id="gh-token" type="password" placeholder="ghp_…" autocomplete="off" spellcheck="false"></div>
+  <p class="note">${tr('gh_key_note',`${REPO.owner}/${REPO.repo}`)}</p>`;
 /* With email sign-in configured: "Sign in with your email" first (email + password, one step), "Use a GitHub key" below. */
 function openMail(){
   const signed=byMail()&&GH.login&&!GH.expired, keyOn=GH.modo==='clave'&&GH.login;
@@ -1118,11 +1118,11 @@ function openMail(){
     <div class="field"><label for="gh-pass">${ta('au_pass')}</label><input id="gh-pass" type="password" autocomplete="current-password" spellcheck="false"></div>
     <p class="note">${ta('au_forgot')}</p></section>`;
   const key=signed?'':`<details class="manual gh-key" ${keyOn?'open':''}><summary>${ta('au_key')}</summary>
-    ${keyOn?`<p class="note">Connected as <b>${esc(GH.login)}</b>${GH.push?' with write access.':', but this account cannot edit the repository.'}</p>`:''}
-    <ol class="guide"><li>Create an access key in GitHub: <a href="https://github.com/settings/tokens/new?scopes=repo&amp;description=Laboratorio%20Polinya" target="_blank" rel="noopener">open the form</a>. The <span class="mono">repo</span> permission is already ticked (needed because the lab data is private); choose an expiry and press <i>Generate token</i>.</li><li>Copy the key and paste it here.</li></ol>
-    ${keyFields()}<p>${keyOn?'<button type="button" class="btn ghost danger" data-act="gh-off">Disconnect</button> ':''}<button type="button" class="btn" data-act="gh-key">Connect</button></p></details>`;
+    ${keyOn?`<p class="note">${tr('gh_as',esc(GH.login),GH.push)}</p>`:''}
+    ${keyGuide()}
+    ${keyFields()}<p>${keyOn?`<button type="button" class="btn ghost danger" data-act="gh-off">${tr('gh_off')}</button> `:''}<button type="button" class="btn" data-act="gh-key">${tr('gh_go')}</button></p></details>`;
   const main=signed?'':`<button class="btn primary gh-ok" type="submit">${ta('au_enter')}</button>`;
-  dlg.innerHTML=`<form class="dlg-form" id="dlg-form" novalidate><header class="dlg-h"><div><p class="eyebrow">${ta('au_eyebrow')}</p><h2>${ta('au_btn')}</h2></div><button type="button" class="icon-btn" data-act="close" aria-label="Close">×</button></header>
+  dlg.innerHTML=`<form class="dlg-form" id="dlg-form" novalidate><header class="dlg-h"><div><p class="eyebrow">${ta('au_eyebrow')}</p><h2>${ta('au_btn')}</h2></div>${closeX()}</header>
   <div class="dlg-body">${mail}${key}<div id="f-err" class="form-err" hidden></div></div>
   <footer class="dlg-f">${signed?`<button type="button" class="btn ghost danger" data-act="gh-out">${ta('au_signout')}</button>`:''}<span class="sp"></span><button type="button" class="btn ghost" data-act="close">${ta(signed?'au_close':'au_cancel')}</button>${main}</footer></form>`;
   if(!dlg.open) dlg.showModal(); const m=$('#gh-mail'); if(m) (m.value?$('#gh-pass'):m).focus();
@@ -1157,14 +1157,14 @@ async function saveMail(){
 }
 function saveGh(){ return LA&&document.activeElement!==$('#gh-token')?saveMail():saveKey(); }
 async function saveKey(){
-  const t=($('#gh-token').value||'').trim(); if(!t) return formErr('Paste the access key.');
-  const btn=LA?dlg.querySelector('[data-act="gh-key"]'):dlg.querySelector('button[type="submit"]'); btn.disabled=true; btn.textContent='Checking…';
+  const t=($('#gh-token').value||'').trim(); if(!t) return formErr(tr('gh_paste'));
+  const btn=LA?dlg.querySelector('[data-act="gh-key"]'):dlg.querySelector('button[type="submit"]'); btn.disabled=true; btn.textContent=tr('au_wait');
   try{
     await connectGh(t); try{localStorage.setItem(TOKEN_KEY,t);}catch(e){}
     if(LA){ dlg.dataset.verified=''; if(await LA.sesion()){mailBusy=true; try{await LA.salir();}catch(e){} mailBusy=false;} }
     remote.etag={}; S.noDb=false; await refresh(); dlg.close(); render();
-    toast(GH.push?`Connected as ${GH.login}. You can now edit.`:`Connected as ${GH.login}, but this account cannot edit the repository.`);
-  }catch(err){ btn.disabled=false; btn.textContent='Connect'; formErr(err.code==='auth'?'That key is not valid or has expired.':err.code==='forbidden'?'That key cannot see the repository.':'Could not reach GitHub. Check your connection.'); }
+    toast(tr(GH.push?'gh_ok_push':'gh_ok_ro',GH.login));
+  }catch(err){ btn.disabled=false; btn.textContent=tr('gh_go'); formErr(tr(err.code==='auth'?'gh_bad':err.code==='forbidden'?'gh_forb':'gh_unav')); }
 }
 function download(){
   const url=URL.createObjectURL(new Blob([JSON.stringify({mantenimiento:M,registro:DATA},null,1)+'\n'],{type:'application/json'})), a=document.createElement('a');
@@ -1195,8 +1195,8 @@ document.addEventListener('click',async ev=>{
   else if(a==='plan-span'){S.plan.span=+t.dataset.s; try{localStorage.setItem('mt.span',S.plan.span)}catch(e){} render();}
   else if(a==='settings') openSettings();
   else if(a==='download') download();
-  else if(a==='gh'){ if(LOCAL) toast('Local test mode: the data stays in this browser and GitHub is not used.'); else openGh(); }
-  else if(a==='local-reset'){try{localStorage.removeItem(LS_LOCAL);}catch(e){} remote.data=null; await refresh(); toast('Test data reset.');}
+  else if(a==='gh'){ if(LOCAL) toast(tr('local_gh')); else openGh(); }
+  else if(a==='local-reset'){try{localStorage.removeItem(LS_LOCAL);}catch(e){} remote.data=null; await refresh(); toast(tr('local_reset'));}
   else if(a==='gh-off') disconnectGh();
   else if(a==='gh-out'){dlg.close(); mailSignOut();}
   else if(a==='gh-key') saveKey();
@@ -1208,7 +1208,25 @@ document.addEventListener('change',ev=>{ if(dlg.open&&dlg.contains(ev.target)) r
 document.addEventListener('submit',ev=>{ if(ev.target.id!=='dlg-form') return; ev.preventDefault(); if(dlg.dataset.kind==='gh') saveGh(); else saveDialog(); });
 window.addEventListener('hashchange',()=>{const h=location.hash.slice(1); if(VIEWS.some(x=>x[0]===h)&&h!==S.view) setView(h);});
 
+/* ---------- Language ---------- */
+/* An open dialog is drawn again in the new language, keeping what was typed; not while a sign-in or key check is running. */
+function redrawDialog(){
+  const f=$('#dlg-form'), k=dlg.dataset.kind; if(!f||f.querySelector('button:disabled')) return;
+  const vals=[...f.querySelectorAll('input[id],select[id],textarea[id]')].map(el=>[el.id,el.value]), det=[...f.querySelectorAll('details')].map(d=>d.open);
+  if(k==='row') openRow(dlg.dataset.id);
+  else if(k==='rec') openRec(dlg.dataset.id||null,readForm());
+  else if(k==='cfg') openSettings();
+  else if(k==='gh') openGh();
+  else return;
+  vals.forEach(([id,v])=>{const el=document.getElementById(id); if(el) el.value=v;});
+  dlg.querySelectorAll('details').forEach((d,i)=>{if(i<det.length) d.open=det[i];});
+  recHints();
+}
+function applyLang(){LabLang.apply(I18N); document.title=tr('title');}
+LabLang.onChange(()=>{applyLang(); render(); if(dlg.open) redrawDialog();});
+
 /* ---------- Boot ---------- */
+applyLang();
 render();
 (async()=>{
   if(LA&&!LOCAL){ await LA.listo; const s=await LA.sesion();
