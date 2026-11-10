@@ -470,26 +470,26 @@ function issuesOf(e){
   const out=[], add=(type,text)=>out.push({type,sev:ISSUE_WARN.has(type)?'warn':'info',text});
   const info=IX.info.get(e.id), active=!['Reserved','Retired'].includes(e.state||'In use');
   const same=(IX.code.get(norm(e.code))||[]).filter(x=>x.id!==e.id);
-  if(same.length) add('dupcode',`${e.code} is also used by “${same.map(x=>x.description||x.id).join('”, “')}”. Assign a new code.`);
+  if(same.length) add('dupcode',t('i_dupcode',e.code,same.map(x=>x.description||x.id).join('”, “')));
   const sk=normSerial(e.serial), ss=sk?(IX.serial.get(sk)||[]).filter(x=>x.id!==e.id):[];
-  if(ss.length) add('dupserial',`Serial ${e.serial} is also on ${ss.map(x=>x.code).join(', ')}.`);
+  if(ss.length) add('dupserial',t('i_dupserial',e.serial,ss.map(x=>x.code).join(', ')));
   if(active&&e.calMode==='Periodic'){
     const p=+e.periodMonths||0, calc=addM(e.lastCal,p);
-    if(!p) add('noperiod','No calibration period.');
-    if(!e.lastCal) add('nodates','No last calibration date.');
-    if(calc&&e.nextOverride&&calc!==e.nextOverride) add('nextdiff',`Next calibration ${fmtM(e.nextOverride)}, but last ${fmtM(e.lastCal)} + ${perLabel(p)} gives ${fmtM(calc)}.`);
-    else if(e.lastCal&&info.due&&mIdx(info.due)<=mIdx(e.lastCal)) add('nextbefore',`Next date ${fmtM(info.due)} is not after the last calibration ${fmtM(e.lastCal)}.`);
-    if(e.lastCal&&mIdx(e.lastCal)>nowIdx()) add('lastfuture',`Last calibration ${fmtM(e.lastCal)} is in the future.`);
+    if(!p) add('noperiod',t('i_noperiod'));
+    if(!e.lastCal) add('nodates',t('i_nodates'));
+    if(calc&&e.nextOverride&&calc!==e.nextOverride) add('nextdiff',t('i_nextdiff',fmtM(e.nextOverride),fmtM(e.lastCal),perLabel(p),fmtM(calc)));
+    else if(e.lastCal&&info.due&&mIdx(info.due)<=mIdx(e.lastCal)) add('nextbefore',t('i_nextbefore',fmtM(info.due),fmtM(e.lastCal)));
+    if(e.lastCal&&mIdx(e.lastCal)>nowIdx()) add('lastfuture',t('i_lastfuture',fmtM(e.lastCal)));
     if(e.state!=='Out of service'){
-      if(!(e.points||[]).some(p=>p.tolerance)) add('notol','No tolerance defined.');
-      if(!e.serial) add('noserial','No serial number.');
-      if(e.actionType!=='Internal'){ if(!e.lab) add('nolab','No calibration lab.'); if(e.price===''||e.price==null) add('noprice','No offer price.'); if(!e.enac) add('noenac','ENAC accreditation not defined.'); }
+      if(!(e.points||[]).some(p=>p.tolerance)) add('notol',t('i_notol'));
+      if(!e.serial) add('noserial',t('i_noserial'));
+      if(e.actionType!=='Internal'){ if(!e.lab) add('nolab',t('i_nolab')); if(e.price===''||e.price==null) add('noprice',t('i_noprice')); if(!e.enac) add('noenac',t('i_noenac')); }
     }
   }
-  if(active&&info.planned&&mIdx(info.planned.month)<nowIdx()) add('plannedpast',`Calibration planned for ${fmtM(info.planned.month)} is not registered as done.`);
+  if(active&&info.planned&&mIdx(info.planned.month)<nowIdx()) add('plannedpast',t('i_plannedpast',fmtM(info.planned.month)));
   const tol=tolNum(e);
-  for(const v of IX.evals.get(e.id)||[]){const tu=num(v.tu); if(tol!=null&&tu!=null&&Math.abs(tol-tu)>1e-9&&(v.unit||'ºC')!=='%RH'){add('tudiff',`TU ${fmtNum(tu)} ${v.unit||''} in the evaluation${v.date?' of '+fmtD(v.date):''}; the plan tolerance is ±${fmtNum(tol)}.`); break;}}
-  for(const ct of IX.certFree.get(e.id)||[]) add('certnoreg',`Certificate ${ct.certRef||ct.file} (calibrated ${fmtD(ct.calDate)}) is in SharePoint, but no calibration is registered for that month.`);
+  for(const v of IX.evals.get(e.id)||[]){const tu=num(v.tu); if(tol!=null&&tu!=null&&Math.abs(tol-tu)>1e-9&&(v.unit||'ºC')!=='%RH'){add('tudiff',t('i_tudiff',fmtNum(tu),unitD(v.unit),v.date?fmtD(v.date):'',fmtNum(tol))); break;}}
+  for(const ct of IX.certFree.get(e.id)||[]) add('certnoreg',t('i_certnoreg',ct.certRef||ct.file,fmtD(ct.calDate)));
   (e.importNotes||[]).forEach((n,i)=>{ if(!n.done) out.push({type:'import',sev:'warn',text:n.text,note:i}); });
   return out;
 }
@@ -513,17 +513,17 @@ function linkCerts(){
     if(!rec.certRef) rec.certRef=ct.certRef||'';
   }
 }
-const certA=ct=>ct?`<a class="folder" href="${esc(ct.url||'#')}" target="_blank" rel="noopener" title="Open the certificate in SharePoint">📄 ${esc(ct.certRef||ct.file||'Certificate')}</a>`:'';
+const certA=ct=>ct?`<a class="folder" href="${esc(ct.url||'#')}" target="_blank" rel="noopener" title="${t('cert_open')}">📄 ${esc(ct.certRef||ct.file||t('certificate'))}</a>`:'';
 function certPoints(ct){
-  const pts=ct.points||[]; if(!pts.length) return `<p class="note">${esc(ct.notes||'No results were read from this certificate.')}</p>`;
+  const pts=ct.points||[]; if(!pts.length) return `<p class="note">${esc(ct.notes||t('cert_nores'))}</p>`;
   const iso=pts.some(p=>SP_Q.has(p.q)&&(p.stab!=null||p.unif!=null));
   return iso
-    ? `<table class="tbl mini"><thead><tr><th>Point</th><th class="num">Mean</th><th class="num">U (k=2)</th><th class="num">Stab.</th><th class="num">Unif.</th><th>Positions</th></tr></thead><tbody>${pts.map(p=>`<tr><td class="nowrap">${p.q==='RH'?`${fmtNum(p.nominal)} %RH at ${fmtNum(p.atT)} ºC`:`${fmtNum(p.nominal)} ${esc(p.unit||'ºC')}`}</td><td class="num">${fmtNum(p.mean)}</td><td class="num">${fmtNum(p.U)}</td><td class="num">${fmtNum(p.stab)}</td><td class="num">${fmtNum(p.unif)}</td><td class="mono">${esc((p.zones||[]).map(fmtNum).join(' · '))}</td></tr>`).join('')}</tbody></table>`
-    : `<table class="tbl mini"><thead><tr><th>Quantity</th><th class="num">Nominal</th><th class="num">Indicated</th><th class="num">Error</th><th class="num">U</th><th class="num">k</th></tr></thead><tbody>${pts.map(p=>`<tr><td>${esc(p.q||'')}</td><td class="num">${fmtNum(p.nominal)} ${esc(p.unit||'')}</td><td class="num">${fmtNum(p.mean)}</td><td class="num">${fmtNum(p.error)}</td><td class="num">${fmtNum(p.U)}</td><td class="num">${fmtNum(p.k)}</td></tr>`).join('')}</tbody></table>`;
+    ? `<table class="tbl mini"><thead><tr><th>${t('h_point')}</th><th class="num">${t('h_mean')}</th><th class="num">U (k=2)</th><th class="num">${t('h_stab')}</th><th class="num">${t('h_unif')}</th><th>${t('h_pos')}</th></tr></thead><tbody>${pts.map(p=>`<tr><td class="nowrap">${p.q==='RH'?t('rh_at',fmtNum(p.nominal),fmtNum(p.atT)):`${fmtNum(p.nominal)} ${esc(unitD(p.unit||'ºC'))}`}</td><td class="num">${fmtNum(p.mean)}</td><td class="num">${fmtNum(p.U)}</td><td class="num">${fmtNum(p.stab)}</td><td class="num">${fmtNum(p.unif)}</td><td class="mono">${esc((p.zones||[]).map(fmtNum).join(' · '))}</td></tr>`).join('')}</tbody></table>`
+    : `<table class="tbl mini"><thead><tr><th>${t('h_qty')}</th><th class="num">${t('h_nom')}</th><th class="num">${t('h_ind')}</th><th class="num">${t('h_err')}</th><th class="num">U</th><th class="num">k</th></tr></thead><tbody>${pts.map(p=>`<tr><td>${esc(p.q||'')}</td><td class="num">${fmtNum(p.nominal)} ${esc(unitD(p.unit))}</td><td class="num">${fmtNum(p.mean)}</td><td class="num">${fmtNum(p.error)}</td><td class="num">${fmtNum(p.U)}</td><td class="num">${fmtNum(p.k)}</td></tr>`).join('')}</tbody></table>`;
 }
 function certPanel(ct,id){
   const reg=!ct.recId;
-  return `<div class="cert"><div class="row">${certA(ct)}<span class="muted">${esc([ct.lab,ct.calDate?'calibrated '+fmtD(ct.calDate):'',ct.issueDate?'issued '+fmtD(ct.issueDate):''].filter(Boolean).join(' · '))}</span>${ct.verdict?`<span class="chip">${esc(ct.verdict)}</span>`:''}<span class="sp"></span>${reg&&id?`<button type="button" class="btn sm" data-act="cert-reg" data-id="${esc(id)}" data-k="${esc(ct.key)}">Register this calibration</button>`:''}</div>${certPoints(ct)}</div>`;
+  return `<div class="cert"><div class="row">${certA(ct)}<span class="muted">${esc([ct.lab,ct.calDate?t('calibrated_on',fmtD(ct.calDate)):'',ct.issueDate?t('issued_on',fmtD(ct.issueDate)):''].filter(Boolean).join(' · '))}</span>${ct.verdict?`<span class="chip">${esc(ct.verdict)}</span>`:''}<span class="sp"></span>${reg&&id?`<button type="button" class="btn sm" data-act="cert-reg" data-id="${esc(id)}" data-k="${esc(ct.key)}">${t('cert_reg')}</button>`:''}</div>${certPoints(ct)}</div>`;
 }
 function buildIndex(){
   const eqs=Object.entries(DATA.equipment).map(([id,v])=>({id,...v})).sort(byCode);
@@ -544,40 +544,40 @@ function buildIndex(){
 /* ---------- Render ---------- */
 function render(){
   let banner='';
-  if(PREVIEW&&DATA) banner=`<div class="banner no-print"><b>Preview version.</b> It shows the real data from <span class="mono">lab-data</span>, but changes are not saved to GitHub: they stay in this page until you reload it.</div>`;
-  else if(LOCAL) banner=`<div class="banner no-print"><b>Local test mode.</b> The data comes from <span class="mono">local-data.js</span>, which is not in the repository; changes stay in this browser and are never sent to GitHub. <button class="link" data-act="local-reset">Reset the test data</button></div>`;
+  if(PREVIEW&&DATA) banner=`<div class="banner no-print">${t('b_preview')}</div>`;
+  else if(LOCAL) banner=`<div class="banner no-print">${t('b_local')} <button class="link" data-act="local-reset">${t('b_local_reset')}</button></div>`;
   else if(byMail()&&GH.noAccess) banner=`<div class="banner crit"><b>${ta('au_noapp')}</b></div>`;
   else if(byMail()&&GH.expired) banner=`<div class="banner crit">${ta('au_expired')} <button class="link" data-act="gh">${ta('au_again')}</button></div>`;
   else if(S.noDb&&LA&&!GH.login&&S.privateData) banner=`<div class="banner crit"><b>${ta('au_private')}</b> <button class="link" data-act="gh">${ta('au_btn')}</button></div>`;
   else if(S.noDb) banner=S.privateData
     ? (GH.login
-      ? `<div class="banner crit"><b>Your account ${esc(GH.login)} cannot see the calibration data.</b> Ask the owner to add you to the private repository <span class="mono">${REPO.owner}/${REPO.repo}</span>.</div>`
-      : `<div class="banner crit"><b>The calibration data is private.</b> Press <button class="link" data-act="gh">Connect GitHub</button> with an account that has access to see it.</div>`)
-    : `<div class="banner crit"><b>Could not load the calibration data from GitHub.</b> Check your connection and reload the page.</div>`;
-  else if(GH.invalid) banner=`<div class="banner crit">Your GitHub key is no longer valid or has expired. <button class="link" data-act="gh">Connect GitHub</button> and paste a new one.</div>`;
-  else if(!byMail()&&GH.login&&!GH.push) banner=`<div class="banner">Your GitHub account <b>${esc(GH.login)}</b> cannot edit this repository. Ask to be added as a collaborator with the Write role.</div>`;
+      ? `<div class="banner crit">${t('b_nosee',esc(GH.login),`<span class="mono">${REPO.owner}/${REPO.repo}</span>`)}</div>`
+      : `<div class="banner crit">${t('b_private',`<button class="link" data-act="gh">${t('gh_connect')}</button>`)}</div>`)
+    : `<div class="banner crit">${t('b_noload')}</div>`;
+  else if(GH.invalid) banner=`<div class="banner crit">${t('b_invalid',`<button class="link" data-act="gh">${t('gh_connect')}</button>`)}</div>`;
+  else if(!byMail()&&GH.login&&!GH.push) banner=`<div class="banner">${t('b_noedit',esc(GH.login))}</div>`;
   else if(byMail()&&GH.login&&!GH.push) banner=`<div class="banner">${ta('au_ro',esc(GH.login))}</div>`;
   else if(S.ro&&LA&&!GH.login) banner=`<div class="banner">${ta('au_ro_out')} <button class="link" data-act="gh">${ta('au_btn')}</button></div>`;
-  else if(S.ro) banner=`<div class="banner">Read-only. To register or change calibrations, <button class="link" data-act="gh">connect GitHub</button> with an account that has write access to the repository.</div>`;
+  else if(S.ro) banner=`<div class="banner">${t('b_ro',`<button class="link" data-act="gh">${t('gh_connect_l')}</button>`)}</div>`;
   renderGh();
-  if(!DATA){$('#tabs').innerHTML=''; $('#view').innerHTML=banner+(S.noDb?'':'<div class="empty"><h3>Loading calibration data…</h3></div>'); return;}
+  if(!DATA){$('#tabs').innerHTML=''; $('#view').innerHTML=banner+(S.noDb?'':`<div class="empty"><h3>${t('loading')}</h3></div>`); return;}
   buildIndex();
   S.cfg={...DEFAULT_CFG,...((DATA.config||{}).settings||{})};
   $('#form-tag').textContent=S.cfg.formCode||'F-IM-FM-001';
   $('#lab-list').innerHTML=IX.labs.map(l=>`<option value="${esc(l)}">`).join('');
   const act=IX.eqs.filter(e=>ACTION_KEYS.includes(IX.info.get(e.id).key)), crit=act.some(e=>['overdue','nok'].includes(IX.info.get(e.id).key));
   const nIss=IX.eqs.reduce((n,e)=>n+IX.issues.get(e.id).filter(i=>i.sev==='warn').length,0);
-  $('#tabs').innerHTML=VIEWS.map(([k,l])=>`<button data-view="${k}" ${S.view===k?'aria-current="page"':''}>${l}${k==='overview'&&act.length?`<span class="n ${crit?'crit':'warn'}">${act.length}</span>`:''}${k==='review'&&nIss?`<span class="n warn">${nIss}</span>`:''}</button>`).join('');
+  $('#tabs').innerHTML=VIEWS.map(([k])=>`<button data-view="${k}" ${S.view===k?'aria-current="page"':''}>${t('tab_'+k)}${k==='overview'&&act.length?`<span class="n ${crit?'crit':'warn'}">${act.length}</span>`:''}${k==='review'&&nIss?`<span class="n warn">${nIss}</span>`:''}</button>`).join('');
   const fn={overview:vOverview,equipment:vEquipment,plan:vPlan,calibrations:vCalibrations,evaluation:vEvaluation,sheets:vSheets,review:vReview,data:vData}[S.view]||vOverview;
   $('#view').innerHTML=banner+fn();
 }
 function emptyState(){
-  return `<div class="empty"><p class="eyebrow">No equipment yet</p><h3>Import the calibration plan Excel to get started</h3>
-  <p>Load <b>Calibration Plan 2026_hipervinculos.xlsx</b> in <b>Import &amp; data</b>. The sheets <i>Equipos</i>, <i>Equipos AUX</i> and <i>EVALUACION (TU)</i> become equipment, calibrations and TU evaluations. You can also add equipment by hand.</p>
-  <div class="row"><button class="btn primary" data-view="data">Import the Excel</button><button class="btn" data-act="eq-new">+ New equipment</button></div></div>`;
+  return `<div class="empty"><p class="eyebrow">${t('em_eyebrow')}</p><h3>${t('em_title')}</h3>
+  <p>${t('em_text')}</p>
+  <div class="row"><button class="btn primary" data-view="data">${t('em_import')}</button><button class="btn" data-act="eq-new">${t('eq_new')}</button></div></div>`;
 }
 const pill=(e,i)=>`<span class="pill k-${i.key}">${esc(calLabel(e,i))}</span>`;
-const searchBox=(ph='Search code, description, brand, serial…')=>`<input class="search" id="q" type="search" placeholder="${ph}" value="${esc(S.q)}" aria-label="Search">`;
+const searchBox=(ph=t('ph_search'))=>`<input class="search" id="q" type="search" placeholder="${ph}" value="${esc(S.q)}" aria-label="${t('search')}">`;
 const matchQ=(...vals)=>!S.q||vals.some(v=>String(v??'').toLowerCase().includes(S.q.toLowerCase()));
 const matchEq=e=>matchQ(e.code,e.description,e.brand,e.model,e.serial,e.lab,...(e.points||[]).map(p=>p.range));
 function filteredEqs({plan=false}={}){
@@ -601,18 +601,18 @@ function filterBar(){
   const keys=IX.eqs.map(e=>IX.info.get(e.id).key), cnt=fn=>IX.eqs.filter(fn).length;
   const labs=[...IX.labs]; if(IX.eqs.some(e=>!e.lab)) labs.push('');
   const any=S.q||S.f.group.length||S.f.status.length||S.f.lab.length;
-  return `<div class="filters multi"><div class="row">${searchBox()}${any?'<button class="link" data-act="clear-f">Clear filters</button>':''}</div>
-    ${chips('f','status','Status',[...['overdue','nok','soon','pending','nodata','valid'].map(k=>[k,CAL_LABEL[k],keys.filter(x=>x===k).length]),['off','No calibration',keys.filter(x=>OFF_KEYS.includes(x)).length]])}
-    ${chips('f','group','Group',GROUPS.map(g=>[g,g,cnt(e=>e.group===g)]))}
-    ${chips('f','lab','Lab',labs.map(l=>[l,l||'Not defined',cnt(e=>(e.lab||'')===l)]))}</div>`;
+  return `<div class="filters multi"><div class="row">${searchBox()}${any?`<button class="link" data-act="clear-f">${t('clear_f')}</button>`:''}</div>
+    ${chips('f','status',t('f_status'),[...['overdue','nok','soon','pending','nodata','valid'].map(k=>[k,t('cl_'+k),keys.filter(x=>x===k).length]),['off',t('f_nocal'),keys.filter(x=>OFF_KEYS.includes(x)).length]])}
+    ${chips('f','group',t('f_group'),GROUPS.map(g=>[g,dv(g),cnt(e=>e.group===g)]))}
+    ${chips('f','lab',t('f_lab'),labs.map(l=>[l,l||t('f_nolab'),cnt(e=>(e.lab||'')===l)]))}</div>`;
 }
 function alertText(e,i){
-  const lab=e.lab?` · ${e.lab}`:'', plan=i.planned?(mIdx(i.planned.month)<nowIdx()?` · was planned ${fmtM(i.planned.month)}, not registered`:` · planned ${fmtM(i.planned.month)}`):' · not planned';
-  if(i.key==='overdue') return `${e.calMode==='Expiry date'?'Expired':'Calibration expired'} at the end of ${fmtML(i.due)} (${plural(-i.months,'month')} ago)${lab}${plan}`;
-  if(i.key==='nok') return `Last calibration (${fmtM(i.lastRec.month)}) is out of tolerance. Do not use until resolved.`;
-  if(i.key==='soon') return `${e.calMode==='Expiry date'?'Expires':'Due'} ${i.months===0?'this month':`in ${plural(i.months,'month')}`} (${fmtML(i.due)})${lab}${plan}`;
-  if(i.key==='pending') return `Calibration ${fmtM(i.lastRec.month)} not closed: ${missingClosure(i.lastRec).join(', ')}.`;
-  if(i.key==='nodata') return 'No calibration dates: enter the last calibration and the period.';
+  const lab=e.lab?` · ${e.lab}`:'', plan=' · '+(i.planned?t(mIdx(i.planned.month)<nowIdx()?'al_wasplan':'al_plan',fmtM(i.planned.month)):t('al_noplan')), exp=e.calMode==='Expiry date';
+  if(i.key==='overdue') return t(exp?'al_expired':'al_overdue',fmtML(i.due),-i.months)+lab+plan;
+  if(i.key==='nok') return t('al_nok',fmtM(i.lastRec.month));
+  if(i.key==='soon') return t(exp?'al_expires':'al_due',i.months,fmtML(i.due))+lab+plan;
+  if(i.key==='pending') return t('al_pending',fmtM(i.lastRec.month),missingClosure(i.lastRec).join(', '));
+  if(i.key==='nodata') return t('al_nodata');
   return '';
 }
 
@@ -626,24 +626,24 @@ function vOverview(){
   /* Upcoming: overdue first, then each month with equipment due, grouped by lab so visits can be batched. */
   const buckets=[];
   const over=IX.eqs.filter(e=>IX.info.get(e.id).key==='overdue');
-  if(over.length) buckets.push({late:true,label:'Overdue',sub:plural(over.length,'item'),list:over});
-  for(let m=n;m<n+12;m++){const list=IX.eqs.filter(e=>{const i=IX.info.get(e.id); return !OFF_KEYS.includes(i.key)&&mIdx(i.due)===m}); if(list.length) buckets.push({label:fmtML(mStr(m)),sub:`${plural(list.length,'item')}${costOf(list)?' · '+money(costOf(list)):''}`,list});}
-  const byLab=list=>{const g=new Map(); list.forEach(e=>{const k=e.lab||'Lab not defined'; if(!g.has(k)) g.set(k,[]); g.get(k).push(e)}); return [...g].sort((a,b)=>b[1].length-a[1].length).map(([l,es])=>`<div class="labgrp"><span class="lab">${esc(l)}</span>${es.map(e=>{const p=IX.info.get(e.id).planned; return `<button class="codebtn ${p?'plan':''}" data-act="eq" data-id="${esc(e.id)}" title="${esc(e.description)}${p?' · planned '+fmtM(p.month):''}">${esc(e.code)}</button>`}).join('')}</div>`).join('')};
-  return `<div class="view-h"><h2>Calibration overview</h2><span class="muted">${new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</span></div>
+  if(over.length) buckets.push({late:true,label:t('cl_overdue'),sub:t('n_items',over.length),list:over});
+  for(let m=n;m<n+12;m++){const list=IX.eqs.filter(e=>{const i=IX.info.get(e.id); return !OFF_KEYS.includes(i.key)&&mIdx(i.due)===m}); if(list.length) buckets.push({label:fmtML(mStr(m)),sub:`${t('n_items',list.length)}${costOf(list)?' · '+money(costOf(list)):''}`,list});}
+  const byLab=list=>{const g=new Map(); list.forEach(e=>{const k=e.lab||t('lab_undef'); if(!g.has(k)) g.set(k,[]); g.get(k).push(e)}); return [...g].sort((a,b)=>b[1].length-a[1].length).map(([l,es])=>`<div class="labgrp"><span class="lab">${esc(l)}</span>${es.map(e=>{const p=IX.info.get(e.id).planned; return `<button class="codebtn ${p?'plan':''}" data-act="eq" data-id="${esc(e.id)}" title="${esc(e.description)}${p?' · '+t('al_plan',fmtM(p.month)):''}">${esc(e.code)}</button>`}).join('')}</div>`).join('')};
+  return `<div class="view-h"><h2>${t('ov_title')}</h2><span class="muted">${new Date().toLocaleDateString(LabLang.locale(),{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</span></div>
   <section class="kpis">
-    ${kpi('overdue','Overdue',cnt('overdue'),'expired calibrations',cnt('overdue')?'crit':'')}
-    ${kpi('soon',`Due ≤ ${S.cfg.warnMonths} months`,cnt('soon'),'plan them now',cnt('soon')?'warn':'')}
-    ${kpi('pending','Pending closure',cnt('pending'),'certificate, tolerance or label',cnt('pending')?'inf':'')}
-    ${kpi('nok','Out of tolerance',cnt('nok'),'last result not OK',cnt('nok')?'crit':'')}
-    ${kpi('valid','Valid',cnt('valid'),`of ${calib} with calibration`,'ok')}
-    ${kpi('review','Data to review',nIss,'equipment with data issues',nIss?'warn':'')}
+    ${kpi('overdue',t('cl_overdue'),cnt('overdue'),t('k_overdue'),cnt('overdue')?'crit':'')}
+    ${kpi('soon',t('k_soon',S.cfg.warnMonths),cnt('soon'),t('k_soon_s'),cnt('soon')?'warn':'')}
+    ${kpi('pending',t('cl_pending'),cnt('pending'),t('k_pending'),cnt('pending')?'inf':'')}
+    ${kpi('nok',t('cl_nok'),cnt('nok'),t('k_nok'),cnt('nok')?'crit':'')}
+    ${kpi('valid',t('cl_valid'),cnt('valid'),t('k_valid',calib),'ok')}
+    ${kpi('review',t('k_review'),nIss,t('k_review_s'),nIss?'warn':'')}
   </section>
   <div class="grid2">
-    <section class="panel"><div class="panel-h"><h2>Action needed</h2><span class="muted">${act.length} item${act.length===1?'':'s'}</span></div>
-      ${act.length?`<ul class="alerts">${act.map(({e,i})=>`<li class="${sevOf(i.key)}" data-act="eq" data-id="${esc(e.id)}"><span class="sev">${esc(calLabel(e,i))}</span><span class="what"><b>${esc(e.code)}</b>${esc(e.description)}<small>${esc(alertText(e,i))}</small></span></li>`).join('')}</ul>`:'<div class="empty-ok">Nothing pending: every calibration is valid and closed.</div>'}
+    <section class="panel"><div class="panel-h"><h2>${t('ov_action')}</h2><span class="muted">${t('n_items',act.length)}</span></div>
+      ${act.length?`<ul class="alerts">${act.map(({e,i})=>`<li class="${sevOf(i.key)}" data-act="eq" data-id="${esc(e.id)}"><span class="sev">${esc(calLabel(e,i))}</span><span class="what"><b>${esc(e.code)}</b>${esc(e.description)}<small>${esc(alertText(e,i))}</small></span></li>`).join('')}</ul>`:`<div class="empty-ok">${t('ov_none')}</div>`}
     </section>
-    <section class="panel"><div class="panel-h"><h2>Next 12 months</h2><span class="muted">by calibration lab · blue = already planned</span></div>
-      ${buckets.length?`<div class="months">${buckets.map(b=>`<div class="mrow ${b.late?'late':''}"><div class="ml">${esc(b.label)}<small>${esc(b.sub)}</small></div><div>${byLab(b.list)}</div></div>`).join('')}</div>`:'<div class="empty-ok">No calibrations due in the next 12 months.</div>'}
+    <section class="panel"><div class="panel-h"><h2>${t('ov_next')}</h2><span class="muted">${t('ov_next_s')}</span></div>
+      ${buckets.length?`<div class="months">${buckets.map(b=>`<div class="mrow ${b.late?'late':''}"><div class="ml">${esc(b.label)}<small>${esc(b.sub)}</small></div><div>${byLab(b.list)}</div></div>`).join('')}</div>`:`<div class="empty-ok">${t('ov_nonext')}</div>`}
     </section>
   </div>`;
 }

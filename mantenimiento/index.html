@@ -282,19 +282,220 @@ legend{font-family:var(--f-display);font-weight:700;font-size:14px;padding:0 6px
 if(location.protocol==='file:'||/[?&]local\b/.test(location.search)) document.write('<script src="local-data.js"><\/script>');</script>
 <script>
 /* ---------- Constants ---------- */
-const VIEWS=[['overview','Overview'],['plan','Maintenance plan'],['annual','Annual plan'],['corrective','Corrective actions'],['documents','Offers & reports'],['review','Data review'],['data','Data']];
-const ST_LABEL={valid:'Up to date',soon:'Due soon',overdue:'Overdue',nodata:'Dates missing'};
+const VIEWS=[['overview'],['plan'],['annual'],['corrective'],['documents'],['review'],['data']];
 const KEY_RANK={overdue:0,soon:1,nodata:2,valid:3};
 const ACTION_KEYS=['overdue','soon','nodata'];
-const KIND_LABEL={oferta:'Offer',parte:'Work report',correctiva:'Corrective'};
-const GROUPS=['Lab equipment','Facilities'];
+const KINDS=['oferta','parte','correctiva'];
+const GROUPS=['lab','fac'];
 const DEFAULT_CFG={warnMonths:1,formCode:'F-IM-FM-002',
   spBase:'https://fluidra.sharepoint.com/sites/127-RDCenterPolinya-SPO2/Shared%20Documents/07.%20Laboratory/4.%20Equipment/1.%20Maintenance'};
-const ISSUE={unmatched:'Name in the Excel without equipment code',nextbefore:'Next date not after the last maintenance',nextdiff:'Next date does not match last + period',
-  lastfuture:'Last maintenance in the future',nodates:'Dates missing',noprovider:'External maintenance without provider',plannedpast:'Programmed month already passed'};
+const ISSUE=['unmatched','nextbefore','nextdiff','lastfuture','nodates','noprovider','plannedpast'];
 const ISSUE_WARN=new Set(['unmatched','nextbefore','nextdiff','lastfuture','nodates','plannedpast']);
-const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const COLS=['records','config'];
+
+/* ---------- Texts (ES / EN, acceso/lab-lang.js) ----------
+   Only what people read. Values written to the data (status Planned/Done, kinds, ids) stay as they are. */
+const GH_GUIDE_URL='https://github.com/settings/tokens/new?scopes=repo&amp;description=Laboratorio%20Polinya';
+const I18N={
+en:{title:'Maintenance Plan · Laboratorio Polinyà', h1:'Maintenance Plan', views:'Views', loading:'Loading maintenance data…',
+  v_overview:'Overview', v_plan:'Maintenance plan', v_annual:'Annual plan', v_corrective:'Corrective actions', v_documents:'Offers & reports', v_review:'Data review', v_data:'Data',
+  st_valid:'Up to date', st_soon:'Due soon', st_overdue:'Overdue', st_nodata:'Dates missing', st_month:'Due this month',
+  kind_oferta:'Offer', kind_parte:'Work report', kind_correctiva:'Corrective',
+  grp_lab:'Lab equipment', grp_fac:'Facilities', typ_int:'Internal', typ_ext:'External', typ_both:'Internal / External',
+  iss_unmatched:'Name in the Excel without equipment code', iss_nextbefore:'Next date not after the last maintenance', iss_nextdiff:'Next date does not match last + period',
+  iss_lastfuture:'Last maintenance in the future', iss_nodates:'Dates missing', iss_noprovider:'External maintenance without provider', iss_plannedpast:'Programmed month already passed',
+  mn:['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+  per_y:n=>`${n} year${n>1?'s':''}`, per_m:n=>`${n} month${n>1?'s':''}`,
+  n_month:n=>`${n} month${n===1?'':'s'}`, n_item:n=>`${n} item${n===1?'':'s'}`, n_more:n=>`+ ${n} more action${n===1?'':'s'}`, n_record:n=>`${n} record${n===1?'':'s'}`, n_find:n=>`${n} finding${n===1?'':'s'}`,
+  i_unmatched:(n,w)=>`“${n}”${w?' in '+w:''} has no FLE code in the sync table (lab-data/sharepoint-sync.md).`,
+  i_nodates:last=>`${last?'Last':'Next'} maintenance missing in the Excel.`,
+  i_nextbefore:(nx,l)=>`Next ${nx} is not after the last maintenance ${l} in the Excel.`,
+  i_nextdiff:(nx,l,per,g)=>`Next ${nx}, but last ${l} + ${per} gives ${g}.`,
+  i_lastfuture:l=>`Last maintenance ${l} is in the future.`, i_noprovider:'External maintenance with no provider in the Excel.',
+  i_plannedpast:m=>`Programmed for ${m} and not logged as done.`, row_gone:'(row no longer in the Excel)',
+  b_local:'<b>Local test mode.</b> The data comes from <span class="mono">local-data.js</span>, which is not in the repository; changes stay in this browser and are never sent to GitHub.',
+  b_local_reset:'Reset the test data',
+  b_noread:(l,r)=>`<b>Your account ${l} cannot see the maintenance data.</b> Ask the owner to add you to the private repository <span class="mono">${r}</span>.`,
+  b_private:btn=>`<b>The maintenance data is private.</b> Press ${btn} with an account that has access to see it.`,
+  b_load:'<b>Could not load the maintenance data from GitHub.</b> Check your connection and reload the page.',
+  b_invalid:btn=>`Your GitHub key is no longer valid or has expired. ${btn} and paste a new one.`,
+  b_nopush:l=>`Your GitHub account <b>${l}</b> cannot edit this repository. Ask to be added as a collaborator with the Write role.`,
+  b_ro:btn=>`Read-only. To programme or log maintenance, ${btn} with an account that has write access to the repository.`,
+  gh_connect:'Connect GitHub', gh_connect_l:'connect GitHub',
+  e_eyebrow:'No maintenance plan yet', e_title:'Waiting for the first SharePoint sync',
+  e_text:f=>`The plan is copied from <b>Maintenance Plan.xlsx</b> (SharePoint · 07. Laboratory › 4. Equipment › 1. Maintenance) to <span class="mono">lab-data/${f}</span> by a scheduled task on the 1st and 15th of each month. It appears here as soon as that file has data.`,
+  e_sp:'📁 Open the SharePoint folder',
+  q_plan:'Search equipment, action, provider…', q_aria:'Search', clear_f:'Clear filters', f_status:'Status', f_type:'Type', f_prov:'Provider', not_def:'Not defined',
+  facility:'Facility', a_wasprog:m=>` · was programmed ${m}, not logged`, a_prog:m=>` · programmed ${m}`, a_noprog:' · not programmed',
+  a_over:(d,n)=>`Due at the end of ${d} (${n} ago)`, a_soon_now:d=>`Due this month (${d})`, a_soon:(n,d)=>`Due in ${n} (${d})`,
+  a_nodata:'No dates in the Excel: enter the last and next maintenance.',
+  o_title:'Maintenance overview', k_over:'Overdue', k_over_s:'past the next date', k_soon:n=>`Due ≤ ${n} month${+n===1?'':'s'}`, k_soon_s:'programme them now',
+  k_prog:'Programmed', k_prog_s:'with a programmed month', k_valid:'Up to date', k_valid_s:n=>`of ${n} plan rows`, k_corr:'Corrective actions', k_corr_s:'in the last 12 months',
+  k_docs:'Offers & reports', k_docs_s:'linked to SharePoint', o_late:'Overdue', o_noprov:'Provider not defined',
+  o_action:'Action needed', o_nothing:'Nothing pending: every maintenance is up to date.', o_next:'Next 12 months', o_next_s:'by provider · blue = already programmed',
+  o_none:'No maintenance due in the next 12 months.',
+  p_title:'Maintenance plan', open_xl:'Open the Excel',
+  p_note:(n,t,sh)=>`${n} of ${t} rows of the sheet ${sh} of the Excel. Equipment, actions and periods are changed in the Excel in SharePoint (New Equipment Guide, steps 4 and 5); click a row to programme or log a maintenance.`,
+  th_eq:'Equipment', th_actions:'Actions', th_type:'Type', th_prov:'Provider', th_per:'Periodicity', th_last:'Last', th_next:'Next', th_status:'Status',
+  no_rows:'No rows match the filters.', p_app_t:'Logged in the app after the Excel date', p_app:'app', p_progm:m=>`programmed ${m}`,
+  t_done:m=>`Done ${m}`, t_prog:m=>`Programmed ${m}`, t_due:m=>`Maintenance due ${m}`, t_proj:m=>`Following due date ${m} (projected)`, t_click:'Click to programme a maintenance',
+  ft_due:'Due', ft_prog:'Programmed', an_title:'Annual maintenance plan', an_prev:'Previous year', an_next:'Next year', an_this:'This year', an_months:n=>`${n} months`,
+  lg_due:'Due', lg_over:'Overdue', lg_proj:'Projected', lg_prog:'Programmed', lg_done:'Done',
+  an_note:'Generated from the last and next maintenance of the Excel and the period, plus what is programmed or logged in the app. Click an empty month to programme a maintenance; click a mark to open it.',
+  c_check:'check date', c_fixed:d=>`Fixed ${d}`, c_open:'Not fixed yet', c_title:'Corrective actions', q_corr:'Search code, problem, cause…',
+  c_note:'From the sheet <i>Registro acciones correctivas</i> of the Excel, with the documents of <i>0. Registro acciones correctivas</i> for the same equipment. New corrective actions are added in the Excel.',
+  th_pdate:'Problem date', th_problem:'Problem', th_corr:'Corrective action', th_root:'Possible root cause', th_prev:'Preventive action', th_docs:'Docs',
+  c_nomatch:'No corrective actions match the search.', c_none:'No corrective actions recorded.',
+  open:'Open', d_title:'Offers &amp; work reports', d_sp:'📁 SharePoint folder', q_docs:'Search equipment, provider, reference…',
+  d_note:'PDFs in <i>1. Mantenimientos programados</i> (offers and work reports) and <i>0. Registro acciones correctivas</i>. The summary is written by the sync task from the text of each PDF; the link opens the PDF in SharePoint with your Fluidra account.',
+  th_date:'Date', th_provref:'Provider · ref.', th_doc:'Document', d_nomatch:'No documents match the filters.', d_none:'No documents read yet.',
+  r_title:'Data review', r_note:'Checks run live on the data copied from the Excel. <b>Warnings</b> affect the dates; fix them in the Excel in SharePoint and they disappear after the next sync.',
+  r_none:'No findings. The plan dates are complete and consistent.', r_warn:'Warning', r_info:'To define',
+  dt_title:'Data', settings:'Settings', dt_sp:'Copied from SharePoint', dt_last:d=>`last change ${d}`, dt_nosync:'not synced yet', dt_sheet:'Sheet', dt_rev:'Rev. date',
+  dt_mod:'Modified in SharePoint', dt_rows:'Plan rows', dt_docs:'Documents', dt_pend:n=>` · ${n} pending`, history:'history',
+  dt_sync:(f,h,d)=>`A scheduled task reads the Excel and the PDFs on the 1st and 15th of each month (only what changed) and writes ${f} (${h}). This app never changes that file; what it does is described in ${d}.`,
+  dt_saved:'Saved by this app',
+  dt_saved_t:(f,r,h)=>`Programmed and logged maintenance and the settings are kept in ${f} of the private repository ${r}. Every change is saved as a commit: the ${h} shows who changed what and when. Equipment codes and descriptions come from the Calibration Plan.`,
+  dt_dl:'Download a copy (JSON)',
+  close:'Close', cancel:'Cancel', save:'Save', next:'Next:', from_app:' (from the maintenance logged in the app)', rec_plan:'Programme maintenance', rec_done:'Log maintenance done',
+  in_xl:'In the Excel', fac_nofle:'Facility (no FLE code)', last_m:'Last maintenance', next_m:'Next maintenance', act_type:'Action type', comps:'Components needed', contract:'Current contract',
+  review_n:n=>`Data to review · ${n}`, in_app:'Programmed and logged in the app', th_when:'When', th_by:'By / provider', th_notes:'Notes', s_done:'Done', s_prog:'Programmed',
+  app_none:'Nothing programmed or logged in the app.', docs_none:'No documents in SharePoint for this equipment.',
+  maint:'Maintenance', plan_row:'Plan row', choose:'— choose —', prog_month:'Programmed month', date_done:'Date done', done_by:'Done by', notes:'Notes', doc_url:'Work report link (SharePoint)',
+  rec_note:'A maintenance logged as done after the Excel\'s last date sets the next date (date + period) until the Excel is updated. Remember to update the Excel in SharePoint too.',
+  del:'Delete', del_ok:'Confirm delete', deleted:'Deleted.',
+  er_row:'Choose the plan row.', er_date:'Enter the date the maintenance was done.', er_month:'Enter the programmed month.',
+  ok_logged:e=>`${e}: maintenance logged.`, ok_prog:(e,m)=>`${e}: maintenance programmed for ${m}.`,
+  cfg_title:'Maintenance plan settings', cfg_alerts:'Alerts', cfg_warn:'Warn this many months before the due month', cfg_warn_h:'0 = only in the due month.',
+  cfg_folder:'Maintenance folder link', cfg_form:'Controlled form', cfg_code:'Form code', cfg_saved:'Settings saved.',
+  e_forb:'You cannot change data: connect GitHub with an account that has write access to the repository.', e_auth:'Your GitHub key is no longer valid. Connect GitHub again with a new key.',
+  e_conflict:'Someone else saved at the same time. Your change was not saved; try again.', e_rate:'GitHub is limiting requests right now. Wait a minute and try again.',
+  e_unav:'Could not reach GitHub. Check your connection and try again.', e_save:m=>`Could not save: ${m}`,
+  gh_off_ok:'Disconnected from GitHub. This browser no longer has the key.', gh_local:'Local test data', gh_local_t:'Local test mode: nothing is sent to GitHub.',
+  gh_expired:'GitHub key expired', gh_t_push:'Connected with write access. Changes are saved as commits.', gh_t_ro:'Connected, but this account cannot edit the repository.',
+  gh_t:'Connect GitHub to see and change the maintenance plan',
+  gh_as:(l,push)=>`Connected as <b>${l}</b>${push?' with write access.':', but this account cannot edit the repository.'}`,
+  gh_step1:`Create an access key in GitHub: <a href="${GH_GUIDE_URL}" target="_blank" rel="noopener">open the form</a>. The <span class="mono">repo</span> permission is already ticked (needed because the lab data is private); choose an expiry and press <i>Generate token</i>.`,
+  gh_step2:'Copy the key and paste it here.', gh_off:'Disconnect', gh_go:'Connect', gh_key:'Access key (token)',
+  gh_key_note:r=>`The key is kept only in this browser and is shared with the other lab apps. Your GitHub account must have access to the data repository <span class="mono">${r}</span>: Read to view, Write to edit. Every change is saved as a commit, so the history shows who changed what.`,
+  gh_paste:'Paste the access key.', gh_ok_push:l=>`Connected as ${l}. You can now edit.`, gh_ok_ro:l=>`Connected as ${l}, but this account cannot edit the repository.`,
+  gh_bad:'That key is not valid or has expired.', gh_forb:'That key cannot see the repository.', gh_unav:'Could not reach GitHub. Check your connection.',
+  local_gh:'Local test mode: the data stays in this browser and GitHub is not used.', local_reset:'Test data reset.',
+  au_btn:'Sign in', au_btn_t:'Sign in with your email to view and change the data', au_eyebrow:'Access', au_title:'Sign in with your email',
+  au_mail:'Email', au_pass:'Password', au_enter:'Sign in',
+  au_forgot:'Forgot your password? Ask an administrator.', au_wait:'Checking…', au_key:'Use a GitHub key', au_cancel:'Cancel', au_close:'Close', au_signout:'Sign out',
+  au_as:(n,m)=>`Signed in as <b>${n}</b> (${m}).`, au_in:n=>`Signed in as ${n}.`, au_edit:'You can edit.', au_view:'You can only view.',
+  au_none:'You don\'t have access to this app.', au_noapp:'You don\'t have access to this app. Ask an administrator.',
+  au_again:'Sign in again', au_expired:'Your session has expired.', au_saving:'Saving…', au_out:'Signed out. This browser no longer has your session.',
+  au_private:'The maintenance data is private.', au_ro:n=>`<b>${n}</b>: you can view the data but cannot change it. Ask an administrator for edit access.`,
+  au_ro_out:'Read-only. To programme or log maintenance,',
+  au_e_mail:'Enter a valid email address.', au_e_pass:'Enter your password.', au_e_cred:'Wrong email or password.', au_e_rate:'Too many attempts. Wait a few minutes and try again.',
+  au_e_net:'Could not connect. Check your connection and try again.',
+  au_e_sess:'Your session could not be started. Sign in again.', au_e_busy:'The lab service is limiting requests. Wait a minute and try again.',
+  au_e_down:'Your password is correct, but the lab service is not responding right now. Try again in a moment; the app also retries on its own.',
+  au_e_save:'Your session has expired and the change was not saved. Sign in again and repeat it.', au_e_perm:'You cannot change data: your account does not have edit access to this app. Ask an administrator.'},
+es:{title:'Plan de mantenimiento · Laboratorio Polinyà', h1:'Plan de mantenimiento', views:'Vistas', loading:'Cargando los datos de mantenimiento…',
+  v_overview:'Resumen', v_plan:'Plan de mantenimiento', v_annual:'Plan anual', v_corrective:'Acciones correctivas', v_documents:'Ofertas y partes', v_review:'Revisión de datos', v_data:'Datos',
+  st_valid:'Al día', st_soon:'Vence pronto', st_overdue:'Vencido', st_nodata:'Faltan fechas', st_month:'Vence este mes',
+  kind_oferta:'Oferta', kind_parte:'Parte de trabajo', kind_correctiva:'Correctiva',
+  grp_lab:'Equipos de laboratorio', grp_fac:'Instalaciones', typ_int:'Interno', typ_ext:'Externo', typ_both:'Interno / Externo',
+  iss_unmatched:'Nombre del Excel sin código de equipo', iss_nextbefore:'Próxima fecha no posterior al último mantenimiento', iss_nextdiff:'Próxima fecha distinta de último + periodo',
+  iss_lastfuture:'Último mantenimiento en el futuro', iss_nodates:'Faltan fechas', iss_noprovider:'Mantenimiento externo sin proveedor', iss_plannedpast:'Mes programado ya pasado',
+  mn:['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
+  per_y:n=>`${n} año${n>1?'s':''}`, per_m:n=>`${n} mes${n>1?'es':''}`,
+  n_month:n=>`${n} ${n===1?'mes':'meses'}`, n_item:n=>`${n} tarea${n===1?'':'s'}`, n_more:n=>`+ ${n} ${n===1?'acción':'acciones'} más`, n_record:n=>`${n} registro${n===1?'':'s'}`, n_find:n=>`${n} incidencia${n===1?'':'s'}`,
+  i_unmatched:(n,w)=>`“${n}”${w?' en '+w:''} no tiene código FLE en la tabla de sincronización (lab-data/sharepoint-sync.md).`,
+  i_nodates:last=>`Falta el ${last?'último':'próximo'} mantenimiento en el Excel.`,
+  i_nextbefore:(nx,l)=>`El próximo ${nx} no es posterior al último mantenimiento ${l} del Excel.`,
+  i_nextdiff:(nx,l,per,g)=>`Próximo ${nx}, pero último ${l} + ${per} da ${g}.`,
+  i_lastfuture:l=>`El último mantenimiento ${l} está en el futuro.`, i_noprovider:'Mantenimiento externo sin proveedor en el Excel.',
+  i_plannedpast:m=>`Programado para ${m} y sin registrar como realizado.`, row_gone:'(fila que ya no está en el Excel)',
+  b_local:'<b>Modo de prueba local.</b> Los datos vienen de <span class="mono">local-data.js</span>, que no está en el repositorio; los cambios se quedan en este navegador y nunca se envían a GitHub.',
+  b_local_reset:'Restablecer los datos de prueba',
+  b_noread:(l,r)=>`<b>Tu cuenta ${l} no puede ver los datos de mantenimiento.</b> Pide al propietario que te añada al repositorio privado <span class="mono">${r}</span>.`,
+  b_private:btn=>`<b>Los datos de mantenimiento son privados.</b> Pulsa ${btn} con una cuenta que tenga acceso para verlos.`,
+  b_load:'<b>No se han podido cargar los datos de mantenimiento desde GitHub.</b> Comprueba la conexión y recarga la página.',
+  b_invalid:btn=>`Tu clave de GitHub ya no es válida o ha caducado. Pulsa ${btn} y pega una nueva.`,
+  b_nopush:l=>`Tu cuenta de GitHub <b>${l}</b> no puede editar este repositorio. Pide que te añadan como colaborador con el rol Write.`,
+  b_ro:btn=>`Solo lectura. Para programar o registrar mantenimientos, ${btn} con una cuenta con permiso de escritura en el repositorio.`,
+  gh_connect:'Conectar GitHub', gh_connect_l:'conecta GitHub',
+  e_eyebrow:'Aún no hay plan de mantenimiento', e_title:'Esperando la primera sincronización con SharePoint',
+  e_text:f=>`Una tarea programada copia el plan de <b>Maintenance Plan.xlsx</b> (SharePoint · 07. Laboratory › 4. Equipment › 1. Maintenance) a <span class="mono">lab-data/${f}</span> los días 1 y 15 de cada mes. Aparecerá aquí en cuanto ese fichero tenga datos.`,
+  e_sp:'📁 Abrir la carpeta de SharePoint',
+  q_plan:'Buscar equipo, acción, proveedor…', q_aria:'Buscar', clear_f:'Quitar filtros', f_status:'Estado', f_type:'Tipo', f_prov:'Proveedor', not_def:'Sin definir',
+  facility:'Instalación', a_wasprog:m=>` · estaba programado para ${m}, sin registrar`, a_prog:m=>` · programado ${m}`, a_noprog:' · sin programar',
+  a_over:(d,n)=>`Vencía a finales de ${d} (hace ${n})`, a_soon_now:d=>`Vence este mes (${d})`, a_soon:(n,d)=>`Vence dentro de ${n} (${d})`,
+  a_nodata:'Sin fechas en el Excel: introduce el último y el próximo mantenimiento.',
+  o_title:'Resumen de mantenimiento', k_over:'Vencidos', k_over_s:'pasada la próxima fecha', k_soon:n=>`Vencen en ≤ ${n} ${+n===1?'mes':'meses'}`, k_soon_s:'prográmalos ya',
+  k_prog:'Programados', k_prog_s:'con mes programado', k_valid:'Al día', k_valid_s:n=>`de ${n} filas del plan`, k_corr:'Acciones correctivas', k_corr_s:'en los últimos 12 meses',
+  k_docs:'Ofertas y partes', k_docs_s:'enlazados a SharePoint', o_late:'Vencidos', o_noprov:'Proveedor sin definir',
+  o_action:'Requieren acción', o_nothing:'Nada pendiente: todos los mantenimientos están al día.', o_next:'Próximos 12 meses', o_next_s:'por proveedor · azul = ya programado',
+  o_none:'No vence ningún mantenimiento en los próximos 12 meses.',
+  p_title:'Plan de mantenimiento', open_xl:'Abrir el Excel',
+  p_note:(n,t,sh)=>`${n} de ${t} filas de la hoja ${sh} del Excel. Los equipos, las acciones y los periodos se cambian en el Excel de SharePoint (New Equipment Guide, pasos 4 y 5); haz clic en una fila para programar o registrar un mantenimiento.`,
+  th_eq:'Equipo', th_actions:'Acciones', th_type:'Tipo', th_prov:'Proveedor', th_per:'Periodicidad', th_last:'Último', th_next:'Próximo', th_status:'Estado',
+  no_rows:'Ninguna fila coincide con los filtros.', p_app_t:'Registrado en la app después de la fecha del Excel', p_app:'app', p_progm:m=>`programado ${m}`,
+  t_done:m=>`Realizado ${m}`, t_prog:m=>`Programado ${m}`, t_due:m=>`Vence el mantenimiento ${m}`, t_proj:m=>`Siguiente vencimiento ${m} (previsto)`, t_click:'Haz clic para programar un mantenimiento',
+  ft_due:'Vencen', ft_prog:'Programados', an_title:'Plan anual de mantenimiento', an_prev:'Año anterior', an_next:'Año siguiente', an_this:'Este año', an_months:n=>`${n} meses`,
+  lg_due:'Vence', lg_over:'Vencido', lg_proj:'Previsto', lg_prog:'Programado', lg_done:'Realizado',
+  an_note:'Generado a partir del último y el próximo mantenimiento del Excel y del periodo, más lo programado o registrado en la app. Haz clic en un mes vacío para programar un mantenimiento; haz clic en una marca para abrirla.',
+  c_check:'revisar fecha', c_fixed:d=>`Resuelto ${d}`, c_open:'Aún sin resolver', c_title:'Acciones correctivas', q_corr:'Buscar código, problema, causa…',
+  c_note:'De la hoja <i>Registro acciones correctivas</i> del Excel, con los documentos de <i>0. Registro acciones correctivas</i> del mismo equipo. Las acciones correctivas nuevas se añaden en el Excel.',
+  th_pdate:'Fecha del problema', th_problem:'Problema', th_corr:'Acción correctiva', th_root:'Posible causa raíz', th_prev:'Acción preventiva', th_docs:'Docs.',
+  c_nomatch:'Ninguna acción correctiva coincide con la búsqueda.', c_none:'No hay acciones correctivas registradas.',
+  open:'Abrir', d_title:'Ofertas y partes de trabajo', d_sp:'📁 Carpeta de SharePoint', q_docs:'Buscar equipo, proveedor, referencia…',
+  d_note:'PDF de <i>1. Mantenimientos programados</i> (ofertas y partes de trabajo) y de <i>0. Registro acciones correctivas</i>. La tarea de sincronización escribe el resumen a partir del texto de cada PDF; el enlace abre el PDF en SharePoint con tu cuenta de Fluidra.',
+  th_date:'Fecha', th_provref:'Proveedor · ref.', th_doc:'Documento', d_nomatch:'Ningún documento coincide con los filtros.', d_none:'Todavía no se ha leído ningún documento.',
+  r_title:'Revisión de datos', r_note:'Comprobaciones hechas en directo sobre los datos copiados del Excel. Los <b>avisos</b> afectan a las fechas; corrígelos en el Excel de SharePoint y desaparecerán tras la siguiente sincronización.',
+  r_none:'Sin incidencias. Las fechas del plan están completas y son coherentes.', r_warn:'Aviso', r_info:'Por definir',
+  dt_title:'Datos', settings:'Ajustes', dt_sp:'Copiado de SharePoint', dt_last:d=>`último cambio ${d}`, dt_nosync:'aún sin sincronizar', dt_sheet:'Hoja', dt_rev:'Fecha de rev.',
+  dt_mod:'Modificado en SharePoint', dt_rows:'Filas del plan', dt_docs:'Documentos', dt_pend:n=>` · ${n} pendientes`, history:'historial',
+  dt_sync:(f,h,d)=>`Una tarea programada lee el Excel y los PDF los días 1 y 15 de cada mes (solo lo que ha cambiado) y escribe ${f} (${h}). Esta app nunca cambia ese fichero; lo que hace se describe en ${d}.`,
+  dt_saved:'Guardado por esta app',
+  dt_saved_t:(f,r,h)=>`Los mantenimientos programados y registrados y los ajustes se guardan en ${f} del repositorio privado ${r}. Cada cambio se guarda como un commit: el ${h} muestra quién cambió qué y cuándo. Los códigos y las descripciones de los equipos vienen del Plan de calibraciones.`,
+  dt_dl:'Descargar una copia (JSON)',
+  close:'Cerrar', cancel:'Cancelar', save:'Guardar', next:'Próximo:', from_app:' (según el mantenimiento registrado en la app)', rec_plan:'Programar mantenimiento', rec_done:'Registrar mantenimiento realizado',
+  in_xl:'En el Excel', fac_nofle:'Instalación (sin código FLE)', last_m:'Último mantenimiento', next_m:'Próximo mantenimiento', act_type:'Tipo de acción', comps:'Componentes necesarios', contract:'Contrato vigente',
+  review_n:n=>`Datos que revisar · ${n}`, in_app:'Programado y registrado en la app', th_when:'Cuándo', th_by:'Por / proveedor', th_notes:'Notas', s_done:'Realizado', s_prog:'Programado',
+  app_none:'Nada programado ni registrado en la app.', docs_none:'No hay documentos en SharePoint para este equipo.',
+  maint:'Mantenimiento', plan_row:'Fila del plan', choose:'— elegir —', prog_month:'Mes programado', date_done:'Fecha de realización', done_by:'Realizado por', notes:'Notas', doc_url:'Enlace al parte de trabajo (SharePoint)',
+  rec_note:'Un mantenimiento registrado como realizado después de la última fecha del Excel fija la próxima fecha (fecha + periodo) hasta que se actualice el Excel. Recuerda actualizar también el Excel en SharePoint.',
+  del:'Eliminar', del_ok:'Confirmar eliminación', deleted:'Eliminado.',
+  er_row:'Elige la fila del plan.', er_date:'Introduce la fecha en que se hizo el mantenimiento.', er_month:'Introduce el mes programado.',
+  ok_logged:e=>`${e}: mantenimiento registrado.`, ok_prog:(e,m)=>`${e}: mantenimiento programado para ${m}.`,
+  cfg_title:'Ajustes del plan de mantenimiento', cfg_alerts:'Avisos', cfg_warn:'Avisar estos meses antes del mes de vencimiento', cfg_warn_h:'0 = solo en el mes de vencimiento.',
+  cfg_folder:'Enlace a la carpeta de mantenimiento', cfg_form:'Formulario controlado', cfg_code:'Código del formulario', cfg_saved:'Ajustes guardados.',
+  e_forb:'No puedes cambiar datos: conecta GitHub con una cuenta con permiso de escritura en el repositorio.', e_auth:'Tu clave de GitHub ya no es válida. Vuelve a conectar GitHub con una clave nueva.',
+  e_conflict:'Otra persona ha guardado a la vez. Tu cambio no se ha guardado; vuelve a intentarlo.', e_rate:'GitHub está limitando las peticiones ahora mismo. Espera un minuto y vuelve a intentarlo.',
+  e_unav:'No se ha podido conectar con GitHub. Comprueba la conexión y vuelve a intentarlo.', e_save:m=>`No se ha podido guardar: ${m}`,
+  gh_off_ok:'Desconectado de GitHub. Este navegador ya no guarda la clave.', gh_local:'Datos de prueba locales', gh_local_t:'Modo de prueba local: no se envía nada a GitHub.',
+  gh_expired:'Clave de GitHub caducada', gh_t_push:'Conectado con permiso de escritura. Los cambios se guardan como commits.', gh_t_ro:'Conectado, pero esta cuenta no puede editar el repositorio.',
+  gh_t:'Conecta GitHub para ver y cambiar el plan de mantenimiento',
+  gh_as:(l,push)=>`Conectado como <b>${l}</b>${push?' con permiso de escritura.':', pero esta cuenta no puede editar el repositorio.'}`,
+  gh_step1:`Crea una clave de acceso en GitHub: <a href="${GH_GUIDE_URL}" target="_blank" rel="noopener">abre el formulario</a>. El permiso <span class="mono">repo</span> ya viene marcado (hace falta porque los datos del laboratorio son privados); elige una caducidad y pulsa <i>Generate token</i>.`,
+  gh_step2:'Copia la clave y pégala aquí.', gh_off:'Desconectar', gh_go:'Conectar', gh_key:'Clave de acceso (token)',
+  gh_key_note:r=>`La clave se guarda solo en este navegador y se comparte con las demás apps del laboratorio. Tu cuenta de GitHub debe tener acceso al repositorio de datos <span class="mono">${r}</span>: Read para ver, Write para editar. Cada cambio se guarda como un commit, así que el historial muestra quién cambió qué.`,
+  gh_paste:'Pega la clave de acceso.', gh_ok_push:l=>`Conectado como ${l}. Ya puedes editar.`, gh_ok_ro:l=>`Conectado como ${l}, pero esta cuenta no puede editar el repositorio.`,
+  gh_bad:'Esa clave no es válida o ha caducado.', gh_forb:'Esa clave no puede ver el repositorio.', gh_unav:'No se ha podido conectar con GitHub. Comprueba la conexión.',
+  local_gh:'Modo de prueba local: los datos se quedan en este navegador y no se usa GitHub.', local_reset:'Datos de prueba restablecidos.',
+  au_btn:'Iniciar sesión', au_btn_t:'Inicia sesión con tu correo para ver y cambiar los datos', au_eyebrow:'Acceso', au_title:'Inicia sesión con tu correo',
+  au_mail:'Correo electrónico', au_pass:'Contraseña', au_enter:'Entrar',
+  au_forgot:'¿Has olvidado la contraseña? Pregunta a un administrador.', au_wait:'Comprobando…', au_key:'Usar una clave de GitHub', au_cancel:'Cancelar', au_close:'Cerrar', au_signout:'Cerrar sesión',
+  au_as:(n,m)=>`Has iniciado sesión como <b>${n}</b> (${m}).`, au_in:n=>`Sesión iniciada como ${n}.`, au_edit:'Puedes editar.', au_view:'Solo puedes consultar.',
+  au_none:'No tienes acceso a esta aplicación.', au_noapp:'No tienes acceso a esta aplicación. Pídelo a un administrador.',
+  au_again:'Volver a entrar', au_expired:'Tu sesión ha caducado.', au_saving:'Guardando…', au_out:'Sesión cerrada. Este navegador ya no guarda tu sesión.',
+  au_private:'Los datos de mantenimiento son privados.', au_ro:n=>`<b>${n}</b>: puedes ver los datos, pero no cambiarlos. Pide permiso de edición a un administrador.`,
+  au_ro_out:'Solo lectura. Para programar o registrar mantenimientos,',
+  au_e_mail:'Introduce un correo electrónico válido.', au_e_pass:'Introduce tu contraseña.', au_e_cred:'Correo o contraseña incorrectos.', au_e_rate:'Demasiados intentos. Espera unos minutos y vuelve a intentarlo.',
+  au_e_net:'No se ha podido conectar. Comprueba la conexión y vuelve a intentarlo.',
+  au_e_sess:'No se ha podido iniciar tu sesión. Vuelve a entrar.', au_e_busy:'El servicio del laboratorio está limitando las peticiones. Espera un minuto y vuelve a intentarlo.',
+  au_e_down:'Tu contraseña es correcta, pero el servicio del laboratorio no responde ahora mismo. Inténtalo de nuevo dentro de un momento; la app también lo reintenta sola.',
+  au_e_save:'Tu sesión ha caducado y el cambio no se ha guardado. Vuelve a entrar y repítelo.', au_e_perm:'No puedes cambiar datos: tu cuenta no tiene permiso de edición en esta app. Pídelo a un administrador.'}};
+const tr=(k,...a)=>LabLang.t(I18N,k,...a), ta=tr;
+const stLbl=k=>tr('st_'+k), kindLbl=k=>KINDS.includes(k)?tr('kind_'+k):k;
+/* typeOf keeps the English type as the filter value; only its label changes. Types not recognised are Excel text, shown as is. */
+const TYPE_KEY={'Internal':'typ_int','External':'typ_ext','Internal / External':'typ_both'};
+const typeLbl=t=>TYPE_KEY[t]?tr(TYPE_KEY[t]):t;
 
 /* ---------- State ---------- */
 const S={view:'overview',q:'',cfg:{...DEFAULT_CFG},f:{status:[],type:[],provider:[]},docf:{kind:[]},plan:{start:null,span:24}};
@@ -318,10 +519,9 @@ const mStr=i=>`${Math.floor(i/12)}-${pad(i%12+1)}`;
 const addM=(s,n)=>{const i=mIdx(s); return i==null||!n?'':mStr(i+ +n)};
 const nowIdx=()=>{const d=new Date(); return d.getFullYear()*12+d.getMonth()};
 const fmtM=s=>{const i=mIdx(s); return i==null?'—':`${pad(i%12+1)}/${Math.floor(i/12)}`};
-const fmtML=s=>{const i=mIdx(s); return i==null?'—':`${MN[i%12]} ${Math.floor(i/12)}`};
+const fmtML=s=>{const i=mIdx(s); return i==null?'—':`${tr('mn')[i%12]} ${Math.floor(i/12)}`};
 const fmtD=s=>{const m=/^(\d{4})-(\d{2})-(\d{2})/.exec(s||''); return m?`${m[3]}/${m[2]}/${m[1]}`:/^\d{4}-\d{2}$/.test(s||'')?fmtM(s):s?esc(s):'—'};
-const perLabel=p=>!p?'—':p%12===0?`${p/12} year${p>12?'s':''}`:`${p} month${p>1?'s':''}`;
-const plural=(n,w)=>`${n} ${w}${n===1?'':'s'}`;
+const perLabel=p=>!p?'—':p%12===0?tr('per_y',p/12):tr('per_m',p);
 const clean=v=>String(v??'').replace(/\s+/g,' ').trim();
 const isNA=v=>/^(n\/?a|-|—)?$/i.test(clean(v));
 function toast(msg){const t=$('#toast'); t.textContent=msg; t.hidden=false; clearTimeout(toast.t); toast.t=setTimeout(()=>t.hidden=true,4200)}
@@ -702,20 +902,6 @@ const GH_API=`https://api.github.com/repos/${REPO.owner}/${REPO.repo}`;
    configuration (LabAuth.activo false) only the key exists, exactly as before. */
 const LA=window.LabAuth&&window.LabAuth.activo?window.LabAuth:null;
 const APP_ID='mantenimiento';
-const AU={au_btn:'Sign in', au_btn_t:'Sign in with your email to view and change the data', au_eyebrow:'Access', au_title:'Sign in with your email',
-  au_mail:'Email', au_pass:'Password', au_enter:'Sign in',
-  au_forgot:'Forgot your password? Ask an administrator.', au_wait:'Checking…', au_key:'Use a GitHub key', au_cancel:'Cancel', au_close:'Close', au_signout:'Sign out',
-  au_as:(n,m)=>`Signed in as <b>${n}</b> (${m}).`, au_in:n=>`Signed in as ${n}.`, au_edit:'You can edit.', au_view:'You can only view.',
-  au_none:'You don\'t have access to this app.', au_noapp:'You don\'t have access to this app. Ask an administrator.',
-  au_again:'Sign in again', au_expired:'Your session has expired.', au_saving:'Saving…', au_out:'Signed out. This browser no longer has your session.',
-  au_private:'The maintenance data is private.', au_ro:n=>`<b>${n}</b>: you can view the data but cannot change it. Ask an administrator for edit access.`,
-  au_ro_out:'Read-only. To programme or log maintenance,',
-  au_e_mail:'Enter a valid email address.', au_e_pass:'Enter your password.', au_e_cred:'Wrong email or password.', au_e_rate:'Too many attempts. Wait a few minutes and try again.',
-  au_e_net:'Could not connect. Check your connection and try again.',
-  au_e_sess:'Your session could not be started. Sign in again.', au_e_busy:'The lab service is limiting requests. Wait a minute and try again.',
-  au_e_down:'Your password is correct, but the lab service is not responding right now. Try again in a moment; the app also retries on its own.',
-  au_e_save:'Your session has expired and the change was not saved. Sign in again and repeat it.', au_e_perm:'You cannot change data: your account does not have edit access to this app. Ask an administrator.'};
-const ta=(k,...a)=>{const v=AU[k]??k; return typeof v==='function'?v(...a):v;};
 const mailRepo=app=>`${LA.api(app)}/repos/${REPO.owner}/${REPO.repo}`;
 /* The API base follows the mode, so an email session always targets the function and a key always api.github.com. */
 const apiBase=()=>GH.modo==='correo'?mailRepo(APP_ID):GH_API;
