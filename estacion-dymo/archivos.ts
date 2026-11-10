@@ -84,3 +84,8 @@ export function enCursoEn(dir: string, fs: Fs = fsDeno) {
 export function plantillaEn(dir: string, fs: Fs = fsDeno) {
   return (rollo: Rollo) => leerTexto(unir(dir, `plantilla-${rollo}.label`), fs);
 }
+
+/** Plantilla en el formato de DYMO Connect (.dymo, DesktopLabel) guardada desde el propio DYMO Connect. */
+export function plantillaDcdEn(dir: string, fs: Fs = fsDeno) {
+  return (rollo: Rollo) => leerTexto(unir(dir, `plantilla-${rollo}.dymo`), fs);
+}

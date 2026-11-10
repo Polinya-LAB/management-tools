@@ -229,3 +229,27 @@ export function mensaje(e: unknown): string {
   if (/UnknownIssuer|certificate/i.test(causa)) return `certificado no reconocido (${causa.slice(0, 400)})`;
   return causa && !e.message.includes(causa) ? `${e.message}: ${causa.slice(0, 200)}` : e.message;
 }
+
+// ---------- Plantilla de DYMO Connect (.dymo) ----------
+// Las versiones actuales de DYMO Connect solo aceptan su formato (DesktopLabel/DYMOLabel); el nombre interno del papel
+// y el área imprimible de cada rollo no están documentados. Por eso se parte de una etiqueta guardada en el propio
+// DYMO Connect con una imagen: se cambia solo el contenido de la imagen (<Data>) y, con girar180, su giro.
+export function xmlDesdePlantillaDcd(plantilla: string, pngBase64: string, girar180 = false): string {
+  if (!/^[A-Za-z0-9+/]+=*$/.test(pngBase64)) throw new Error("Imagen de etiqueta no válida");
+  const xml = plantilla.replace(/^\uFEFF/, "");
+  if (!/<DesktopLabel\b/.test(xml)) throw new Error("La plantilla .dymo no es una etiqueta de DYMO Connect");
+  const m = /<ImageObject>[\s\S]*?<\/ImageObject>/.exec(xml);
+  if (!m) throw new Error("La plantilla .dymo no tiene ninguna imagen: inserta una imagen que ocupe toda la etiqueta y vuelve a guardarla");
+  let obj = m[0];
+  if (/<Data\s*\/>/.test(obj)) obj = obj.replace(/<Data\s*\/>/, `<Data>${pngBase64}</Data>`);
+  else if (/<Data>[\s\S]*?<\/Data>/.test(obj)) obj = obj.replace(/<Data>[\s\S]*?<\/Data>/, `<Data>${pngBase64}</Data>`);
+  else obj = obj.replace(/<\/Name>/, `</Name><Data>${pngBase64}</Data>`);
+  if (girar180) obj = obj.replace(/<Rotation>[^<]*<\/Rotation>/, "<Rotation>Rotation180</Rotation>");
+  return xml.slice(0, m.index) + obj + xml.slice(m.index + m[0].length);
+}
+
+/** Mensaje claro cuando DYMO Connect rechaza el formato clásico de etiqueta. */
+export const sinPlantillaDcd = (rollo: string, e: unknown) =>
+  /DieCutLabel/.test(mensaje(e))
+    ? `Esta versión de DYMO Connect necesita la plantilla plantilla-${rollo}.dymo junto a la estación (ver LEEME.txt)`
+    : mensaje(e);

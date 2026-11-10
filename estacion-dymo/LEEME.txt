@@ -79,7 +79,18 @@ Para quien mantiene el programa
 -------------------------------
 Código: estacion-dymo/ en https://github.com/Polinya-LAB/management-tools. Pruebas: deno test estacion-dymo/
 Compilar (lo hace el workflow .github/workflows/estacion-dymo.yml al cambiar estacion-dymo/ en main):
-   deno compile --target x86_64-pc-windows-msvc --no-terminal --output estacion-dymo.exe
+   deno compile --target x86_64-pc-windows-msvc --output estacion-dymo.exe
      "--allow-net=127.0.0.1,localhost,*.supabase.co" --allow-read --allow-write --allow-env=ESTACION_DYMO_DIR
      --unsafely-ignore-certificate-errors=127.0.0.1,localhost estacion-dymo/main.ts
 Para probar sin compilar: ESTACION_DYMO_DIR=<carpeta con el json> deno run <los mismos permisos> estacion-dymo/main.ts
+
+PLANTILLA DE DYMO CONNECT (necesaria con las versiones actuales de DYMO Connect)
+-------------------------------------------------------------------------------
+Si un envío falla con "necesita la plantilla plantilla-11354.dymo", crea la plantilla una vez:
+ 1. Abre DYMO Connect y crea una etiqueta nueva con el rollo puesto (p. ej. 11354 Multi-purpose).
+ 2. Inserta una imagen (Insertar > Imagen, cualquier imagen) y estírala para que ocupe TODA la etiqueta.
+ 3. Archivo > Guardar como, en la carpeta %LOCALAPPDATA%\EstacionDymo, con el nombre plantilla-11354.dymo
+    (cambia 11354 por el rollo si usas otro).
+La estación la usa en cada etiqueta: solo cambia la imagen, así que el papel, el tamaño y la orientación son los
+que DYMO Connect sabe para ese rollo. No hace falta reiniciar la estación.
+

@@ -2,7 +2,7 @@
 
 import { ApiEstacion, ErrorApi, type RespuestaCiclo, type TrabajoEstacion } from "./api.ts";
 import type { Config, Rollo } from "./config.ts";
-import { type EstadoDymo, mensaje, papelDe, xmlEtiqueta, xmlParametros } from "./dymo.ts";
+import { type EstadoDymo, mensaje, papelDe, xmlEtiqueta, xmlParametros, sinPlantillaDcd, xmlDesdePlantillaDcd } from "./dymo.ts";
 import type { Registro } from "./log.ts";
 
 export interface EnCurso {
@@ -18,6 +18,7 @@ export interface DepsEstacion {
   /** Trabajo a medias guardado en estacion-dymo.estado.json. */
   enCurso: { leer(): EnCurso | null; guardar(e: EnCurso): void; borrar(): void };
   plantilla(rollo: Rollo): string | null;
+  plantillaDcd?(rollo: Rollo): string | null;
   dormir(ms: number): Promise<void>;
 }
 
@@ -102,18 +103,21 @@ export class Estacion {
       if (t.rollo !== rolloPuesto) {
         return await this.finalizar(t.id, { hechas, fin: "error", error: `El trabajo es para el rollo ${t.rollo} y está puesto ${rolloPuesto}` });
       }
+      // Plantilla de DYMO Connect si la hay; si no, el formato clásico (lo aceptan las versiones anteriores).
+      const dcd = this.d.plantillaDcd?.(t.rollo) ?? null;
       let papel;
       try {
-        papel = papelDe(t.rollo, cfg.papel[t.rollo], this.d.plantilla(t.rollo));
+        papel = dcd ? null : papelDe(t.rollo, cfg.papel[t.rollo], this.d.plantilla(t.rollo));
       } catch (e) {
         return await this.finalizar(t.id, { hechas, fin: "error", error: mensaje(e) });
       }
       for (let i = hechas; i < t.n; i++) {
         const et = t.etiquetas[i];
         try {
-          await this.d.dymo.imprimir(impresora, xmlEtiqueta(et.png, papel, cfg.girar180), xmlParametros(`QTS-${et.codigo}`));
+          const xml = dcd ? xmlDesdePlantillaDcd(dcd, et.png, cfg.girar180) : xmlEtiqueta(et.png, papel!, cfg.girar180);
+          await this.d.dymo.imprimir(impresora, xml, xmlParametros(`QTS-${et.codigo}`));
         } catch (e) {
-          return await this.finalizar(t.id, { hechas, fin: "error", error: mensaje(e) });
+          return await this.finalizar(t.id, { hechas, fin: "error", error: sinPlantillaDcd(t.rollo, e) });
         }
         hechas = i + 1;
         this.d.enCurso.guardar({ id: t.id, hechas });

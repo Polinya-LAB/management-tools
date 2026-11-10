@@ -3,7 +3,7 @@
 // Diseño: docs/superpowers/specs/2026-11-10-impresion-remota-dymo-design.md. Instrucciones: estacion-dymo/LEEME.txt.
 
 import { ApiEstacion } from "./api.ts";
-import { ARCHIVO_LOG, carpeta, enCursoEn, leerTexto, plantillaEn, unir } from "./archivos.ts";
+import { ARCHIVO_LOG, carpeta, enCursoEn, leerTexto, plantillaDcdEn, plantillaEn, unir } from "./archivos.ts";
 import { exportarCertificados, fetchConCertificados } from "./certificados.ts";
 import { fetchCurl, fetchServidor } from "./curl.ts";
 import { ARCHIVO_CONFIG, type Config, validarConfig } from "./config.ts";
@@ -12,7 +12,7 @@ import { Estacion } from "./estacion.ts";
 import { crearRegistro } from "./log.ts";
 import { prueba } from "./prueba.ts";
 
-export const VERSION = "1.0.3";
+export const VERSION = "1.1.0";
 const PUERTO_INSTANCIA = 41999;
 
 const AYUDA = `estacion-dymo ${VERSION}: imprime en la DYMO las etiquetas que se mandan desde Muestras.
@@ -64,8 +64,9 @@ async function main(args: string[]): Promise<number> {
   // Si aun así Deno no acepta ese certificado, las llamadas al servidor pasan a curl.exe de Windows.
   const api = new ApiEstacion(fetchServidor(fetchConCertificados(dir, log), fetchCurl(), log), cfg.url, cfg.clave);
   const plantilla = plantillaEn(dir);
+  const plantillaDcd = plantillaDcdEn(dir);
 
-  if (modoPrueba) return (await prueba(cfg, api, dymo, log, plantilla)) ? 0 : 1;
+  if (modoPrueba) return (await prueba(cfg, api, dymo, log, plantilla, plantillaDcd)) ? 0 : 1;
 
   // Una sola instancia: el puerto queda ocupado mientras la estación está en marcha.
   try {
@@ -86,6 +87,7 @@ async function main(args: string[]): Promise<number> {
     log,
     enCurso: enCursoEn(dir),
     plantilla,
+    plantillaDcd,
     dormir: (ms) => new Promise((r) => setTimeout(r, ms)),
   });
   await estacion.correr();

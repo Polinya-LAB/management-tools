@@ -1,5 +1,5 @@
 import { assert, assertEquals, assertRejects, assertStringIncludes, assertThrows } from "jsr:@std/assert@1";
-import { AVISO_NO_CONECTADA, ClienteDymo, escapar, leerImpresoras, papelDe, twips, xmlEtiqueta, xmlParametros } from "./dymo.ts";
+import { AVISO_NO_CONECTADA, ClienteDymo, escapar, sinPlantillaDcd, xmlDesdePlantillaDcd, leerImpresoras, papelDe, twips, xmlEtiqueta, xmlParametros } from "./dymo.ts";
 import { IMPRESORAS, PNG, simulador } from "./simulador_test.ts";
 
 Deno.test("papel de fábrica: medidas en twips por rollo", () => {
@@ -116,4 +116,19 @@ Deno.test("PrintLabel: formulario y errores con el texto de DYMO", async () => {
   assertEquals(s.impresiones, [{ printerName: "DYMO LabelWriter 550", labelXml: "<label/>", printParamsXml: "<params/>" }]);
   s.fallaImprimir = () => ({ status: 500, texto: JSON.stringify("Printer is offline") });
   await assertRejects(() => c.imprimir("X", "<label/>", "<p/>"), Error, "DYMO (HTTP 500): Printer is offline");
+});
+
+Deno.test("plantilla de DYMO Connect: cambia solo la imagen (Data) y, con girar180, su giro", () => {
+  const p = `﻿<?xml version="1.0" encoding="utf-8"?><DesktopLabel Version="1"><DYMOLabel Version="3"><LabelName>X</LabelName>` +
+    `<DynamicLayoutManager><LabelObjects><ImageObject><Name>IImageObject0</Name><Rotation>Rotation0</Rotation>` +
+    `<Data>VIEJA==</Data><ScaleMode>Uniform</ScaleMode></ImageObject></LabelObjects></DynamicLayoutManager></DYMOLabel></DesktopLabel>`;
+  const x = xmlDesdePlantillaDcd(p, "iVBORw0KGgo=");
+  assertStringIncludes(x, "<Data>iVBORw0KGgo=</Data>");
+  assertEquals(x.includes("VIEJA"), false);
+  assertEquals(x.startsWith("<?xml"), true);
+  assertStringIncludes(xmlDesdePlantillaDcd(p, "AAAA", true), "<Rotation>Rotation180</Rotation>");
+  assertStringIncludes(xmlDesdePlantillaDcd(p.replace("<Data>VIEJA==</Data>", "<Data />"), "AAAA"), "<Data>AAAA</Data>");
+  assertThrows(() => xmlDesdePlantillaDcd(p.replace(/<ImageObject>[\s\S]*<\/ImageObject>/, ""), "AAAA"), Error, "ninguna imagen");
+  assertThrows(() => xmlDesdePlantillaDcd("<DieCutLabel/>", "AAAA"), Error, "DYMO Connect");
+  assertStringIncludes(sinPlantillaDcd("11354", new Error("Invalid label file: The 'DieCutLabel' element is not declared.")), "plantilla-11354.dymo");
 });

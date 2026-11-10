@@ -52,10 +52,16 @@ rem Quita la marca de "descargado de Internet" para que Windows no lo bloquee.
 powershell -NoProfile -ExecutionPolicy Bypass -Command "Unblock-File -LiteralPath (Join-Path $env:LOCALAPPDATA 'EstacionDymo\estacion-dymo.exe')"
 
 rem Acceso directo en la carpeta Inicio: arranca al iniciar sesión.
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$d = Join-Path $env:LOCALAPPDATA 'EstacionDymo'; $s = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path ([Environment]::GetFolderPath('Startup')) 'Estacion DYMO.lnk')); $s.TargetPath = (Join-Path $d 'estacion-dymo.exe'); $s.WorkingDirectory = $d; $s.Description = 'Impresion de etiquetas del laboratorio en la DYMO'; $s.Save()"
+rem La estación arranca en una consola oculta (iniciar.vbs): así curl.exe y PowerShell, que lanza ella, no abren
+rem ventanas al ejecutarse.
+> "%DESTINO%\iniciar.vbs" echo Set s = CreateObject("WScript.Shell")
+>> "%DESTINO%\iniciar.vbs" echo d = CreateObject("Scripting.FileSystemObject").GetParentFolderName(WScript.ScriptFullName)
+>> "%DESTINO%\iniciar.vbs" echo s.CurrentDirectory = d
+>> "%DESTINO%\iniciar.vbs" echo s.Run Chr(34) ^& d ^& "\estacion-dymo.exe" ^& Chr(34), 0, False
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$d = Join-Path $env:LOCALAPPDATA 'EstacionDymo'; $s = (New-Object -ComObject WScript.Shell).CreateShortcut((Join-Path ([Environment]::GetFolderPath('Startup')) 'Estacion DYMO.lnk')); $s.TargetPath = (Join-Path $env:WINDIR 'System32\wscript.exe'); $s.Arguments = '\"' + (Join-Path $d 'iniciar.vbs') + '\"'; $s.WorkingDirectory = $d; $s.Description = 'Impresion de etiquetas del laboratorio en la DYMO'; $s.Save()"
 if errorlevel 1 goto :fallo
 
-start "" /d "%DESTINO%" "%DESTINO%\estacion-dymo.exe"
+start "" "%WINDIR%\System32\wscript.exe" "%DESTINO%\iniciar.vbs"
 
 echo.
 echo Estación instalada en %DESTINO% y en marcha.
