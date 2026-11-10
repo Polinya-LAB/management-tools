@@ -32,10 +32,20 @@ goto :esperar
 :cerrada
 
 if not exist "%DESTINO%" mkdir "%DESTINO%"
+rem La versión anterior se aparta antes de copiar: renombrar funciona aunque el antivirus la tenga abierta.
+if exist "%DESTINO%\estacion-dymo.old.exe" del /f /q "%DESTINO%\estacion-dymo.old.exe" >nul 2>&1
+if exist "%DESTINO%\estacion-dymo.exe" attrib -r "%DESTINO%\estacion-dymo.exe" >nul 2>&1
+if exist "%DESTINO%\estacion-dymo.exe" ren "%DESTINO%\estacion-dymo.exe" estacion-dymo.old.exe >nul 2>&1
+echo Copiando el programa...
 copy /y "%ORIGEN%estacion-dymo.exe" "%DESTINO%\estacion-dymo.exe" >nul
-if errorlevel 1 goto :fallo
-if defined JSON copy /y "%JSON%" "%DESTINO%\estacion-dymo.json" >nul
-if errorlevel 1 goto :fallo
+if errorlevel 1 goto :falloexe
+if exist "%DESTINO%\estacion-dymo.old.exe" del /f /q "%DESTINO%\estacion-dymo.old.exe" >nul 2>&1
+if not defined JSON goto :sinjsonnuevo
+echo Copiando la configuración...
+if exist "%DESTINO%\estacion-dymo.json" attrib -r "%DESTINO%\estacion-dymo.json" >nul 2>&1
+copy /y "%JSON%" "%DESTINO%\estacion-dymo.json" >nul
+if errorlevel 1 goto :fallojson
+:sinjsonnuevo
 if exist "%ORIGEN%LEEME.txt" copy /y "%ORIGEN%LEEME.txt" "%DESTINO%\LEEME.txt" >nul
 
 rem Quita la marca de "descargado de Internet" para que Windows no lo bloquee.
@@ -80,6 +90,18 @@ echo (suele pasar si se abrió como administrador). Ciérrala así y vuelve a ej
 echo   1. Ctrl+Mayús+Esc para abrir el Administrador de tareas, pestaña Detalles.
 echo   2. Clic derecho en cada estacion-dymo.exe y "Finalizar tarea".
 echo Si no te deja, reinicia el ordenador y ejecuta instalar.cmd nada más entrar.
+goto :error
+
+:falloexe
+echo.
+echo No se pudo copiar estacion-dymo.exe a %DESTINO%.
+echo Suele ser el antivirus revisando el programa nuevo: espera un minuto y vuelve a ejecutar instalar.cmd.
+echo Si se repite, haz una captura de esta ventana.
+goto :error
+
+:fallojson
+echo.
+echo No se pudo copiar estacion-dymo.json a %DESTINO%. Haz una captura de esta ventana.
 goto :error
 
 :fallo
