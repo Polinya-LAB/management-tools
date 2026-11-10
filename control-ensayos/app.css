@@ -407,13 +407,16 @@ details summary{cursor:pointer;font-weight:600;font-size:14px}
 .dlbl .tx{display:flex;flex-direction:column;justify-content:center;gap:.5mm;min-width:0;flex:1;line-height:1.12}
 /* --fs (set per label size) = height of the sample code; the other lines scale from it */
 .dlbl .id{font-family:var(--f-mono);font-weight:700;font-size:var(--fs,4.4mm);letter-spacing:-.02em;white-space:nowrap}
-.dlbl .l2{font-family:var(--f-mono);font-size:var(--fs-l2,2.6mm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dlbl .plr,.dlbl .qtp{font-family:var(--f-mono);font-weight:700;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dlbl .plr{font-size:var(--fs-plr,4.8mm)}
+.dlbl .qtp{font-size:var(--fs-qtp,4.2mm)}
 .dlbl .ds{font-size:var(--fs-ds,3mm);font-weight:600;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
 .dlbl .ft{font-size:var(--fs-ft,2.4mm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .dlbl.sm .ds{-webkit-line-clamp:1}
 .dlbl.wbar{flex-direction:column;gap:.8mm}
 .dlbl.wbar .tx{flex:1 1 auto;justify-content:flex-start}
 .dlbl.wbar .bc{flex:none;width:100%;height:30%;display:block}
+.dlbl.wbar .ds{-webkit-line-clamp:1}
 .dlbl.wbar.sm .ds{display:none}
 .noqr{width:100%;height:100%;display:grid;place-items:center;border:1px dashed #999;font-size:2.4mm;color:#666;text-align:center}
 #smp-print{display:none}

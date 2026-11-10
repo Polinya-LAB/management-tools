@@ -354,6 +354,53 @@ async function registrarPlan(page) {
       await ctx.close();
     }
 
+    // ---------- Idioma ES / EN ----------
+    {
+      const { ctx, page, lab, errores, peticiones } = await abrir(browser, { reloj: true });
+      const escrituras = () => peticiones.filter((p) => !['GET', 'HEAD', 'OPTIONS'].includes(p.method) && !p.url.includes('/auth/v1/')).length;
+      await check('idioma: ES/EN traduce la página al momento, sin recargar y sin escribir datos', async () => {
+        await entrar(page, 'ana.ruiz@fluidra.com', 'Ana Ruiz');
+        await page.click('#tabs [data-view="calibrations"]');
+        assert.equal(await page.locator('header h1').textContent(), 'Calibration Plan');
+        assert.match(await page.locator('#tabs').textContent(), /Overview/);
+        const n0 = escrituras();
+        await page.evaluate(() => { window.__sinRecarga = 1; });
+        await page.click('.lab-lang button[data-l="es"]');
+        await page.waitForFunction(() => document.documentElement.lang === 'es');
+        assert.equal(await page.evaluate(() => window.__sinRecarga), 1, 'sin recargar');
+        assert.equal(await page.locator('header h1').textContent(), 'Plan de calibración');
+        assert.equal(await page.locator('header [data-act="eq-new"]').textContent(), '+ Nuevo equipo');
+        assert.match(await page.locator('#tabs').textContent(), /Resumen.*Calibraciones/);
+        assert.equal(await page.locator('#view h2').textContent(), 'Calibraciones');
+        assert.equal(await page.title(), 'Plan de calibración · Laboratorio Polinyà');
+        assert.equal(await page.evaluate(() => localStorage.getItem('lab.lang')), 'es');
+        for (const v of ['overview', 'equipment', 'plan', 'calibrations', 'evaluation', 'sheets', 'review', 'data']) {
+          await page.click(`#tabs [data-view="${v}"]`);
+          assert.doesNotMatch(await page.locator('#view').innerText(), /\b[a-z]{1,3}_[a-z0-9_]+\b/, `sin claves sin traducir en ${v}`);
+        }
+        await page.click('#btn-gh');
+        assert.match(await page.locator('#dlg').innerText(), /Has entrado como/);
+        await page.click('#dlg .dlg-f [data-act="close"]');
+        await page.click('.lab-lang button[data-l="en"]');
+        await page.waitForFunction(() => document.documentElement.lang === 'en');
+        assert.match(await page.locator('#tabs').textContent(), /Overview/);
+        assert.equal(escrituras(), n0, 'cambiar de idioma no escribe nada');
+        assert.equal(lab.puts.length, 0);
+      });
+      await check('idioma: en español se guardan los mismos valores que en inglés (status "Planned")', async () => {
+        await page.click('.lab-lang button[data-l="es"]');
+        await registrarPlan(page);
+        await page.clock.fastForward(1000);
+        await waitFor(() => lab.puts.length === 1);
+        assert.match(lab.puts[0].message, /^Plan de calibraciones: /);
+        assert.ok(Object.values(lab.puts[0].data.calibrations).some((c) => c.equipmentId === 'eq-DEMO-002' && c.month === '2027-06' && c.status === 'Planned'));
+        assert.deepEqual(lab.bloqueadas, []);
+        assert.deepEqual(erroresReales(errores), []);
+        assert.deepEqual(errores.otros404(), []);
+      });
+      await ctx.close();
+    }
+
     // ---------- Sin configuración de Supabase: como hoy ----------
     {
       const { ctx, page, lab, errores, peticiones } = await abrir(browser, {

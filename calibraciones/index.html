@@ -363,8 +363,8 @@ main{grid-template-columns:minmax(0,1fr)}  /* the sheet's wide tables scroll ins
    repository, and keeps changes in this browser instead of saving them to GitHub. */
 if(location.protocol==='file:'||/[?&]local\b/.test(location.search)) document.write('<script src="local-data.js"><\/script>');</script>
 <script src="../acceso/config.js"></script>
-<script src="../acceso/lab-lang.js?v=20261114"></script>
-<script src="../acceso/lab-auth.js?v=20261114"></script>
+<script src="../acceso/lab-lang.js?v=20261115"></script>
+<script src="../acceso/lab-auth.js?v=20261115"></script>
 <script>
 /* ---------- Constants ---------- */
 const GROUPS=['Test equipment','Auxiliary equipment'];
@@ -397,6 +397,345 @@ const mn=i=>MN[LabLang.lang][i];
 const MONTHS_EN=['january','february','march','april','may','june','july','august','september','october','november','december'];
 const COLS=['equipment','calibrations','evaluations','maintenance','config'];
 const MT_TYPES=['Preventive','Corrective','Verification'];
+
+/* ---------- Texts (ES / EN) ----------
+   Every entry is [English, Spanish]: a string or a function of the arguments. t() picks the current language (acceso/lab-lang.js). */
+const TX={
+  doc_title:['Calibration Plan · Laboratorio Polinyà','Plan de calibración · Laboratorio Polinyà'],
+  h1:['Calibration Plan','Plan de calibración'], eq_new:['+ New equipment','+ Nuevo equipo'], views:['Views','Vistas'], loading:['Loading calibration data…','Cargando los datos de calibración…'],
+  tab_overview:['Overview','Resumen'], tab_equipment:['Equipment','Equipos'], tab_plan:['Annual plan','Plan anual'], tab_calibrations:['Calibrations','Calibraciones'],
+  tab_evaluation:['TU evaluation','Evaluación TU'], tab_sheets:['Validation sheets','Fichas de validación'], tab_review:['Data review','Revisión de datos'], tab_data:['Import & data','Importar y datos'],
+  pg_of:[(a,b)=>`"Page " ${a} " of " ${b}`,(a,b)=>`"Página " ${a} " de " ${b}`],
+  /* Stored values, shown translated (dv) */
+  'v_Test equipment':['Test equipment','Equipos de ensayo'], 'v_Auxiliary equipment':['Auxiliary equipment','Equipos auxiliares'],
+  v_Periodic:['Periodic','Periódica'], 'v_Expiry date':['Expiry date','Fecha de caducidad'], 'v_Before use':['Before use','Antes de uso'], 'v_Not required':['Not required','No requerida'],
+  'v_In use':['In use','En uso'], 'v_Out of service':['Out of service','Fuera de servicio'], v_Retired:['Retired','Dado de baja'], v_Reserved:['Reserved','Reservado'],
+  v_Planned:['Planned','Planificada'], v_Done:['Done','Realizada'], v_Yes:['Yes','Sí'], v_No:['No','No'], v_External:['External','Externa'], v_Internal:['Internal','Interna'],
+  'v_In situ':['In situ','In situ'], v_manual:['manual','manual'], v_Manual:['Manual','Manual'], v_OK:['OK','Apto'], v_NOK:['NOK','No apto'], 'v_%RH':['%RH','%HR'],
+  /* Test standards */
+  st_9227:['Salt spray tests (NSS, AASS, CASS)','Ensayos de niebla salina (NSS, AASS, CASS)'], st_a:['Test A: Cold','Ensayo A: Frío'], st_b:['Test B: Dry heat','Ensayo B: Calor seco'],
+  st_nb:['Test Nb: Change of temperature, specified rate','Ensayo Nb: Cambio de temperatura a velocidad especificada'], st_cab:['Test Cab: Damp heat, steady state','Ensayo Cab: Calor húmedo continuo'],
+  st_db:['Test Db: Damp heat, cyclic','Ensayo Db: Calor húmedo cíclico'],
+  sv_nss:['NSS / AASS · 35 ºC','NSS / AASS · 35 ºC'], sv_cass:['CASS · 50 ºC','CASS · 50 ºC'], sv_cold:['Cold severities (≤ 0 ºC)','Severidades de frío (≤ 0 ºC)'],
+  sv_heat:['Dry heat severities (> 30 ºC)','Severidades de calor seco (> 30 ºC)'], sv_ends:['Lower and upper temperatures','Temperaturas inferior y superior'],
+  sv_ramp:['Rate of change (1, 3 or 5 K/min ± 20 %)','Velocidad de cambio (1, 3 o 5 K/min ± 20 %)'], sv_40:['40 ºC / 93 %RH','40 ºC / 93 %HR'],
+  sv_up40:['Upper phase 40 ºC / 93 %RH','Fase superior 40 ºC / 93 %HR'], sv_up55:['Upper phase 55 ºC / 93 %RH (variant 2)','Fase superior 55 ºC / 93 %HR (variante 2)'],
+  sv_lo25:['Lower phase 25 ºC / ≥ 95 %RH','Fase inferior 25 ºC / ≥ 95 %HR'],
+  vl_ok:['Conforming','Conforme'], vl_corr:['Conforming with correction','Conforme con corrección'], vl_b:['Simple acceptance only','Solo aceptación simple'], vl_nok:['Not conforming','No conforme'], vl_na:['Not calibrated','Sin calibrar'],
+  /* Calibration status */
+  cl_valid:['Valid','En vigor'], cl_soon:['Due soon','Vence pronto'], cl_overdue:['Overdue','Vencida'], cl_nok:['Out of tolerance','Fuera de tolerancia'], cl_pending:['Pending closure','Pendiente de cierre'],
+  cl_nodata:['Dates missing','Faltan fechas'], cl_notreq:['Not required','No requerida'], cl_beforeuse:['Check before use','Verificar antes de uso'], cl_reserved:['Reserved code','Código reservado'],
+  cl_retired:['Retired','Dado de baja'], cl_oos:['Out of service','Fuera de servicio'], cl_none:['No plan','Sin plan'], cl_expired:['Expired','Caducado'], cl_expsoon:['Expires soon','Caduca pronto'], cl_thismonth:['Due this month','Vence este mes'],
+  /* Data review */
+  is_certnoreg:['Certificate in SharePoint not registered','Certificado en SharePoint sin registrar'], is_dupcode:['Duplicated inventory code','Código de inventario duplicado'],
+  is_dupserial:['Serial number shared with other equipment','Número de serie compartido con otro equipo'], is_nextdiff:['Next date does not match last + period','La próxima fecha no coincide con última + periodo'],
+  is_nextbefore:['Next date not after the last calibration','Próxima fecha no posterior a la última calibración'], is_lastfuture:['Last calibration in the future','Última calibración en el futuro'],
+  is_noperiod:['Calibration period missing','Falta el periodo de calibración'], is_nodates:['Last calibration missing','Falta la última calibración'], is_plannedpast:['Planned month already passed','Mes planificado ya pasado'],
+  is_import:['Notes from the Excel import','Notas de la importación del Excel'], is_tudiff:['TU differs from the plan tolerance','La TU difiere de la tolerancia del plan'], is_notol:['Tolerance missing','Falta la tolerancia'],
+  is_noserial:['Serial number missing','Falta el número de serie'], is_nolab:['Calibration lab to be defined','Laboratorio de calibración por definir'], is_noprice:['Offer price to be defined','Precio de oferta por definir'],
+  is_noenac:['ENAC accreditation to be defined','Acreditación ENAC por definir'],
+  per_y:[n=>`${n} year${n>1?'s':''}`,n=>`${n} año${n>1?'s':''}`], per_m:[n=>`${n} months`,n=>`${n} meses`],
+  no_desc:['(no description)','(sin descripción)'], deleted_eq:['(deleted equipment)','(equipo eliminado)'],
+  mc_cert:['certificate not received','certificado no recibido'], mc_nok:['out of tolerance','fuera de tolerancia'], mc_tol:['tolerance not checked','tolerancia sin comprobar'], mc_label:['label not placed','etiqueta no colocada'],
+  /* Data review texts */
+  i_dupcode:[(c,l)=>`${c} is also used by “${l}”. Assign a new code.`,(c,l)=>`${c} también lo usa “${l}”. Asigna un código nuevo.`],
+  i_dupserial:[(s,l)=>`Serial ${s} is also on ${l}.`,(s,l)=>`El número de serie ${s} también está en ${l}.`],
+  i_noperiod:['No calibration period.','Sin periodo de calibración.'], i_nodates:['No last calibration date.','Sin fecha de última calibración.'],
+  i_nextdiff:[(n,l,p,c)=>`Next calibration ${n}, but last ${l} + ${p} gives ${c}.`,(n,l,p,c)=>`Próxima calibración ${n}, pero última ${l} + ${p} da ${c}.`],
+  i_nextbefore:[(n,l)=>`Next date ${n} is not after the last calibration ${l}.`,(n,l)=>`La próxima fecha ${n} no es posterior a la última calibración ${l}.`],
+  i_lastfuture:[l=>`Last calibration ${l} is in the future.`,l=>`La última calibración ${l} está en el futuro.`],
+  i_notol:['No tolerance defined.','Sin tolerancia definida.'], i_noserial:['No serial number.','Sin número de serie.'], i_nolab:['No calibration lab.','Sin laboratorio de calibración.'],
+  i_noprice:['No offer price.','Sin precio de oferta.'], i_noenac:['ENAC accreditation not defined.','Acreditación ENAC sin definir.'],
+  i_plannedpast:[m=>`Calibration planned for ${m} is not registered as done.`,m=>`La calibración planificada para ${m} no está registrada como realizada.`],
+  i_tudiff:[(tu,u,d,tol)=>`TU ${tu} ${u} in the evaluation${d?' of '+d:''}; the plan tolerance is ±${tol}.`,(tu,u,d,tol)=>`TU ${tu} ${u} en la evaluación${d?' del '+d:''}; la tolerancia del plan es ±${tol}.`],
+  i_certnoreg:[(c,d)=>`Certificate ${c} (calibrated ${d}) is in SharePoint, but no calibration is registered for that month.`,(c,d)=>`El certificado ${c} (calibrado el ${d}) está en SharePoint, pero no hay ninguna calibración registrada en ese mes.`],
+  /* Certificates */
+  cert_open:['Open the certificate in SharePoint','Abrir el certificado en SharePoint'], certificate:['Certificate','Certificado'], cert_nores:['No results were read from this certificate.','No se ha leído ningún resultado de este certificado.'],
+  h_point:['Point','Punto'], h_mean:['Mean','Media'], h_stab:['Stab.','Estab.'], h_unif:['Unif.','Unif.'], h_pos:['Positions','Posiciones'], h_qty:['Quantity','Magnitud'], h_nom:['Nominal','Nominal'],
+  h_ind:['Indicated','Indicado'], h_err:['Error','Error'],
+  rh_at:[(h,tc)=>`${h} %RH at ${tc} ºC`,(h,tc)=>`${h} %HR a ${tc} ºC`],
+  calibrated_on:[d=>`calibrated ${d}`,d=>`calibrado el ${d}`], issued_on:[d=>`issued ${d}`,d=>`emitido el ${d}`], cert_reg:['Register this calibration','Registrar esta calibración'],
+  /* Banners */
+  b_preview:['<b>Preview version.</b> It shows the real data from <span class="mono">lab-data</span>, but changes are not saved to GitHub: they stay in this page until you reload it.','<b>Versión de prueba.</b> Muestra los datos reales de <span class="mono">lab-data</span>, pero los cambios no se guardan en GitHub: se quedan en esta página hasta que la recargues.'],
+  b_local:['<b>Local test mode.</b> The data comes from <span class="mono">local-data.js</span>, which is not in the repository; changes stay in this browser and are never sent to GitHub.','<b>Modo de prueba local.</b> Los datos vienen de <span class="mono">local-data.js</span>, que no está en el repositorio; los cambios se quedan en este navegador y nunca se envían a GitHub.'],
+  b_local_reset:['Reset the test data','Restablecer los datos de prueba'],
+  b_nosee:[(l,r)=>`<b>Your account ${l} cannot see the calibration data.</b> Ask the owner to add you to the private repository ${r}.`,(l,r)=>`<b>Tu cuenta ${l} no puede ver los datos de calibración.</b> Pide al propietario que te añada al repositorio privado ${r}.`],
+  b_private:[b=>`<b>The calibration data is private.</b> Press ${b} with an account that has access to see it.`,b=>`<b>Los datos de calibración son privados.</b> Pulsa ${b} con una cuenta que tenga acceso para verlos.`],
+  b_noload:['<b>Could not load the calibration data from GitHub.</b> Check your connection and reload the page.','<b>No se han podido cargar los datos de calibración desde GitHub.</b> Comprueba la conexión y recarga la página.'],
+  b_invalid:[b=>`Your GitHub key is no longer valid or has expired. ${b} and paste a new one.`,b=>`Tu clave de GitHub ya no es válida o ha caducado. ${b} y pega una nueva.`],
+  b_noedit:[l=>`Your GitHub account <b>${l}</b> cannot edit this repository. Ask to be added as a collaborator with the Write role.`,l=>`Tu cuenta de GitHub <b>${l}</b> no puede editar este repositorio. Pide que te añadan como colaborador con el rol Write.`],
+  b_ro:[b=>`Read-only. To register or change calibrations, ${b} with an account that has write access to the repository.`,b=>`Solo lectura. Para registrar o cambiar calibraciones, ${b} con una cuenta con permiso de escritura en el repositorio.`],
+  gh_connect:['Connect GitHub','Conectar GitHub'], gh_connect_l:['connect GitHub','conecta GitHub'],
+  /* Empty state, filters */
+  em_eyebrow:['No equipment yet','Aún no hay equipos'], em_title:['Import the calibration plan Excel to get started','Importa el Excel del plan de calibración para empezar'],
+  em_text:['Load <b>Calibration Plan 2026_hipervinculos.xlsx</b> in <b>Import &amp; data</b>. The sheets <i>Equipos</i>, <i>Equipos AUX</i> and <i>EVALUACION (TU)</i> become equipment, calibrations and TU evaluations. You can also add equipment by hand.','Carga <b>Calibration Plan 2026_hipervinculos.xlsx</b> en <b>Importar y datos</b>. Las hojas <i>Equipos</i>, <i>Equipos AUX</i> y <i>EVALUACION (TU)</i> se convierten en equipos, calibraciones y evaluaciones TU. También puedes añadir equipos a mano.'],
+  em_import:['Import the Excel','Importar el Excel'],
+  ph_search:['Search code, description, brand, serial…','Buscar código, descripción, marca, n.º de serie…'], search:['Search','Buscar'], clear_f:['Clear filters','Quitar filtros'],
+  f_status:['Status','Estado'], f_nocal:['No calibration','Sin calibración'], f_group:['Group','Grupo'], f_lab:['Lab','Laboratorio'], f_nolab:['Not defined','Sin definir'],
+  /* Alerts */
+  al_wasplan:[m=>`was planned ${m}, not registered`,m=>`planificada para ${m}, sin registrar`], al_plan:[m=>`planned ${m}`,m=>`planificada ${m}`], al_noplan:['not planned','sin planificar'],
+  al_expired:[(m,n)=>`Expired at the end of ${m} (${n} month${n===1?'':'s'} ago)`,(m,n)=>`Caducó a finales de ${m} (hace ${n} ${n===1?'mes':'meses'})`],
+  al_overdue:[(m,n)=>`Calibration expired at the end of ${m} (${n} month${n===1?'':'s'} ago)`,(m,n)=>`Calibración vencida a finales de ${m} (hace ${n} ${n===1?'mes':'meses'})`],
+  al_nok:[m=>`Last calibration (${m}) is out of tolerance. Do not use until resolved.`,m=>`La última calibración (${m}) está fuera de tolerancia. No usar hasta resolverlo.`],
+  al_expires:[(n,m)=>`Expires ${n===0?'this month':`in ${n} month${n===1?'':'s'}`} (${m})`,(n,m)=>`Caduca ${n===0?'este mes':`en ${n} ${n===1?'mes':'meses'}`} (${m})`],
+  al_due:[(n,m)=>`Due ${n===0?'this month':`in ${n} month${n===1?'':'s'}`} (${m})`,(n,m)=>`Vence ${n===0?'este mes':`en ${n} ${n===1?'mes':'meses'}`} (${m})`],
+  al_pending:[(m,l)=>`Calibration ${m} not closed: ${l}.`,(m,l)=>`Calibración ${m} sin cerrar: ${l}.`],
+  al_nodata:['No calibration dates: enter the last calibration and the period.','Sin fechas de calibración: introduce la última calibración y el periodo.'],
+  /* Overview */
+  n_items:[n=>`${n} item${n===1?'':'s'}`,n=>`${n} equipo${n===1?'':'s'}`], lab_undef:['Lab not defined','Laboratorio sin definir'],
+  ov_title:['Calibration overview','Resumen de calibraciones'], k_overdue:['expired calibrations','calibraciones vencidas'], k_soon:[n=>`Due ≤ ${n} months`,n=>`Vencen en ≤ ${n} meses`], k_soon_s:['plan them now','planifícalas ya'],
+  kl_overdue:['Overdue','Vencidas'], kl_pending:['Pending closure','Pendientes de cierre'],
+  k_pending:['certificate, tolerance or label','certificado, tolerancia o etiqueta'], k_nok:['last result not OK','último resultado no apto'], k_valid:[n=>`of ${n} with calibration`,n=>`de ${n} con calibración`],
+  k_review:['Data to review','Datos por revisar'], k_review_s:['equipment with data issues','equipos con datos incompletos o incoherentes'],
+  ov_action:['Action needed','Requieren acción'], ov_none:['Nothing pending: every calibration is valid and closed.','Nada pendiente: todas las calibraciones están en vigor y cerradas.'],
+  ov_next:['Next 12 months','Próximos 12 meses'], ov_next_s:['by calibration lab · blue = already planned','por laboratorio de calibración · azul = ya planificada'], ov_nonext:['No calibrations due in the next 12 months.','No vence ninguna calibración en los próximos 12 meses.'],
+  /* Equipment list */
+  g_test:['Test eq.','Ensayo'], g_aux:['Auxiliary','Auxiliar'], manual:['manual','manual'], manual_t:['Next date entered by hand','Próxima fecha introducida a mano'],
+  certs:['Certs','Certificados'], certs_t:['Certificates folder in SharePoint','Carpeta de certificados en SharePoint'], export_x:['Export plan to Excel','Exportar plan a Excel'],
+  eq_count:[(n,m)=>`${n} of ${m} equipment. Click a row to see its points, history and data issues.`,(n,m)=>`${n} de ${m} equipos. Pulsa una fila para ver sus puntos, su historial y los datos por revisar.`],
+  h_code:['Code','Código'], h_eq:['Equipment','Equipo'], h_serial:['Serial','N.º serie'], h_period:['Period','Periodo'], h_last:['Last','Última'], h_next:['Next','Próxima'], h_data:['Data','Datos'],
+  eq_nomatch:['No equipment matches the filters.','Ningún equipo cumple los filtros.'],
+  /* Annual plan */
+  pt_done:[m=>`Calibrated ${m}`,m=>`Calibrado ${m}`], pt_open:[m=>`Calibrated ${m} (not closed)`,m=>`Calibrado ${m} (sin cerrar)`], pt_plan:[m=>`Planned ${m}`,m=>`Planificada ${m}`],
+  pt_exp:[m=>`Expires ${m}`,m=>`Caduca ${m}`], pt_due:[m=>`Calibration due ${m}`,m=>`Calibración vence ${m}`], pt_proj:[m=>`Following due date ${m} (projected)`,m=>`Siguiente vencimiento ${m} (previsto)`],
+  pt_click:['Click to plan a calibration','Pulsa para planificar una calibración'],
+  pf_due:['Due','Vencen'], pf_plan:['Planned','Planificadas'], pf_cost:['Est. cost (offer price)','Coste est. (precio de oferta)'],
+  pl_title:['Annual calibration plan','Plan anual de calibración'], pl_prev:['Previous year','Año anterior'], pl_next:['Next year','Año siguiente'], pl_this:['This year','Este año'],
+  pl_m:[n=>`${n} months`,n=>`${n} meses`], pl_all:['Show equipment without calibration','Mostrar equipos sin calibración'],
+  lg_due:['Due / expiry','Vencimiento / caducidad'], lg_proj:['Projected','Previsto'], lg_closed:['Done & closed','Realizada y cerrada'], lg_open:['Done, not closed','Realizada, sin cerrar'],
+  pl_note:['Generated from the last calibration and the period, so it always matches the equipment data. Click an empty month to plan a calibration; click a mark to open it.','Se genera a partir de la última calibración y el periodo, así que siempre coincide con los datos del equipo. Pulsa un mes vacío para planificar una calibración; pulsa una marca para abrirla.'],
+  /* Calibrations */
+  c_passed:['Planned · passed','Planificada · pasada'], c_label:['Label','Etiqueta'], c_intol:['In tolerance','En tolerancia'], c_closed:['Closed','Cerrada'], c_open:['Open','Abierta'],
+  c_new:['+ Register calibration','+ Registrar calibración'], ph_search_c:['Search code, equipment, lab, certificate…','Buscar código, equipo, laboratorio, certificado…'],
+  c_f_late:['Planned, month passed','Planificada, mes pasado'], f_year:['Year','Año'],
+  c_note:['A calibration is closed (“Calibration OK”) when the certificate has been received, the results are within tolerance and the label is on the equipment. Tick the boxes directly in the table.','Una calibración está cerrada (“Calibration OK”) cuando se ha recibido el certificado, los resultados están dentro de tolerancia y la etiqueta está puesta en el equipo. Marca las casillas directamente en la tabla.'],
+  h_month:['Month','Mes'], c_closure:['Closure','Cierre'], h_cost:['Cost','Coste'], h_source:['Source','Origen'], c_nomatch:['No calibrations match the filters.','Ninguna calibración cumple los filtros.'],
+  /* TU evaluation */
+  plan_tol:['Plan tolerance','Tolerancia del plan'], plan_pm:[v=>`plan ±${v}`,v=>`plan ±${v}`], ev_incomplete:['Incomplete','Incompleta'], ev_new:['+ New evaluation','+ Nueva evaluación'],
+  ph_search_e:['Search code, equipment, related test…','Buscar código, equipo, ensayo relacionado…'],
+  ev_note:['Decision rule <b>|e| + U ≤ TU</b>: the indication error (obtained − setpoint) plus the expanded uncertainty (k=2) of the certificate must not exceed the tolerance of use. The result is calculated, not typed.','Regla de decisión <b>|e| + U ≤ TU</b>: el error de indicación (obtenido − consigna) más la incertidumbre expandida (k=2) del certificado no debe superar la tolerancia de uso. El resultado se calcula, no se escribe.'],
+  h_date:['Date','Fecha'], h_setp:['Setpoint','Consigna'], h_obt:['Obtained','Obtenido'], h_result:['Result','Resultado'], h_reltest:['Related test','Ensayo relacionado'], h_by:['By','Por'],
+  ev_none:['No evaluations yet.','Aún no hay evaluaciones.'],
+  /* Validation sheet */
+  ms_cold:['a point ≤ 0 ºC','un punto ≤ 0 ºC'], ms_heat:['a point > 30 ºC','un punto > 30 ºC'], ms_ends:['the lowest and highest temperatures','las temperaturas mínima y máxima'], and:[' and ',' y '],
+  q_T:['Temperature','Temperatura'], q_RH:['Humidity','Humedad'], q_t:['temperature','temperatura'], q_rh:['humidity','humedad'], at_c:[v=>`at ${v} ºC`,v=>`a ${v} ºC`],
+  sa_prev:['previous','la anterior'],
+  sa_corr:[(l,c,s,o,C,T)=>`<b>${l}</b>: apply a setpoint correction of <b>${c}</b> (set ${s} to obtain ${o}) and record it in the test instructions. Rule A is then met: U + drift = ${C} ≤ ${T}.`,
+    (l,c,s,o,C,T)=>`<b>${l}</b>: aplica una corrección de consigna de <b>${c}</b> (programa ${s} para obtener ${o}) y anótala en las instrucciones de ensayo. Así se cumple la regla A: U + deriva = ${C} ≤ ${T}.`],
+  sa_nok:[(l,e,C,T)=>`<b>${l}</b> is out of tolerance even with a correction (|e| = ${e}, U + drift = ${C} > ${T}). Do not use the chamber at this point; review the tests run since the last calibration.`,
+    (l,e,C,T)=>`<b>${l}</b> está fuera de tolerancia incluso con corrección (|e| = ${e}, U + deriva = ${C} > ${T}). No uses la cámara en este punto; revisa los ensayos hechos desde la última calibración.`],
+  sa_drift:[(l,d,y,p)=>`<b>${l}</b>: the error grew ${d} since ${y} (more than ${p} % of TU). Add an intermediate check or shorten the calibration interval.`,
+    (l,d,y,p)=>`<b>${l}</b>: el error ha crecido ${d} desde ${y} (más del ${p} % de la TU). Añade una verificación intermedia o acorta el intervalo de calibración.`],
+  sa_pos1:[(n,v,e)=>`P${n} at ${v} (e ${e})`,(n,v,e)=>`P${n} a ${v} (e ${e})`], sa_pos2:[(y,v,e)=>`, also outside in ${y} (${v}, e ${e})`,(y,v,e)=>`, también fuera en ${y} (${v}, e ${e})`],
+  sa_zone:[(l,p,T)=>`<b>${l}</b>: position ${p} is outside ±${T}. Exclude it from the useful zone or check the air circulation and door seal; with the correction the mean is centred but the spread stays.`,
+    (l,p,T)=>`<b>${l}</b>: la posición ${p} está fuera de ±${T}. Exclúyela de la zona útil o revisa la circulación de aire y la junta de la puerta; con la corrección la media queda centrada, pero la dispersión se mantiene.`],
+  sa_unc:[(q,U,T)=>`${q}: the certificate uncertainty (U up to ${U}) is not smaller than TU ±${T}, so rule A cannot be met even after a correction. Decide the decision rule (simple acceptance, rule B, or a tolerance agreed with the test requester) or ask the lab for a lower-uncertainty method.`,
+    (q,U,T)=>`${q}: la incertidumbre del certificado (U hasta ${U}) no es menor que la TU ±${T}, así que la regla A no se puede cumplir ni con corrección. Decide la regla de decisión (aceptación simple, regla B, o una tolerancia acordada con el solicitante del ensayo) o pide al laboratorio un método de menor incertidumbre.`],
+  sa_gap:[(k,l,m,p)=>`${k} · ${l}: not covered by the calibration (missing ${m}). Add the point at the next calibration${p?` (planned ${p})`:''}, or do not use the chamber for this severity.`,
+    (k,l,m,p)=>`${k} · ${l}: la calibración no lo cubre (falta ${m}). Añade el punto en la próxima calibración${p?` (planificada ${p})`:''} o no uses la cámara para esta severidad.`],
+  sa_ramp:['IEC 60068-2-14 Nb: the rate of temperature change is not in the certificate. Verify it with a logged ramp before use (1, 3 or 5 K/min ± 20 %, measured in the useful zone).',
+    'IEC 60068-2-14 Nb: la velocidad de cambio de temperatura no está en el certificado. Verifícala con una rampa registrada antes de usarla (1, 3 o 5 K/min ± 20 %, medida en la zona útil).'],
+  sa_tol:[(q,p,s)=>`The plan tolerance for ${q} (±${p}) is not the standards' tolerance (±${s}). Use one acceptance criterion in the calibration plan.`,
+    (q,p,s)=>`La tolerancia del plan para la ${q} (±${p}) no es la de las normas (±${s}). Usa un único criterio de aceptación en el plan de calibración.`],
+  sa_npos:[(a,b)=>`The number of positions changed (${a} → ${b}): uniformity and uncertainty are not directly comparable between certificates.`,(a,b)=>`El número de posiciones ha cambiado (${a} → ${b}): la uniformidad y la incertidumbre no son directamente comparables entre certificados.`],
+  sa_lost:[(l,y,y1)=>`${l} was calibrated in ${y} but is not in the ${y1} certificate.`,(l,y,y1)=>`${l} se calibró en ${y}, pero no está en el certificado de ${y1}.`],
+  sa_one:['There is only one certificate with results: the drift cannot be evaluated until the next calibration.','Solo hay un certificado con resultados: la deriva no se puede evaluar hasta la próxima calibración.'],
+  ch_aria:[(q,a,b)=>`${q} error per point, ${a} and ${b}`,(q,a,b)=>`${q}: error por punto, ${a} y ${b}`], ch_bars:['Bars: U (k=2)','Barras: U (k=2)'], ch_title:[q=>`${q}: error per point`,q=>`${q}: error por punto`],
+  vs_none:['No validation sheets yet','Aún no hay fichas de validación'],
+  vs_none_p:['Open a chamber in <b>Equipment</b>, tick the test standards it is used for under <b>Validation</b>, and enter the certificate results when you register its calibration.','Abre una cámara en <b>Equipos</b>, marca en <b>Validación</b> las normas de ensayo para las que se usa e introduce los resultados del certificado al registrar su calibración.'],
+  vs_edit:['Edit equipment','Editar equipo'], vs_print:['Print / PDF','Imprimir / PDF'],
+  vs_note:['The sheet is calculated from the results of the last two certificates and the test standards set in the equipment. Draft: the form code and the signatures are still pending.','La ficha se calcula con los resultados de los dos últimos certificados y las normas de ensayo indicadas en el equipo. Borrador: faltan el código de formulario y las firmas.'],
+  sh_title:['Equipment validation sheet','Ficha de validación del equipo'], sh_meta:[d=>`Form: <b>pending</b><br>Version 0 · draft<br>Generated ${d}`,d=>`Formulario: <b>pendiente</b><br>Versión 0 · borrador<br>Generada el ${d}`],
+  sh_doc:['Doc. nº','Doc. n.º'], sh_issued:['Issued by','Elaborado por'], sh_appr:['Approved by','Aprobado por'], sh_pend:['pending','pendiente'], sh_pend_c:['Pending','Pendiente'], sh_ver:['Version: 0 (draft)','Versión: 0 (borrador)'],
+  sh_conf:['Fluidra Confidential','Confidencial Fluidra'], sh_unctrl:['HARDCOPIES OF THIS DOCUMENT ARE UNCONTROLLED','LAS COPIAS IMPRESAS DE ESTE DOCUMENTO NO ESTÁN CONTROLADAS'],
+  sh_nores:[c=>`No certificate results yet. Register the calibration of ${c} and enter the results of each point (mean, U, stability, uniformity and positions).`,c=>`Aún no hay resultados de certificado. Registra la calibración de ${c} e introduce los resultados de cada punto (media, U, estabilidad, uniformidad y posiciones).`],
+  cn_ok:[(n,m)=>`${n} of ${m} points conform as calibrated (rule A)`,(n,m)=>`${n} de ${m} puntos conformes tal como están calibrados (regla A)`],
+  cn_corr:[(l,n)=>`${l} conform${n===1?'s':''} with a setpoint correction`,(l,n)=>`${l} conforme${n===1?'':'s'} con corrección de consigna`],
+  cn_b:[l=>`${l} pass only simple acceptance (rule B)`,l=>`${l}: solo aceptación simple (regla B)`], cn_all:['all points','todos los puntos'], cn_nok:[l=>`${l} not conforming`,l=>`${l} no conforme`],
+  cn_result:[v=>`Result: ${v}`,v=>`Resultado: ${v}`], cn_sev:[' · some severities not verified',' · hay severidades sin verificar'], cn_notcov:['Not covered by the calibration:','No cubierto por la calibración:'],
+  cn_rh:['The decision rule for humidity is still to be decided; the sheet shows both rules.','La regla de decisión para la humedad está por decidir; la ficha muestra las dos reglas.'],
+  sh_brand:['Brand / model','Marca / modelo'], sh_cur:[y=>`Current certificate (${y})`,y=>`Certificado actual (${y})`], sh_prevc:[y=>`Previous certificate${y?` (${y})`:''}`,y=>`Certificado anterior${y?` (${y})`:''}`],
+  sh_trace:['Traceability','Trazabilidad'], sh_enac:['ENAC accredited (ILAC MRA)','Acreditado por ENAC (ILAC MRA)'], sh_noenac:['Not accredited','No acreditado'], tbd:['To define','Por definir'],
+  sh_int:['Interval · next','Intervalo · próxima'], sh_stat:['Status in the plan','Estado en el plan'],
+  sv_int:['internal check','verificación interna'], sv_nc:['not covered','no cubierto'], sv_nc_opt:['not covered (optional)','no cubierto (opcional)'],
+  u_nover:['Not verified','Sin verificar'], u_ok:['Usable as calibrated','Apta tal como está calibrada'], u_corr:[l=>`Correction at ${l}`,l=>`Corrección en ${l}`], u_b:[l=>`Rule B only at ${l}`,l=>`Solo regla B en ${l}`],
+  u_nok:[l=>`Not usable at ${l}`,l=>`No apta en ${l}`], u_sev:['Severity not verified','Severidad sin verificar'], u_ramp:['Ramp to verify','Rampa por verificar'],
+  sh_std:['Standard','Norma'], sh_sevpts:['Severities and calibrated points','Severidades y puntos calibrados'], sh_ra:['Rule A<br>as calibrated','Regla A<br>tal cual'], sh_rac:['Rule A<br>with correction','Regla A<br>con corrección'],
+  sh_rb:['Rule B','Regla B'], sh_use:['Use','Uso'],
+  sh_nostd:['No test standards set for this equipment: the plan tolerance is used. Set them in the equipment, under Validation.','Este equipo no tiene normas de ensayo: se usa la tolerancia del plan. Indícalas en el equipo, en Validación.'],
+  rt_sub:[(T,src,u)=>`TU ±${T} (${src}) · values in ${u}`,(T,src,u)=>`TU ±${T} (${src}) · valores en ${u}`], rt_std:['Tightest standard','Norma más estricta'], rt_prev:['prev.','ant.'],
+  rt_drift:['Drift','Deriva'], rt_stab:['Stability','Estabilidad'], rt_unif:['Uniformity','Uniformidad'], rt_corr:['Setpoint correction','Corrección de consigna'],
+  ru_a:['<b>Rule A · guard band: |e| + U ≤ TU</b>The error plus the expanded uncertainty stays inside the tolerance (ILAC-G8, risk of a false accept ≤ 2.5 %). Strict rule, used by default.',
+    '<b>Regla A · banda de guarda: |e| + U ≤ TU</b>El error más la incertidumbre expandida queda dentro de la tolerancia (ILAC-G8, riesgo de falsa aceptación ≤ 2,5 %). Regla estricta, la que se usa por defecto.'],
+  ru_ac:['<b>Rule A with setpoint correction: U + drift ≤ TU</b>The known error is compensated with a setpoint offset of −e from the current certificate (§6.4.11). What is left until the next calibration is the drift plus U.',
+    '<b>Regla A con corrección de consigna: U + deriva ≤ TU</b>El error conocido se compensa con un ajuste de consigna de −e según el certificado actual (§6.4.11). Lo que queda hasta la próxima calibración es la deriva más U.'],
+  ru_b:['<b>Rule B · simple acceptance: |e| ≤ TU</b>Only the error is compared with the tolerance; the uncertainty is not deducted (higher risk of a false accept). Must be agreed and stated when it is used (§7.1.3).',
+    '<b>Regla B · aceptación simple: |e| ≤ TU</b>Solo se compara el error con la tolerancia; no se descuenta la incertidumbre (mayor riesgo de falsa aceptación). Debe acordarse e indicarse cuando se usa (§7.1.3).'],
+  'iso_§6.4.4':['Equipment verified against the specified requirements before being put (back) into service.','Equipo verificado frente a los requisitos especificados antes de ponerlo (o volver a ponerlo) en servicio.'],
+  'iso_§6.4.5':['Equipment capable of the accuracy and uncertainty the test needs.','Equipo capaz de la exactitud y la incertidumbre que requiere el ensayo.'],
+  'iso_§6.4.6 · §6.4.7':['Calibration of the points that affect the results; calibration programme reviewed and adjusted.','Calibración de los puntos que afectan a los resultados; programa de calibración revisado y ajustado.'],
+  'iso_§6.4.9':['Equipment that gives questionable results taken out of service until it is shown to work correctly.','Equipo con resultados dudosos fuera de servicio hasta demostrar que funciona correctamente.'],
+  'iso_§6.4.10':['Intermediate checks to keep confidence in the performance.','Verificaciones intermedias para mantener la confianza en el funcionamiento.'],
+  'iso_§6.4.11':['Correction factors from the calibration updated and applied.','Factores de corrección de la calibración actualizados y aplicados.'],
+  'iso_§6.4.13':['Equipment records: results, adjustments, acceptance criteria and due date.','Registros del equipo: resultados, ajustes, criterios de aceptación y fecha de vencimiento.'],
+  'iso_§6.5':['Metrological traceability through an accredited calibration lab.','Trazabilidad metrológica mediante un laboratorio de calibración acreditado.'],
+  'iso_§7.1.3 · §7.8.6':['Decision rule agreed and stated with any statement of conformity (ILAC-G8:09/2019).','Regla de decisión acordada e indicada en toda declaración de conformidad (ILAC-G8:09/2019).'],
+  'iso_§7.6':['Evaluation of measurement uncertainty.','Evaluación de la incertidumbre de medición.'],
+  'iso_§7.10':['Nonconforming work: effect on the tests already done.','Trabajo no conforme: efecto sobre los ensayos ya realizados.'],
+  'iso_§8.5':['Actions to address risks: drift and calibration interval.','Acciones para abordar riesgos: deriva e intervalo de calibración.'],
+  sh_1:['1 · Equipment','1 · Equipo'], sh_2:['2 · Test standards and use','2 · Normas de ensayo y uso'], sh_2s:['tolerance of each standard; severities matched to the calibrated points','tolerancia de cada norma; severidades comparadas con los puntos calibrados'],
+  sh_fn:[y=>`e = mean of all positions − nominal. Drift = increase of |e| since ${y} (0 if it decreased). Setpoint correction = −e, to be added to the setpoint. Stability and uniformity as stated in the certificate. Values in red do not meet TU.`,
+    y=>`e = media de todas las posiciones − nominal. Deriva = aumento de |e| desde ${y} (0 si ha disminuido). Corrección de consigna = −e, a sumar a la consigna. Estabilidad y uniformidad según el certificado. Los valores en rojo no cumplen la TU.`],
+  sh_prevcert:['the previous certificate','el certificado anterior'], sh_eu:['error and uncertainty','error e incertidumbre'],
+  sh_pos:[y=>`error of each position (position − nominal); ${y} on top`,y=>`error de cada posición (posición − nominal); ${y} arriba`], sh_pos_b:[y=>`, ${y} below`,y=>`, ${y} debajo`],
+  sh_pos_nc:[y=>`; ${y} not compared (different number of positions)`,y=>`; ${y} sin comparar (distinto número de posiciones)`], sh_spread:['Spread','Dispersión'],
+  sh_pos_fn:['Positions in the order of the certificate. In red: outside ±TU. Spread = highest − lowest position.','Posiciones en el orden del certificado. En rojo: fuera de ±TU. Dispersión = posición más alta − más baja.'],
+  sh_rules:['Decision rules','Reglas de decisión'], sh_rules_s:['both shown; the rule for humidity is still to be decided','se muestran las dos; la regla para la humedad está por decidir'],
+  sh_acts:['Actions','Acciones'], sh_noacts:['No actions: every point conforms as calibrated.','Sin acciones: todos los puntos son conformes tal como están calibrados.'], sh_iso:['ISO/IEC 17025:2017 references','Referencias ISO/IEC 17025:2017'],
+  sh_appr_h:['Approval','Aprobación'], sh_sign:['Date and signature','Fecha y firma'],
+  /* Data review, import & data */
+  rv_n:[n=>`${n} findings`,n=>`${n} hallazgo${n===1?'':'s'}`], rv_warn:['Warning','Aviso'], rv_mark:['Mark reviewed','Marcar revisado'], rv_none:['No findings. The data is complete and consistent.','Sin hallazgos. Los datos están completos y son coherentes.'],
+  rv_note:['Checks run live on the data. <b>Warnings</b> affect dates and traceability; <b>to define</b> are fields still empty or TBD in the Excel. Notes from the Excel import can be marked as reviewed once fixed.','Las comprobaciones se hacen en directo sobre los datos. Los <b>avisos</b> afectan a fechas y trazabilidad; <b>por definir</b> son campos aún vacíos o TBD en el Excel. Las notas de la importación del Excel se pueden marcar como revisadas una vez corregidas.'],
+  settings:['Settings','Ajustes'], im_title:['Import the Excel calibration plan','Importar el plan de calibración en Excel'],
+  im_s1:['Download <b>Calibration Plan 2026_hipervinculos.xlsx</b> from SharePoint (File → Save as → Download a copy).','Descarga <b>Calibration Plan 2026_hipervinculos.xlsx</b> de SharePoint (Archivo → Guardar como → Descargar una copia).'],
+  im_s2:['Drop it here. The sheets <i>Equipos</i>, <i>Equipos AUX</i> and <i>EVALUACION (TU)</i> are read, including the colours of the annual plan.','Suéltalo aquí. Se leen las hojas <i>Equipos</i>, <i>Equipos AUX</i> y <i>EVALUACION (TU)</i>, incluidos los colores del plan anual.'],
+  im_s3:['Check the preview and confirm. Equipment is matched by inventory code; calibrations and evaluations already imported are not duplicated.','Revisa la vista previa y confirma. Los equipos se emparejan por código de inventario; las calibraciones y evaluaciones ya importadas no se duplican.'],
+  im_drop:['Drop the calibration plan Excel here','Suelta aquí el Excel del plan de calibración'], im_click:['or click to choose the file','o pulsa para elegir el archivo'],
+  df_title:['Data file','Archivo de datos'], df_n:[(a,b,c)=>`${a} equipment · ${b} calibrations · ${c} evaluations`,(a,b,c)=>`${a} equipo${a===1?'':'s'} · ${b} ${b===1?'calibración':'calibraciones'} · ${c} ${c===1?'evaluación':'evaluaciones'}`],
+  df_note:[(f,r,h)=>`The data is kept in ${f} of the private repository ${r}. Every change is saved as a commit: the <a href="${h}" target="_blank" rel="noopener">history</a> shows who changed what and when.`,
+    (f,r,h)=>`Los datos se guardan en ${f} del repositorio privado ${r}. Cada cambio se guarda como un commit: el <a href="${h}" target="_blank" rel="noopener">historial</a> muestra quién cambió qué y cuándo.`],
+  df_dl:['Download a copy (JSON)','Descargar una copia (JSON)'],
+  im_nosheet:['No “Equipos” or “Equipos AUX” sheet found. Is this the calibration plan (F-IM-FM-001)?','No hay ninguna hoja “Equipos” ni “Equipos AUX”. ¿Es este el plan de calibración (F-IM-FM-001)?'],
+  im_noxlsx:['The Excel reader could not load (no internet connection?). Try again online.','No se ha podido cargar el lector de Excel (¿sin conexión a internet?). Vuelve a intentarlo con conexión.'],
+  im_err:['Could not read the file: ','No se ha podido leer el archivo: '],
+  ip_new:['New','Nuevo'], ip_upd:['Update','Actualizar'], ip_same:['No change','Sin cambios'], ip_title:['Preview','Vista previa'],
+  ip_c_new:[n=>`${n} new equipment`,n=>`${n} equipo${n===1?'':'s'} nuevo${n===1?'':'s'}`], ip_c_upd:[n=>`${n} updated`,n=>`${n} actualizado${n===1?'':'s'}`], ip_c_same:[n=>`${n} unchanged`,n=>`${n} sin cambios`],
+  ip_c_cal:[n=>`${n} calibrations (done + planned)`,n=>`${n} ${n===1?'calibración':'calibraciones'} (realizadas + planificadas)`], ip_c_ev:[n=>`${n} TU evaluations`,n=>`${n} ${n===1?'evaluación':'evaluaciones'} TU`], ip_c_notes:[n=>`${n} import notes`,n=>`${n} nota${n===1?'':'s'} de importación`],
+  ip_note:['Fields that come from the Excel overwrite the values in the app for updated equipment. Maintenance, notes and records added in the app are kept.','En los equipos actualizados, los campos que vienen del Excel sobrescriben los valores de la app. Se conservan el mantenimiento, las notas y los registros añadidos en la app.'],
+  ip_mode:['Mode','Modo'], ip_pts:['Points','Puntos'], ip_go:[n=>`Import ${n} change${n===1?'':'s'}`,n=>`Importar ${n} cambio${n===1?'':'s'}`],
+  /* Excel export */
+  ex_noxlsx:['The Excel writer could not load (no internet connection?).','No se ha podido cargar el generador de Excel (¿sin conexión a internet?).'],
+  x_na:['N/A','N/A'], x_done:['DONE','HECHO'], x_pend:['PENDING','PENDIENTE'], x_nodata:['No data','Sin datos'], x_s_plan:['Calibration plan','Plan de calibración'],
+  x_ok:['Calibration OK','Calibración OK'], x_code:['Inventory Code','Código de inventario'], x_group:['Group','Grupo'], x_state:['State','Situación'], x_mode:['Mode','Modo'],
+  x_period:['Calibration period','Periodo de calibración'], x_last:['Last Calibration','Última calibración'], x_next:['Next Calibration','Próxima calibración'], x_status:['Status','Estado'],
+  x_desc:['Description','Descripción'], x_range:['Working range','Rango de trabajo'], x_points:['Calibration points','Puntos de calibración'], x_tol:['Tolerance','Tolerancia'],
+  x_brand:['Brand','Marca'], x_model:['Model','Modelo'], x_serial:['Serial number','Número de serie'], x_atype:['Action type','Tipo de actuación'], x_aloc:['Action Location','Lugar de actuación'],
+  x_adur:['Action Duration','Duración de actuación'], x_lab:['Calibration Lab','Laboratorio de calibración'], x_enac:['ENAC Accreditation','Acreditación ENAC'], x_price:['Offer price','Precio de oferta'],
+  x_certs:['Certificates','Certificados'], x_month:['Month','Mes'], x_clab:['Lab','Laboratorio'], x_crec:['Certificate received','Certificado recibido'], x_intol:['In tolerance','En tolerancia'],
+  x_label:['Label placed','Etiqueta colocada'], x_closed:['Closed','Cerrada'], x_cost:['Cost','Coste'], x_cref:['Certificate ref.','Ref. certificado'], x_notes:['Notes','Notas'], x_source:['Source','Origen'],
+  x_eqdesc:['Equipment Description','Descripción del equipo'], x_setp:['Evaluated Setpoint','Consigna evaluada'], x_unit:['Unit','Unidad'], x_obt:['Obtained Value','Valor obtenido'],
+  x_rtest:['Related Test','Ensayo relacionado'], x_tu:['Tolerance of Use (TU)','Tolerancia de uso (TU)'], x_err:['Indication Error |e|','Error de indicación |e|'], x_unc:['Expanded Uncertainty (k=2)','Incertidumbre expandida (k=2)'],
+  x_rule:['Decision Rule Applied','Regla de decisión aplicada'], x_conf:['Conformity','Conformidad'], x_by:['Evaluated by','Evaluado por'], x_date:['Evaluation Date','Fecha de evaluación'],
+  x_file:['Calibration_Plan','Plan_de_calibracion'],
+  /* Dialogs */
+  save:['Save','Guardar'], del:['Delete','Eliminar'], del_confirm:['Confirm delete','Confirmar eliminación'], choose:['— choose —','— elige —'],
+  pt_tol_ph:['Tolerance, e.g. ±3ºC','Tolerancia, p. ej. ±3ºC'], pt_det:['Detail','Detalle'], pt_det_ph:['Detail (axis, channel…)','Detalle (eje, canal…)'], pt_rm:['Remove point','Quitar punto'],
+  ng_title:['New equipment guide (F-IM-FM-001):','Guía de alta de equipo (F-IM-FM-001):'], ng_1:[c=>`Assign the inventory code (next free: ${c}).`,c=>`Asigna el código de inventario (siguiente libre: ${c}).`],
+  ng_2:['Enter the complete information in the plan.','Introduce la información completa en el plan.'], ng_3:['Set the calibration period and tolerances.','Indica el periodo de calibración y las tolerancias.'],
+  ng_4:['Enter the maintenance information and its period in the <a href="../mantenimiento/">Maintenance Plan</a> (Excel in SharePoint).','Introduce la información de mantenimiento y su periodo en el <a href="../mantenimiento/">Plan de mantenimiento</a> (Excel en SharePoint).'],
+  ng_5:[p=>`Upload the equipment documentation to SharePoint (certificates folder ${p}).`,p=>`Sube la documentación del equipo a SharePoint (carpeta de certificados ${p}).`],
+  e_next:['Next','Próxima'], e_folder:['Certificates folder','Carpeta de certificados'], e_ident:['Identification','Identificación'], e_code:['Inventory code','Código de inventario'],
+  e_state_h:['Reserved = code kept without equipment.','Reservado = código guardado sin equipo.'], e_desc:['Description','Descripción'], e_serial:['Serial number','Número de serie'],
+  e_cal:['Calibration','Calibración'], e_type:['Type','Tipo'], e_type_h:['Expiry date: reference materials (pH and conductivity patterns).','Fecha de caducidad: materiales de referencia (patrones de pH y conductividad).'],
+  e_per:['Period (months)','Periodo (meses)'], e_last:['Last calibration','Última calibración'], e_nextexp:['Next calibration / expiry','Próxima calibración / caducidad'],
+  e_aloc:['Action location','Lugar de actuación'], e_adur:['Action duration','Duración de actuación'], e_lab:['Calibration lab','Laboratorio de calibración'], e_enac:['ENAC accreditation','Acreditación ENAC'],
+  e_loc_h:['In situ = the lab comes here.','In situ = el laboratorio viene aquí.'], e_dur_ph:['3 days','3 días'], e_price:['Offer price (€)','Precio de oferta (€)'],
+  e_pts:['Ranges, calibration points and tolerances','Rangos, puntos de calibración y tolerancias'], e_addpt:['+ Add range / channel','+ Añadir rango / canal'],
+  e_val:['Validation (test standards)','Validación (normas de ensayo)'],
+  e_val_note:['The validation sheet checks every calibrated point against the tightest tolerance of the ticked standards and lists the test conditions the calibration does not cover.','La ficha de validación compara cada punto calibrado con la tolerancia más estricta de las normas marcadas e indica las condiciones de ensayo que la calibración no cubre.'],
+  e_vrange:['Validated range','Rango validado'], e_vrange_ph:['-40 to +80 ºC · 10 to 95 %RH','-40 a +80 ºC · 10 a 95 %HR'], e_vzone:['Useful zone','Zona útil'], e_vzone_ph:['W × H × D mm','An × Al × P mm'],
+  e_vvol:['Volume','Volumen'], e_vvol_ph:['litres','litros'], e_vfeed:['Feed-throughs','Pasamuros'], e_opensheet:['Open validation sheet','Abrir ficha de validación'],
+  e_doc:['Documentation & notes','Documentación y notas'], e_certurl:['Certificates link','Enlace a certificados'], e_certurl_h:['Leave empty to use the standard SharePoint folder for this code.','Déjalo vacío para usar la carpeta estándar de SharePoint de este código.'],
+  e_notes:['Notes','Notas'], e_sp:['Current certificates in SharePoint','Certificados actuales en SharePoint'], e_sp_from:['copied from the Actuales folder','copiados de la carpeta Actuales'],
+  e_sp_none:[u=>`No certificate copied from SharePoint yet. The certificates in the <a href="${u}" target="_blank" rel="noopener">Actuales folder</a> are copied on days 1 and 15 of each month.`,u=>`Aún no se ha copiado ningún certificado de SharePoint. Los certificados de la <a href="${u}" target="_blank" rel="noopener">carpeta Actuales</a> se copian los días 1 y 15 de cada mes.`],
+  e_plancal:['Plan calibration','Planificar calibración'], e_regcal:['Register calibration','Registrar calibración'], e_nocal:['No calibrations recorded.','No hay calibraciones registradas.'],
+  e_evs:['TU evaluations','Evaluaciones TU'], e_addev:['+ Evaluation','+ Evaluación'], e_noev:['No TU evaluations.','No hay evaluaciones TU.'], e_lastchg:['last change','último cambio'],
+  e_new:['New equipment','Nuevo equipo'], e_del:[n=>`Delete${n?` (and ${n} records)`:''}`,n=>`Eliminar${n?` (y ${n} registro${n===1?'':'s'})`:''}`],
+  e_nextonly:['Next calibration (only if different)','Próxima calibración (solo si es distinta)'], e_h_calc:[m=>`Leave empty to use last + period = ${m}.`,m=>`Déjalo vacío para usar última + periodo = ${m}.`],
+  e_h_auto:['Calculated from last calibration + period.','Se calcula con última calibración + periodo.'], e_h_exp:['Required: when the reference expires.','Obligatoria: cuándo caduca la referencia.'], e_h_none:['Not used.','No se usa.'],
+  er_code:['The inventory code is required.','El código de inventario es obligatorio.'], er_desc:['The description is required.','La descripción es obligatoria.'],
+  er_clash:[(c,d,n)=>`${c} is already used by ${d}. Use another code (next free: ${n}).`,(c,d,n)=>`${c} ya lo usa ${d}. Usa otro código (siguiente libre: ${n}).`],
+  er_per:['Enter the calibration period in months (12 = 1 year).','Introduce el periodo de calibración en meses (12 = 1 año).'], er_exp:['Enter the expiry date.','Introduce la fecha de caducidad.'],
+  ts_saved:[c=>`${c} saved.`,c=>`${c} guardado.`], ts_added:[c=>`${c} added.`,c=>`${c} añadido.`],
+  er_noeq:['Add equipment first.','Primero añade un equipo.'], c_cost:['Cost (€)','Coste (€)'], c_closure_l:['Closure (Calibration OK)','Cierre (Calibration OK)'],
+  c_inres:['Results within tolerance','Resultados dentro de tolerancia'], c_notyet:['Not checked yet','Aún sin comprobar'], c_yes:['Yes, within tolerance','Sí, dentro de tolerancia'], c_no:['No, out of tolerance','No, fuera de tolerancia'],
+  c_labelp:['Calibration label placed','Etiqueta de calibración colocada'], c_certref:['Certificate number or link','Número o enlace del certificado'], c_res:['Certificate results (validation sheet)','Resultados del certificado (ficha de validación)'],
+  c_sp:[n=>`Read from the certificate in SharePoint. The validation sheet uses these values${n?', unless results are typed in below':''}.`,n=>`Leído del certificado en SharePoint. La ficha de validación usa estos valores${n?', salvo que se escriban resultados abajo':''}.`],
+  c_nosp:['No certificate from SharePoint matches this calibration yet: it is linked automatically once the certificate is copied (days 1 and 15 of each month).','Aún no hay ningún certificado de SharePoint que corresponda a esta calibración: se enlaza solo cuando se copia el certificado (días 1 y 15 de cada mes).'],
+  c_byhand:['Enter results by hand','Introducir resultados a mano'], c_overr:[' (overrides the certificate)',' (sustituye al certificado)'],
+  c_byhand_n:['One row per calibration point as in the certificate: nominal, mean of all positions, expanded uncertainty U (k=2), stability, uniformity and the mean of each position separated by “;”. For humidity, also the temperature of the point.','Una fila por punto de calibración, como en el certificado: nominal, media de todas las posiciones, incertidumbre expandida U (k=2), estabilidad, uniformidad y la media de cada posición separadas por “;”. Para la humedad, también la temperatura del punto.'],
+  c_zonesN:['Positions measured','Posiciones medidas'], c_atc:['At ºC','A ºC'], c_addpt:['+ Add point','+ Añadir punto'], c_t_plan:['Plan a calibration','Planificar una calibración'], c_t_reg:['Register a calibration','Registrar una calibración'],
+  c_atT:['Temperature of the humidity point','Temperatura del punto de humedad'], c_U:['Expanded uncertainty U','Incertidumbre expandida U'], c_zmean:['Mean of each position','Media de cada posición'],
+  c_h_plan:['Planned calibrations show as <b>P</b> in the annual plan. Change the status to <b>Done</b> once it has been performed.','Las calibraciones planificadas aparecen como <b>P</b> en el plan anual. Cambia el estado a <b>Realizada</b> cuando se haya hecho.'],
+  c_h_nok:['Out of tolerance: the equipment will be flagged until a new calibration is within tolerance.','Fuera de tolerancia: el equipo quedará señalado hasta que una nueva calibración esté dentro de tolerancia.'],
+  c_h_ok:['Closed: Calibration OK.','Cerrada: Calibration OK.'], c_h_pend:[l=>`Pending closure: ${l}.`,l=>`Pendiente de cierre: ${l}.`], c_h_next:[m=>`Next calibration will be <b>${m}</b>.`,m=>`La próxima calibración será en <b>${m}</b>.`],
+  er_eq:['Choose the equipment.','Elige el equipo.'], er_month:['Enter the month.','Introduce el mes.'], er_future:['A calibration cannot be done in a future month. Keep it as Planned.','Una calibración no puede estar realizada en un mes futuro. Déjala como Planificada.'],
+  ts_calreg:[(c,m)=>`${c}: calibration registered for ${m}.`,(c,m)=>`${c}: calibración registrada en ${m}.`], ts_calplan:[(c,m)=>`${c}: calibration planned for ${m}.`,(c,m)=>`${c}: calibración planificada para ${m}.`],
+  ts_nextdue:[m=>`Next due ${m}.`,m=>`Próximo vencimiento: ${m}.`], ts_expupd:['Remember to update the expiry date.','Recuerda actualizar la fecha de caducidad.'],
+  ev_l:['Evaluation','Evaluación'], ev_date:['Evaluation date','Fecha de evaluación'], ev_setp:['Evaluated setpoint','Consigna evaluada'], ev_obt:['Obtained value','Valor obtenido'], ev_init:['Initials','Iniciales'], ev_vals:['Values from the certificate','Valores del certificado'], ev_U:['Expanded uncertainty U (k=2)','Incertidumbre expandida U (k=2)'],
+  ev_tu:['Tolerance of use TU (±)','Tolerancia de uso TU (±)'], ev_rule:['Decision rule','Regla de decisión'], ev_xconf:['Conformity in the Excel','Conformidad en el Excel'], ev_newt:['New TU evaluation','Nueva evaluación TU'],
+  ev_plantol:[v=>`plan tolerance ±${v}`,v=>`tolerancia del plan ±${v}`], ev_h:['Enter setpoint, obtained value, U and TU to calculate the result.','Introduce consigna, valor obtenido, U y TU para calcular el resultado.'],
+  er_setp:['Enter the setpoint and the obtained value.','Introduce la consigna y el valor obtenido.'], ts_ev:['Evaluation saved.','Evaluación guardada.'],
+  cf_title:['Calibration plan settings','Ajustes del plan de calibración'], cf_alerts:['Alerts','Avisos'], cf_warn:['Warn this many months before the due month','Avisar con estos meses de antelación al mes de vencimiento'], cf_warn_h:['0 = only in the due month.','0 = solo en el mes de vencimiento.'],
+  cf_sp:['Certificates in SharePoint','Certificados en SharePoint'], cf_base:['Calibration folder (base link)','Carpeta de calibración (enlace base)'], cf_path:['Path of each equipment folder','Ruta de la carpeta de cada equipo'],
+  cf_path_h:['{code} is replaced by the inventory code, as in the Excel hyperlinks.','{code} se sustituye por el código de inventario, como en los hipervínculos del Excel.'],
+  cf_form:['Controlled form','Formulario controlado'], cf_code:['Form code','Código del formulario'], cf_rev:['Revision','Revisión'], ts_cfg:['Settings saved.','Ajustes guardados.'], ts_del:['Deleted.','Eliminado.'],
+  /* Sign-in (email) */
+  au_btn:['Sign in','Entrar'], au_btn_t:['Sign in with your email to view and change the data','Entra con tu correo para ver y cambiar los datos'], au_eyebrow:['Access','Acceso'],
+  au_title:['Sign in with your email','Entra con tu correo'], au_mail:['Email','Correo'], au_pass:['Password','Contraseña'], au_enter:['Sign in','Entrar'],
+  au_forgot:['Forgot your password? Ask an administrator.','¿Has olvidado la contraseña? Pídesela a un administrador.'], au_wait:['Checking…','Comprobando…'], au_key:['Use a GitHub key','Usar una clave de GitHub'],
+  au_cancel:['Cancel','Cancelar'], au_close:['Close','Cerrar'], au_signout:['Sign out','Salir'],
+  au_as:[(n,m)=>`Signed in as <b>${n}</b> (${m}).`,(n,m)=>`Has entrado como <b>${n}</b> (${m}).`], au_in:[n=>`Signed in as ${n}.`,n=>`Has entrado como ${n}.`],
+  au_edit:['You can edit.','Puedes editar.'], au_view:['You can only view.','Solo puedes consultar.'],
+  au_none:['You don\'t have access to this app.','No tienes acceso a esta app.'], au_noapp:['You don\'t have access to this app. Ask an administrator.','No tienes acceso a esta app. Pídeselo a un administrador.'],
+  au_again:['Sign in again','Volver a entrar'], au_expired:['Your session has expired.','Tu sesión ha caducado.'], au_saving:['Saving…','Guardando…'],
+  au_out:['Signed out. This browser no longer has your session.','Has salido. Este navegador ya no guarda tu sesión.'], au_private:['The calibration data is private.','Los datos de calibración son privados.'],
+  au_ro:[n=>`<b>${n}</b>: you can view the data but cannot change it. Ask an administrator for edit access.`,n=>`<b>${n}</b>: puedes consultar los datos, pero no cambiarlos. Pide permiso de edición a un administrador.`],
+  au_ro_out:['Read-only. To make changes,','Solo lectura. Para hacer cambios,'],
+  au_e_mail:['Enter a valid email address.','Introduce un correo válido.'], au_e_pass:['Enter your password.','Introduce tu contraseña.'], au_e_cred:['Wrong email or password.','Correo o contraseña incorrectos.'],
+  au_e_rate:['Too many attempts. Wait a few minutes and try again.','Demasiados intentos. Espera unos minutos y vuelve a intentarlo.'], au_e_net:['Could not connect. Check your connection and try again.','No se ha podido conectar. Comprueba la conexión y vuelve a intentarlo.'],
+  au_e_sess:['Your session could not be started. Sign in again.','No se ha podido iniciar tu sesión. Vuelve a entrar.'], au_e_busy:['The lab service is limiting requests. Wait a minute and try again.','El servicio del laboratorio está limitando las peticiones. Espera un minuto y vuelve a intentarlo.'],
+  au_e_down:['Your password is correct, but the lab service is not responding right now. Try again in a moment; the app also retries on its own.','La contraseña es correcta, pero el servicio del laboratorio no responde ahora mismo. Vuelve a intentarlo en un momento; la app también lo reintenta sola.'],
+  au_e_save:['Your session has expired and the change was not saved. Sign in again and repeat it.','Tu sesión ha caducado y el cambio no se ha guardado. Vuelve a entrar y repítelo.'],
+  au_e_perm:['You cannot change data: your account does not have edit access to this app. Ask an administrator.','No puedes cambiar datos: tu cuenta no tiene permiso de edición en esta app. Pídeselo a un administrador.'],
+  /* Saving, GitHub key */
+  se_perm:['You cannot change data: connect GitHub with an account that has write access to the repository.','No puedes cambiar datos: conecta GitHub con una cuenta con permiso de escritura en el repositorio.'],
+  se_auth:['Your GitHub key is no longer valid. Connect GitHub again with a new key.','Tu clave de GitHub ya no es válida. Vuelve a conectar GitHub con una clave nueva.'],
+  se_conflict:['Someone else saved at the same time. Your change was not saved; try again.','Otra persona ha guardado a la vez. Tu cambio no se ha guardado; vuelve a intentarlo.'],
+  se_rate:['GitHub is limiting requests right now. Wait a minute and try again.','GitHub está limitando las peticiones ahora mismo. Espera un minuto y vuelve a intentarlo.'],
+  se_net:['Could not reach GitHub. Check your connection and try again.','No se ha podido conectar con GitHub. Comprueba la conexión y vuelve a intentarlo.'], se_other:['Could not save: ','No se ha podido guardar: '],
+  ts_preview:['(preview: not saved to GitHub)','(versión de prueba: no se guarda en GitHub)'], gh_off_t:['Disconnected from GitHub. This browser no longer has the key.','Desconectado de GitHub. Este navegador ya no guarda la clave.'],
+  gh_local:['Local test data','Datos de prueba locales'], gh_local_t:['Local test mode: nothing is sent to GitHub.','Modo de prueba local: no se envía nada a GitHub.'], gh_keyexp:['GitHub key expired','Clave de GitHub caducada'],
+  gh_t_prev:['Preview: the data is read from GitHub, changes are not saved.','Versión de prueba: los datos se leen de GitHub, los cambios no se guardan.'],
+  gh_t_push:['Connected with write access. Changes are saved as commits.','Conectado con permiso de escritura. Los cambios se guardan como commits.'],
+  gh_t_nopush:['Connected, but this account cannot edit the repository.','Conectado, pero esta cuenta no puede editar el repositorio.'],
+  gh_t_none:['Connect GitHub to see and change the calibration plan','Conecta GitHub para ver y cambiar el plan de calibración'],
+  gh_as_push:[l=>`Connected as <b>${l}</b> with write access.`,l=>`Conectado como <b>${l}</b> con permiso de escritura.`], gh_as_nopush:[l=>`Connected as <b>${l}</b>, but this account cannot edit the repository.`,l=>`Conectado como <b>${l}</b>, pero esta cuenta no puede editar el repositorio.`],
+  gh_step1:['Create an access key in GitHub: <a href="https://github.com/settings/tokens/new?scopes=repo&amp;description=Laboratorio%20Polinya" target="_blank" rel="noopener">open the form</a>. The <span class="mono">repo</span> permission is already ticked (needed because the lab data is private); choose an expiry and press <i>Generate token</i>.',
+    'Crea una clave de acceso en GitHub: <a href="https://github.com/settings/tokens/new?scopes=repo&amp;description=Laboratorio%20Polinya" target="_blank" rel="noopener">abre el formulario</a>. El permiso <span class="mono">repo</span> ya viene marcado (hace falta porque los datos del laboratorio son privados); elige una caducidad y pulsa <i>Generate token</i>.'],
+  gh_step2:['Copy the key and paste it here.','Copia la clave y pégala aquí.'], gh_disc:['Disconnect','Desconectar'], gh_conn:['Connect','Conectar'], gh_key:['Access key (token)','Clave de acceso (token)'],
+  gh_key_n:[r=>`The key is kept only in this browser and is shared with the other lab apps. Your GitHub account must have access to the data repository ${r}: Read to view, Write to edit. Every change is saved as a commit, so the history shows who changed what.`,
+    r=>`La clave se guarda solo en este navegador y la comparten las demás apps del laboratorio. Tu cuenta de GitHub debe tener acceso al repositorio de datos ${r}: Read para consultar, Write para editar. Cada cambio se guarda como un commit, así que el historial muestra quién cambió qué.`],
+  gh_e_paste:['Paste the access key.','Pega la clave de acceso.'], gh_ok_push:[l=>`Connected as ${l}. You can now edit.`,l=>`Conectado como ${l}. Ya puedes editar.`],
+  gh_ok_nopush:[l=>`Connected as ${l}, but this account cannot edit the repository.`,l=>`Conectado como ${l}, pero esta cuenta no puede editar el repositorio.`],
+  gh_e_auth:['That key is not valid or has expired.','Esa clave no es válida o ha caducado.'], gh_e_forb:['That key cannot see the repository.','Esa clave no puede ver el repositorio.'], gh_e_net:['Could not reach GitHub. Check your connection.','No se ha podido conectar con GitHub. Comprueba la conexión.'],
+  /* Toasts */
+  ts_rev:['Marked as reviewed.','Marcado como revisado.'],
+  ts_import:[(a,b,c,d)=>`Import finished: ${a} new and ${b} updated equipment, ${c} calibrations, ${d} evaluations.`,(a,b,c,d)=>`Importación terminada: ${a} equipos nuevos y ${b} actualizados, ${c} calibraciones, ${d} evaluaciones.`],
+  ts_local:['Local test mode: the data stays in this browser and GitHub is not used.','Modo de prueba local: los datos se quedan en este navegador y no se usa GitHub.'], ts_reset:['Test data reset.','Datos de prueba restablecidos.'],
+  ts_tog:[(w,k,on)=>`${w}: ${k.toLowerCase()} ${on?'ticked':'unticked'}.`,(w,k,on)=>`${w}: ${k.toLowerCase()}: ${on?'sí':'no'}.`], not_checked:['not checked','sin comprobar'],
+  ts_tol:[(w,v)=>`${w}: in tolerance = ${v}.`,(w,v)=>`${w}: en tolerancia = ${v}.`]
+};
+const I18N={en:{},es:{}}; for(const [k,[en,es]] of Object.entries(TX)){I18N.en[k]=en; I18N.es[k]=es;}
+const t=(k,...a)=>LabLang.t(I18N,k,...a);
+/* Stored values (group, mode, state, status, Yes/No, OK/NOK, units) stay as they are in the data; dv() only shows them translated. */
+const dv=v=>v==null||v===''||I18N.en['v_'+v]==null?v:t('v_'+v);
+const qu=q=>dv(QU[q]);
+const unitD=u=>dv(u||'');
+function applyLang(){
+  LabLang.apply(I18N); document.title=t('doc_title');
+  $('#page-css').textContent=`@page{size:A4;margin:10mm 9mm 12mm;@bottom-right{content:${t('pg_of','counter(page)','counter(pages)')};font:9px Arial,sans-serif;color:#5B6272}}`;
+}
 
 /* ---------- State ---------- */
 const S={view:'overview',q:'',cfg:{...DEFAULT_CFG},f:{group:[],status:[],lab:[]},sort:{eq:{k:'code',dir:1}},
@@ -626,14 +965,14 @@ function vOverview(){
   /* Upcoming: overdue first, then each month with equipment due, grouped by lab so visits can be batched. */
   const buckets=[];
   const over=IX.eqs.filter(e=>IX.info.get(e.id).key==='overdue');
-  if(over.length) buckets.push({late:true,label:t('cl_overdue'),sub:t('n_items',over.length),list:over});
+  if(over.length) buckets.push({late:true,label:t('kl_overdue'),sub:t('n_items',over.length),list:over});
   for(let m=n;m<n+12;m++){const list=IX.eqs.filter(e=>{const i=IX.info.get(e.id); return !OFF_KEYS.includes(i.key)&&mIdx(i.due)===m}); if(list.length) buckets.push({label:fmtML(mStr(m)),sub:`${t('n_items',list.length)}${costOf(list)?' · '+money(costOf(list)):''}`,list});}
   const byLab=list=>{const g=new Map(); list.forEach(e=>{const k=e.lab||t('lab_undef'); if(!g.has(k)) g.set(k,[]); g.get(k).push(e)}); return [...g].sort((a,b)=>b[1].length-a[1].length).map(([l,es])=>`<div class="labgrp"><span class="lab">${esc(l)}</span>${es.map(e=>{const p=IX.info.get(e.id).planned; return `<button class="codebtn ${p?'plan':''}" data-act="eq" data-id="${esc(e.id)}" title="${esc(e.description)}${p?' · '+t('al_plan',fmtM(p.month)):''}">${esc(e.code)}</button>`}).join('')}</div>`).join('')};
   return `<div class="view-h"><h2>${t('ov_title')}</h2><span class="muted">${new Date().toLocaleDateString(LabLang.locale(),{weekday:'long',day:'numeric',month:'long',year:'numeric'})}</span></div>
   <section class="kpis">
-    ${kpi('overdue',t('cl_overdue'),cnt('overdue'),t('k_overdue'),cnt('overdue')?'crit':'')}
+    ${kpi('overdue',t('kl_overdue'),cnt('overdue'),t('k_overdue'),cnt('overdue')?'crit':'')}
     ${kpi('soon',t('k_soon',S.cfg.warnMonths),cnt('soon'),t('k_soon_s'),cnt('soon')?'warn':'')}
-    ${kpi('pending',t('cl_pending'),cnt('pending'),t('k_pending'),cnt('pending')?'inf':'')}
+    ${kpi('pending',t('kl_pending'),cnt('pending'),t('k_pending'),cnt('pending')?'inf':'')}
     ${kpi('nok',t('cl_nok'),cnt('nok'),t('k_nok'),cnt('nok')?'crit':'')}
     ${kpi('valid',t('cl_valid'),cnt('valid'),t('k_valid',calib),'ok')}
     ${kpi('review',t('k_review'),nIss,t('k_review_s'),nIss?'warn':'')}
@@ -737,7 +1076,7 @@ function vCalibrations(){
       <td>${done?box(c,'label'):''}</td>
       <td>${done?(isClosed(c)?`<span class="tick">${t('c_closed')}</span>`:`<span class="muted">${t('c_open')}</span>`):''}</td>
       <td class="num">${c.cost!==''&&c.cost!=null?money(c.cost):'—'}</td>
-      <td>${certA(IX.certByRec.get(c.id))}<span class="sub">${esc(c.source||'')}</span></td></tr>`}).join('');
+      <td>${certA(IX.certByRec.get(c.id))}<span class="sub">${esc(dv(c.source||''))}</span></td></tr>`}).join('');
   return `<div class="view-h"><h2>${t('tab_calibrations')}</h2><button class="btn primary" data-act="cal-new">${t('c_new')}</button></div>
   <div class="filters multi"><div class="row">${searchBox(t('ph_search_c'))}${S.q||f.status.length||f.year.length?`<button class="link" data-act="clear-calf">${t('clear_f')}</button>`:''}</div>
     ${chips('calf','status',t('f_status'),[['Planned',t('v_Planned')],['late',t('c_f_late')],['open',t('lg_open')],['closed',t('lg_closed')]].map(([v,l])=>[v,l,all.filter(c=>calIs(c,v,n)).length]))}
@@ -1201,10 +1540,10 @@ function openEq(id){
     ${fld('f-lastCal',t('e_last'),inp('lastCal',e.lastCal,'month'))}
     ${fld('f-nextOverride',t('e_nextexp'),inp('nextOverride',e.nextOverride,'month'),'','')}
     ${fld('f-actionType',t('x_atype'),sel('actionType',e.actionType||'',[['','—'],'External','Internal']))}
-    ${fld('f-location',t('x_aloc'),sel('location',e.location||'',[['','—'],'In situ','External']),'',t('e_loc_h'))}
-    ${fld('f-duration',t('x_adur'),inp('duration',e.duration,'text',`placeholder="${t('e_dur_ph')}"`))}
-    ${fld('f-lab',t('x_lab'),inp('lab',e.lab,'text','list="lab-list" autocomplete="off"'))}
-    ${fld('f-enac',t('x_enac'),sel('enac',e.enac||'',[['',t('tbd')],'Yes','No']))}
+    ${fld('f-location',t('e_aloc'),sel('location',e.location||'',[['','—'],'In situ','External']),'',t('e_loc_h'))}
+    ${fld('f-duration',t('e_adur'),inp('duration',e.duration,'text',`placeholder="${t('e_dur_ph')}"`))}
+    ${fld('f-lab',t('e_lab'),inp('lab',e.lab,'text','list="lab-list" autocomplete="off"'))}
+    ${fld('f-enac',t('e_enac'),sel('enac',e.enac||'',[['',t('tbd')],'Yes','No']))}
     ${fld('f-price',t('e_price'),inp('price',e.price,'number','min="0" step="0.01"'))}
   </fieldset>
   <fieldset class="pts"><legend>${t('e_pts')}</legend>
@@ -1230,7 +1569,7 @@ function openEq(id){
     <section class="panel"><div class="panel-h"><h3>${t('e_sp')}</h3><span class="muted">${(IX.certs.get(id)||[]).length?t('e_sp_from'):''}</span></div>
       ${(IX.certs.get(id)||[]).length?(IX.certs.get(id)||[]).slice().reverse().map(ct=>certPanel(ct,id)).join(''):`<p class="note">${t('e_sp_none',esc(certLink(e)))}</p>`}</section>
     <section class="panel"><div class="panel-h"><h3>${t('tab_calibrations')}</h3><button type="button" class="btn sm" data-act="cal-plan" data-id="${esc(id)}">${t('e_plancal')}</button><button type="button" class="btn sm primary" data-act="cal-new" data-id="${esc(id)}">${t('e_regcal')}</button></div>
-      ${recs.length?`<table class="tbl mini"><thead><tr><th>${t('h_month')}</th><th>${t('f_status')}</th><th>${t('f_lab')}</th><th>${t('c_closure')}</th><th class="num">${t('h_cost')}</th><th>${t('h_source')}</th></tr></thead><tbody>${recs.map(c=>`<tr class="click" data-act="cal-edit" data-id="${esc(c.id)}"><td>${fmtM(c.month)}</td><td>${esc(dv(c.status))}</td><td>${esc(c.lab||'—')}</td><td>${c.status==='Done'?(isClosed(c)?`<span class="tick">${t('c_closed')}</span>`:esc(missingClosure(c).join(', '))):''}</td><td class="num">${c.cost!==''&&c.cost!=null?money(c.cost):'—'}</td><td>${certA(IX.certByRec.get(c.id))}<span class="sub">${esc(c.source||'')}</span></td></tr>`).join('')}</tbody></table>`:`<p class="note">${t('e_nocal')}</p>`}</section>
+      ${recs.length?`<table class="tbl mini"><thead><tr><th>${t('h_month')}</th><th>${t('f_status')}</th><th>${t('f_lab')}</th><th>${t('c_closure')}</th><th class="num">${t('h_cost')}</th><th>${t('h_source')}</th></tr></thead><tbody>${recs.map(c=>`<tr class="click" data-act="cal-edit" data-id="${esc(c.id)}"><td>${fmtM(c.month)}</td><td>${esc(dv(c.status))}</td><td>${esc(c.lab||'—')}</td><td>${c.status==='Done'?(isClosed(c)?`<span class="tick">${t('c_closed')}</span>`:esc(missingClosure(c).join(', '))):''}</td><td class="num">${c.cost!==''&&c.cost!=null?money(c.cost):'—'}</td><td>${certA(IX.certByRec.get(c.id))}<span class="sub">${esc(dv(c.source||''))}</span></td></tr>`).join('')}</tbody></table>`:`<p class="note">${t('e_nocal')}</p>`}</section>
     <section class="panel"><div class="panel-h"><h3>${t('e_evs')}</h3><button type="button" class="btn sm" data-act="ev-new" data-id="${esc(id)}">${t('e_addev')}</button></div>
       ${evs.length?`<table class="tbl mini"><thead><tr><th>${t('h_date')}</th><th class="num">${t('h_setp')}</th><th class="num">|e|+U</th><th class="num">TU</th><th>${t('h_result')}</th></tr></thead><tbody>${evs.map(v=>{const c=evalCalc(v); return `<tr class="click" data-act="ev-edit" data-id="${esc(v.id)}"><td>${fmtD(v.date)}</td><td class="num">${fmtNum(num(v.setpoint))} ${esc(unitD(v.unit))}</td><td class="num">${c.eu==null?'—':fmtNum(Math.round(c.eu*1000)/1000)}</td><td class="num">${fmtNum(c.tu)}</td><td>${c.res?`<span class="res ${c.res}">${dv(c.res)}</span>`:'—'}</td></tr>`}).join('')}</tbody></table>`:`<p class="note">${t('e_noev')}</p>`}</section>
     <p class="note">${t('h_source')}: ${esc(dv(e.src||'manual'))}${e.updated?` · ${t('e_lastchg')} ${new Date(e.updated).toLocaleString(LabLang.locale())}`:''}</p></div>`}`;
@@ -1269,41 +1608,41 @@ function saveEq(f){
 
 function openCal(id,preset={}){
   const prev=id?DATA.calibrations[id]:null, c={status:'Done',month:mStr(nowIdx()),certificate:false,inTolerance:'',label:false,...(prev||{}),...preset};
-  if(!c.equipmentId&&!eqOptions().length) return toast('Add equipment first.');
+  if(!c.equipmentId&&!eqOptions().length) return toast(t('er_noeq'));
   const e=eqById(c.equipmentId); if(!prev&&e){c.lab??=e.lab; if(c.cost==null&&e.price!=='') c.cost=e.price;}
   const spCert=id?IX.certByRec.get(id):(preset.spKey&&CERTS[preset.spKey]?{key:preset.spKey,...CERTS[preset.spKey]}:null); delete c.spKey;
-  dlg.dataset.kind='cal'; dlg.dataset.id=id||'';
-  const body=`<fieldset><legend>Calibration</legend>
-    ${fld('f-equipmentId','Equipment',sel('equipmentId',c.equipmentId||'',[['','— choose —'],...eqOptions()]),'req span2')}
-    ${fld('f-status','Status',sel('status',c.status,[['Planned','Planned'],['Done','Done']]))}
-    ${fld('f-month','Month',inp('month',c.month,'month'),'req')}
-    ${fld('f-lab','Calibration lab',inp('lab',c.lab,'text','list="lab-list" autocomplete="off"'))}
-    ${fld('f-cost','Cost (€)',inp('cost',c.cost,'number','min="0" step="0.01"'))}
+  dlg.dataset.kind='cal'; dlg.dataset.id=id||''; dlg._re=()=>openCal(id,preset);
+  const body=`<fieldset><legend>${t('e_cal')}</legend>
+    ${fld('f-equipmentId',t('h_eq'),sel('equipmentId',c.equipmentId||'',[['',t('choose')],...eqOptions()]),'req span2')}
+    ${fld('f-status',t('f_status'),sel('status',c.status,['Planned','Done']))}
+    ${fld('f-month',t('h_month'),inp('month',c.month,'month'),'req')}
+    ${fld('f-lab',t('e_lab'),inp('lab',c.lab,'text','list="lab-list" autocomplete="off"'))}
+    ${fld('f-cost',t('c_cost'),inp('cost',c.cost,'number','min="0" step="0.01"'))}
   </fieldset>
-  <fieldset id="closure"><legend>Closure (Calibration OK)</legend>
-    <label class="check"><input type="checkbox" name="certificate" ${c.certificate?'checked':''}> Certificate received</label>
-    ${fld('f-inTolerance','Results within tolerance',sel('inTolerance',c.inTolerance||'',[['','Not checked yet'],['Yes','Yes, within tolerance'],['No','No, out of tolerance']]))}
-    <label class="check"><input type="checkbox" name="label" ${c.label?'checked':''}> Calibration label placed</label>
-    ${fld('f-certRef','Certificate number or link',inp('certRef',c.certRef),'span2')}
+  <fieldset id="closure"><legend>${t('c_closure_l')}</legend>
+    <label class="check"><input type="checkbox" name="certificate" ${c.certificate?'checked':''}> ${t('x_crec')}</label>
+    ${fld('f-inTolerance',t('c_inres'),sel('inTolerance',c.inTolerance||'',[['',t('c_notyet')],['Yes',t('c_yes')],['No',t('c_no')]]))}
+    <label class="check"><input type="checkbox" name="label" ${c.label?'checked':''}> ${t('c_labelp')}</label>
+    ${fld('f-certRef',t('c_certref'),inp('certRef',c.certRef),'span2')}
     <div class="span2" id="cal-hint"></div>
   </fieldset>
-  <fieldset id="results" class="pts"><legend>Certificate results (validation sheet)</legend>
-    ${spCert?`<p class="note" style="margin-bottom:8px">Read from the certificate in SharePoint. The validation sheet uses these values${(c.results||[]).length?', unless results are typed in below':''}.</p>${certPanel(spCert)}`:`<p class="note" style="margin-bottom:8px">No certificate from SharePoint matches this calibration yet: it is linked automatically once the certificate is copied (days 1 and 15 of each month).</p>`}
-    <details class="manual" ${spCert&&!(c.results||[]).length?'':'open'}><summary>Enter results by hand${spCert?' (overrides the certificate)':''}</summary>
-    <p class="note" style="margin-bottom:8px">One row per calibration point as in the certificate: nominal, mean of all positions, expanded uncertainty U (k=2), stability, uniformity and the mean of each position separated by “;”. For humidity, also the temperature of the point.</p>
-    <div class="field" style="max-width:220px;margin-bottom:8px"><label for="f-zonesN">Positions measured</label><input id="f-zonesN" name="zonesN" type="number" min="1" step="1" value="${esc(c.zonesN??'')}"></div>
-    <div class="res-head"><span>Quantity</span><span>Nominal</span><span>At ºC</span><span>Mean</span><span>U (k=2)</span><span>Stab.</span><span>Unif.</span><span>Positions</span><span></span></div>
+  <fieldset id="results" class="pts"><legend>${t('c_res')}</legend>
+    ${spCert?`<p class="note" style="margin-bottom:8px">${t('c_sp',(c.results||[]).length)}</p>${certPanel(spCert)}`:`<p class="note" style="margin-bottom:8px">${t('c_nosp')}</p>`}
+    <details class="manual" ${spCert&&!(c.results||[]).length?'':'open'}><summary>${t('c_byhand')}${spCert?t('c_overr'):''}</summary>
+    <p class="note" style="margin-bottom:8px">${t('c_byhand_n')}</p>
+    <div class="field" style="max-width:220px;margin-bottom:8px"><label for="f-zonesN">${t('c_zonesN')}</label><input id="f-zonesN" name="zonesN" type="number" min="1" step="1" value="${esc(c.zonesN??'')}"></div>
+    <div class="res-head"><span>${t('h_qty')}</span><span>${t('h_nom')}</span><span>${t('c_atc')}</span><span>${t('h_mean')}</span><span>U (k=2)</span><span>${t('h_stab')}</span><span>${t('h_unif')}</span><span>${t('h_pos')}</span><span></span></div>
     <div id="res-list">${(c.results||[]).map(resRow).join('')}</div>
-    <button type="button" class="btn sm" data-act="res-add">+ Add point</button>
+    <button type="button" class="btn sm" data-act="res-add">${t('c_addpt')}</button>
     </details>
   </fieldset>
-  ${fld('f-notes','Notes',`<textarea id="f-notes" name="notes" rows="2">${esc(c.notes||'')}</textarea>`)}
-  ${prev&&prev.source?`<p class="note">Source: ${esc(prev.source)}</p>`:''}`;
-  dlgShell(e?esc(eqLabel(e)):'Calibration',prev?`${prev.status==='Planned'?'Planned':'Calibration'} ${fmtM(prev.month)}`:c.status==='Planned'?'Plan a calibration':'Register a calibration',body,prev?'<button type="button" class="btn ghost danger" data-act="del">Delete</button>':'',true);
+  ${fld('f-notes',t('e_notes'),`<textarea id="f-notes" name="notes" rows="2">${esc(c.notes||'')}</textarea>`)}
+  ${prev&&prev.source?`<p class="note">${t('h_source')}: ${esc(dv(prev.source))}</p>`:''}`;
+  dlgShell(e?esc(eqLabel(e)):t('e_cal'),prev?`${t(prev.status==='Planned'?'v_Planned':'e_cal')} ${fmtM(prev.month)}`:t(c.status==='Planned'?'c_t_plan':'c_t_reg'),body,prev?`<button type="button" class="btn ghost danger" data-act="del">${t('del')}</button>`:'',true);
   calHints();
 }
-const RES_F=[['nominal','Nominal'],['atT','Temperature of the humidity point'],['mean','Mean'],['U','Expanded uncertainty U'],['stab','Stability'],['unif','Uniformity']];
-const resRow=r=>`<div class="res-row"><select name="r-q" aria-label="Quantity">${Object.entries(QU).map(([q,u])=>`<option value="${q}" ${r.q===q?'selected':''}>${u}</option>`).join('')}</select>${RES_F.map(([k,l])=>`<input name="r-${k}" inputmode="decimal" value="${esc(r[k]??'')}" aria-label="${l}">`).join('')}<input name="r-zones" value="${esc((r.zones||[]).join('; '))}" placeholder="P1; P2; …" aria-label="Mean of each position"><button type="button" class="icon-btn" data-act="res-del" aria-label="Remove point">×</button></div>`;
+const RES_F=[['nominal','h_nom'],['atT','c_atT'],['mean','h_mean'],['U','c_U'],['stab','rt_stab'],['unif','rt_unif']];
+const resRow=r=>`<div class="res-row"><select name="r-q" aria-label="${t('h_qty')}">${Object.keys(QU).map(q=>`<option value="${q}" ${r.q===q?'selected':''}>${qu(q)}</option>`).join('')}</select>${RES_F.map(([k,l])=>`<input name="r-${k}" inputmode="decimal" value="${esc(r[k]??'')}" aria-label="${t(l)}">`).join('')}<input name="r-zones" value="${esc((r.zones||[]).join('; '))}" placeholder="P1; P2; …" aria-label="${t('c_zmean')}"><button type="button" class="icon-btn" data-act="res-del" aria-label="${t('pt_rm')}">×</button></div>`;
 function readResults(){
   return [...dlg.querySelectorAll('.res-row')].map(row=>{const g=k=>row.querySelector(`[name=r-${k}]`).value, q=g('q');
     return {q,nominal:num(g('nominal')),atT:q==='RH'?num(g('atT')):null,mean:num(g('mean')),U:num(g('U')),stab:num(g('stab')),unif:num(g('unif')),zones:g('zones').split(';').map(num).filter(v=>v!=null)};
@@ -1313,80 +1652,80 @@ function calHints(){
   if(dlg.dataset.kind!=='cal') return;
   const f=readForm(), done=f.status==='Done', h=$('#cal-hint'), e=eqById(f.equipmentId);
   $('#closure').disabled=!done; $('#results').hidden=!done;
-  if(!done){h.innerHTML='<div class="hint">Planned calibrations show as <b>P</b> in the annual plan. Change the status to <b>Done</b> once it has been performed.</div>'; return;}
+  if(!done){h.innerHTML=`<div class="hint">${t('c_h_plan')}</div>`; return;}
   const c={status:'Done',certificate:!!f.certificate,inTolerance:f.inTolerance,label:!!f.label};
   const next=e&&e.calMode==='Periodic'&&f.month?addM(f.month,+e.periodMonths):'';
-  h.innerHTML=`<div class="hint ${f.inTolerance==='No'?'crit':isClosed(c)?'ok':'warn'}">${f.inTolerance==='No'?'Out of tolerance: the equipment will be flagged until a new calibration is within tolerance.':isClosed(c)?'Closed: Calibration OK.':`Pending closure: ${missingClosure(c).join(', ')}.`}${next?` Next calibration will be <b>${fmtM(next)}</b>.`:''}</div>`;
+  h.innerHTML=`<div class="hint ${f.inTolerance==='No'?'crit':isClosed(c)?'ok':'warn'}">${f.inTolerance==='No'?t('c_h_nok'):isClosed(c)?t('c_h_ok'):t('c_h_pend',missingClosure(c).join(', '))}${next?' '+t('c_h_next',fmtM(next)):''}</div>`;
 }
 function saveCal(f){
   const id=dlg.dataset.id, prev=id?DATA.calibrations[id]:null, e=DATA.equipment[f.equipmentId];
-  if(!e) return formErr('Choose the equipment.');
-  if(!f.month) return formErr('Enter the month.');
-  if(f.status==='Done'&&mIdx(f.month)>nowIdx()) return formErr('A calibration cannot be done in a future month. Keep it as Planned.');
+  if(!e) return formErr(t('er_eq'));
+  if(!f.month) return formErr(t('er_month'));
+  if(f.status==='Done'&&mIdx(f.month)>nowIdx()) return formErr(t('er_future'));
   const done=f.status==='Done';
   const data={...(prev||{}),equipmentId:f.equipmentId,month:f.month,status:f.status,lab:f.lab||'',cost:num(f.cost)??'',certificate:done&&!!f.certificate,inTolerance:done?f.inTolerance||'':'',label:done&&!!f.label,
     certRef:f.certRef||'',notes:f.notes||'',source:prev?prev.source||'Manual':'Manual',updated:nowIso()};
   if(done){data.results=readResults(); data.zonesN=num(f.zonesN)??'';}
   const cid=id||`cal-${slug(e.code)}-${f.month}-${rid().slice(0,4)}`, ops=[{op:'set',col:'calibrations',id:cid,data}];
-  let msg=`${e.code}: calibration ${done?'registered':'planned'} for ${fmtM(f.month)}.`;
+  let msg=t(done?'ts_calreg':'ts_calplan',e.code,fmtM(f.month));
   /* A done calibration newer than the last one starts a new cycle: last date moves and a manual next date no longer applies. */
   if(done&&(!e.lastCal||f.month>e.lastCal)){
     const patch={lastCal:f.month,updated:nowIso()}; if(e.calMode==='Periodic') patch.nextOverride='';
     ops.push({op:'update',col:'equipment',id:f.equipmentId,data:patch});
-    msg+=e.calMode==='Periodic'?` Next due ${fmtM(addM(f.month,+e.periodMonths))}.`:' Remember to update the expiry date.';
+    msg+=' '+(e.calMode==='Periodic'?t('ts_nextdue',fmtM(addM(f.month,+e.periodMonths))):t('ts_expupd'));
   }
   return save(ops,msg);
 }
 
 function openEv(id,preset={}){
   const prev=id?DATA.evaluations[id]:null, v={date:todayIso(),unit:'ºC',rule:'|e| + U ≤ TU',...(prev||{}),...preset};
-  dlg.dataset.kind='ev'; dlg.dataset.id=id||'';
-  const body=`<fieldset><legend>Evaluation</legend>
-    ${fld('f-equipmentId','Equipment',sel('equipmentId',v.equipmentId||'',[['','— choose —'],...eqOptions()]),'req span2')}
-    ${fld('f-date','Evaluation date',inp('date',v.date,'date'))}
-    ${fld('f-by','Evaluated by',inp('by',v.by,'text','placeholder="Initials"'))}
-    ${fld('f-relatedTest','Related test',inp('relatedTest',v.relatedTest),'span2')}
+  dlg.dataset.kind='ev'; dlg.dataset.id=id||''; dlg._re=()=>openEv(id,preset);
+  const body=`<fieldset><legend>${t('ev_l')}</legend>
+    ${fld('f-equipmentId',t('h_eq'),sel('equipmentId',v.equipmentId||'',[['',t('choose')],...eqOptions()]),'req span2')}
+    ${fld('f-date',t('ev_date'),inp('date',v.date,'date'))}
+    ${fld('f-by',t('x_by'),inp('by',v.by,'text',`placeholder="${t('ev_init')}"`))}
+    ${fld('f-relatedTest',t('h_reltest'),inp('relatedTest',v.relatedTest),'span2')}
   </fieldset>
-  <fieldset><legend>Values from the certificate</legend>
-    ${fld('f-setpoint','Evaluated setpoint',inp('setpoint',v.setpoint,'number','step="any"'),'req')}
-    ${fld('f-unit','Unit',inp('unit',v.unit,'text','list="unit-list"'))}
-    ${fld('f-obtained','Obtained value',inp('obtained',v.obtained,'number','step="any"'),'req')}
-    ${fld('f-uncertainty','Expanded uncertainty U (k=2)',inp('uncertainty',v.uncertainty,'number','step="any" min="0"'),'req')}
-    ${fld('f-tu','Tolerance of use TU (±)',inp('tu',v.tu,'number','step="any" min="0"'),'req')}
-    ${fld('f-rule','Decision rule',inp('rule',v.rule))}
+  <fieldset><legend>${t('ev_vals')}</legend>
+    ${fld('f-setpoint',t('ev_setp'),inp('setpoint',v.setpoint,'number','step="any"'),'req')}
+    ${fld('f-unit',t('x_unit'),inp('unit',v.unit,'text','list="unit-list"'))}
+    ${fld('f-obtained',t('ev_obt'),inp('obtained',v.obtained,'number','step="any"'),'req')}
+    ${fld('f-uncertainty',t('ev_U'),inp('uncertainty',v.uncertainty,'number','step="any" min="0"'),'req')}
+    ${fld('f-tu',t('ev_tu'),inp('tu',v.tu,'number','step="any" min="0"'),'req')}
+    ${fld('f-rule',t('ev_rule'),inp('rule',v.rule))}
     <div class="span2" id="ev-hint"></div>
   </fieldset>
-  ${fld('f-notes','Notes',`<textarea id="f-notes" name="notes" rows="2">${esc(v.notes||'')}</textarea>`)}
+  ${fld('f-notes',t('e_notes'),`<textarea id="f-notes" name="notes" rows="2">${esc(v.notes||'')}</textarea>`)}
   <datalist id="unit-list"><option value="ºC"><option value="%RH"><option value="bar"><option value="N·m"><option value="mm"><option value="m3/h"><option value="dB"></datalist>
-  ${prev&&prev.conformityExcel?`<p class="note">Conformity in the Excel: ${esc(prev.conformityExcel)}</p>`:''}`;
-  dlgShell('TU evaluation',prev?`Evaluation ${fmtD(prev.date)}`:'New TU evaluation',body,prev?'<button type="button" class="btn ghost danger" data-act="del">Delete</button>':'',true);
+  ${prev&&prev.conformityExcel?`<p class="note">${t('ev_xconf')}: ${esc(prev.conformityExcel)}</p>`:''}`;
+  dlgShell(t('tab_evaluation'),prev?`${t('ev_l')} ${fmtD(prev.date)}`:t('ev_newt'),body,prev?`<button type="button" class="btn ghost danger" data-act="del">${t('del')}</button>`:'',true);
   evHints();
 }
 function evHints(){
   if(dlg.dataset.kind!=='ev') return;
   const f=readForm(), c=evalCalc({...f,error:f.setpoint===''||f.obtained===''?(DATA.evaluations[dlg.dataset.id]||{}).error:null}), e=eqById(f.equipmentId), tol=e?tolNum(e):null;
-  $('#ev-hint').innerHTML=c.res?`<div class="hint ${c.res==='OK'?'ok':'crit'}">e = ${fmtNum(Math.round(c.e*1000)/1000)} · |e| + U = <b>${fmtNum(Math.round(c.eu*1000)/1000)}</b> ${c.res==='OK'?'≤':'>'} TU ${fmtNum(c.tu)} → <b>${c.res==='OK'?'Conforming':'Not conforming'}</b>${tol!=null&&c.tu!==tol&&f.unit!=='%RH'?` · plan tolerance ±${fmtNum(tol)}`:''}</div>`:'<div class="hint">Enter setpoint, obtained value, U and TU to calculate the result.</div>';
+  $('#ev-hint').innerHTML=c.res?`<div class="hint ${c.res==='OK'?'ok':'crit'}">e = ${fmtNum(Math.round(c.e*1000)/1000)} · |e| + U = <b>${fmtNum(Math.round(c.eu*1000)/1000)}</b> ${c.res==='OK'?'≤':'>'} TU ${fmtNum(c.tu)} → <b>${t(c.res==='OK'?'vl_ok':'vl_nok')}</b>${tol!=null&&c.tu!==tol&&f.unit!=='%RH'?` · ${t('ev_plantol',fmtNum(tol))}`:''}</div>`:`<div class="hint">${t('ev_h')}</div>`;
 }
 function saveEv(f){
   const id=dlg.dataset.id, prev=id?DATA.evaluations[id]:null;
-  if(!DATA.equipment[f.equipmentId]) return formErr('Choose the equipment.');
+  if(!DATA.equipment[f.equipmentId]) return formErr(t('er_eq'));
   const data={equipmentId:f.equipmentId,date:f.date||'',setpoint:num(f.setpoint),obtained:num(f.obtained),unit:f.unit||'',uncertainty:num(f.uncertainty),tu:num(f.tu),
     error:f.setpoint===''||f.obtained===''?(prev?prev.error:null):null,relatedTest:f.relatedTest||'',rule:f.rule||'|e| + U ≤ TU',by:f.by||'',notes:f.notes||'',
     conformityExcel:prev?prev.conformityExcel||'':'',src:prev?prev.src||'':'manual',updated:nowIso()};
-  if(data.setpoint==null&&data.error==null) return formErr('Enter the setpoint and the obtained value.');
-  return save([{op:'set',col:'evaluations',id:id||'ev-'+rid(),data}],'Evaluation saved.');
+  if(data.setpoint==null&&data.error==null) return formErr(t('er_setp'));
+  return save([{op:'set',col:'evaluations',id:id||'ev-'+rid(),data}],t('ts_ev'));
 }
 
 
 function openSettings(){
-  dlg.dataset.kind='cfg'; dlg.dataset.id='';
+  dlg.dataset.kind='cfg'; dlg.dataset.id=''; dlg._re=openSettings;
   const c=S.cfg;
-  dlgShell('Settings','Calibration plan settings',`<fieldset><legend>Alerts</legend>${fld('f-warnMonths','Warn this many months before the due month',inp('warnMonths',c.warnMonths,'number','min="0" max="12" step="1"'),'','0 = only in the due month.')}</fieldset>
-  <fieldset><legend>Certificates in SharePoint</legend>${fld('f-certBase','Calibration folder (base link)',inp('certBase',c.certBase,'url'),'span2')}${fld('f-certPath','Path of each equipment folder',inp('certPath',c.certPath),'span2','{code} is replaced by the inventory code, as in the Excel hyperlinks.')}</fieldset>
-  <fieldset><legend>Controlled form</legend>${fld('f-formCode','Form code',inp('formCode',c.formCode))}${fld('f-formRev','Revision',inp('formRev',c.formRev))}</fieldset>`,'',true);
+  dlgShell(t('settings'),t('cf_title'),`<fieldset><legend>${t('cf_alerts')}</legend>${fld('f-warnMonths',t('cf_warn'),inp('warnMonths',c.warnMonths,'number','min="0" max="12" step="1"'),'',t('cf_warn_h'))}</fieldset>
+  <fieldset><legend>${t('cf_sp')}</legend>${fld('f-certBase',t('cf_base'),inp('certBase',c.certBase,'url'),'span2')}${fld('f-certPath',t('cf_path'),inp('certPath',c.certPath),'span2',t('cf_path_h'))}</fieldset>
+  <fieldset><legend>${t('cf_form')}</legend>${fld('f-formCode',t('cf_code'),inp('formCode',c.formCode))}${fld('f-formRev',t('cf_rev'),inp('formRev',c.formRev))}</fieldset>`,'',true);
 }
 function saveCfg(f){
-  return save([{op:'set',col:'config',id:'settings',data:{warnMonths:Math.max(0,Math.min(12,parseInt(f.warnMonths)||0)),certBase:f.certBase||DEFAULT_CFG.certBase,certPath:f.certPath||DEFAULT_CFG.certPath,formCode:f.formCode||'',formRev:f.formRev||''}}],'Settings saved.');
+  return save([{op:'set',col:'config',id:'settings',data:{warnMonths:Math.max(0,Math.min(12,parseInt(f.warnMonths)||0)),certBase:f.certBase||DEFAULT_CFG.certBase,certPath:f.certPath||DEFAULT_CFG.certPath,formCode:f.formCode||'',formRev:f.formRev||''}}],t('ts_cfg'));
 }
 function saveDialog(){
   const f=readForm(), k=dlg.dataset.kind;
@@ -1394,11 +1733,11 @@ function saveDialog(){
   if(r) dlg.close();
 }
 function deleteFromDialog(btn){
-  if(!btn.classList.contains('armed')){btn.classList.add('armed'); btn.textContent='Confirm delete'; return;}
+  if(!btn.classList.contains('armed')){btn.classList.add('armed'); btn.textContent=t('del_confirm'); return;}
   const k=dlg.dataset.kind, id=dlg.dataset.id, ops=[];
   if(k==='eq'){ops.push({op:'delete',col:'equipment',id}); for(const col of ['calibrations','evaluations','maintenance']) for(const [rid2,v] of Object.entries(DATA[col])) if(v.equipmentId===id) ops.push({op:'delete',col,id:rid2});}
   else ops.push({op:'delete',col:{cal:'calibrations',ev:'evaluations',mt:'maintenance'}[k],id});
-  save(ops,'Deleted.'); dlg.close();
+  save(ops,t('ts_del')); dlg.close();
 }
 
 /* ---------- Storage: one JSON file in the private data repository Polinya-LAB/lab-data (folder calibraciones/) ----------
@@ -1411,20 +1750,7 @@ const GH_API=`https://api.github.com/repos/${REPO.owner}/${REPO.repo}`;
    configuration (LabAuth.activo false) only the key exists, exactly as before. */
 const LA=window.LabAuth&&window.LabAuth.activo?window.LabAuth:null;
 const APP_ID='calibraciones';
-const AU={au_btn:'Sign in', au_btn_t:'Sign in with your email to view and change the data', au_eyebrow:'Access', au_title:'Sign in with your email',
-  au_mail:'Email', au_pass:'Password', au_enter:'Sign in',
-  au_forgot:'Forgot your password? Ask an administrator.', au_wait:'Checking…', au_key:'Use a GitHub key', au_cancel:'Cancel', au_close:'Close', au_signout:'Sign out',
-  au_as:(n,m)=>`Signed in as <b>${n}</b> (${m}).`, au_in:n=>`Signed in as ${n}.`, au_edit:'You can edit.', au_view:'You can only view.',
-  au_none:'You don\'t have access to this app.', au_noapp:'You don\'t have access to this app. Ask an administrator.',
-  au_again:'Sign in again', au_expired:'Your session has expired.', au_saving:'Saving…', au_out:'Signed out. This browser no longer has your session.',
-  au_private:'The calibration data is private.', au_ro:n=>`<b>${n}</b>: you can view the data but cannot change it. Ask an administrator for edit access.`,
-  au_ro_out:'Read-only. To make changes,',
-  au_e_mail:'Enter a valid email address.', au_e_pass:'Enter your password.', au_e_cred:'Wrong email or password.', au_e_rate:'Too many attempts. Wait a few minutes and try again.',
-  au_e_net:'Could not connect. Check your connection and try again.',
-  au_e_sess:'Your session could not be started. Sign in again.', au_e_busy:'The lab service is limiting requests. Wait a minute and try again.',
-  au_e_down:'Your password is correct, but the lab service is not responding right now. Try again in a moment; the app also retries on its own.',
-  au_e_save:'Your session has expired and the change was not saved. Sign in again and repeat it.', au_e_perm:'You cannot change data: your account does not have edit access to this app. Ask an administrator.'};
-const ta=(k,...a)=>{const v=AU[k]??k; return typeof v==='function'?v(...a):v;};
+const ta=t;  // sign-in texts: the au_* entries of TX
 const mailRepo=app=>`${LA.api(app)}/repos/${REPO.owner}/${REPO.repo}`;
 /* The API base follows the mode, so an email session always targets the function and a key always api.github.com. */
 const apiBase=()=>GH.modo==='correo'?mailRepo(APP_ID):GH_API;
@@ -1460,7 +1786,7 @@ const httpError=res=>{const limited=res.status===429||(res.status===403&&res.hea
 function errMsg(e){const c=e&&e.code;
   if(byMail()&&(c==='auth'||c==='not_granted'&&GH.expired)) return ta('au_e_save');
   if(byMail()&&(c==='not_granted'||c==='forbidden')) return ta('au_e_perm');
-  if(c==='not_granted'||c==='forbidden') return 'You cannot change data: connect GitHub with an account that has write access to the repository.'; if(c==='auth') return 'Your GitHub key is no longer valid. Connect GitHub again with a new key.'; if(c==='conflict') return 'Someone else saved at the same time. Your change was not saved; try again.'; if(c==='rate') return 'GitHub is limiting requests right now. Wait a minute and try again.'; if(c==='unavailable') return 'Could not reach GitHub. Check your connection and try again.'; return 'Could not save: '+(e&&e.message||e)}
+  if(c==='not_granted'||c==='forbidden') return t('se_perm'); if(c==='auth') return t('se_auth'); if(c==='conflict') return t('se_conflict'); if(c==='rate') return t('se_rate'); if(c==='unavailable') return t('se_net'); return t('se_other')+(e&&e.message||e)}
 
 async function fetchApi(useEtag){
   const res=await ghFetch(`${apiBase()}/contents/${REPO.path}?ref=${REPO.branch}`,useEtag&&remote.etag?{headers:{'If-None-Match':remote.etag}}:{});
@@ -1528,7 +1854,7 @@ async function commitOps(ops){
 function save(ops,msg){
   if(!ops.length) return true;
   if(LOCAL){applyOps(remote.data,ops); try{localStorage.setItem(LS_LOCAL,JSON.stringify(remote.data));}catch(e){} recompute(); render(); if(msg) toast(msg); return true;}
-  if(PREVIEW){applyOps(remote.data,ops); recompute(); render(); if(msg) toast(msg+' (preview: not saved to GitHub)'); return true;}
+  if(PREVIEW){applyOps(remote.data,ops); recompute(); render(); if(msg) toast(msg+' '+t('ts_preview')); return true;}
   if(S.ro||!canWrite()){toast(errMsg({code:'not_granted'})); return null;}
   pendingOps.push(ops); recompute(); render(); if(msg) toast(msg);
   clearTimeout(flushTimer); flushTimer=setTimeout(flushOps,700);
@@ -1613,10 +1939,10 @@ async function mailSwitch(email){
   try{await connectMail(email);}catch(err){ if(err.code==='auth') mailExpired(); }
   remote.etag=null; await refresh(); render();
 }
-function disconnectGh(){Object.assign(GH,{token:'',login:null,push:false,invalid:false,modo:null}); S.ro=true; try{localStorage.removeItem(TOKEN_KEY);}catch(e){} remote.etag=null; dlg.close(); render(); toast('Disconnected from GitHub. This browser no longer has the key.');}
+function disconnectGh(){Object.assign(GH,{token:'',login:null,push:false,invalid:false,modo:null}); S.ro=true; try{localStorage.removeItem(TOKEN_KEY);}catch(e){} remote.etag=null; dlg.close(); render(); toast(t('gh_off_t'));}
 function renderGh(){
   const b=$('#btn-gh'); if(!b) return;
-  if(LOCAL){b.className='gh on'; b.querySelector('span').textContent='Local test data'; b.title='Local test mode: nothing is sent to GitHub.'; document.body.classList.remove('ro'); return;}
+  if(LOCAL){b.className='gh on'; b.querySelector('span').textContent=t('gh_local'); b.title=t('gh_local_t'); document.body.classList.remove('ro'); return;}
   if(LA&&GH.modo!=='clave'){
     b.className='gh '+(GH.expired?'bad':GH.saving?'busy':GH.login&&GH.push?'on':'');
     b.querySelector('span').textContent=GH.expired?ta('au_again'):GH.saving?ta('au_saving'):GH.login||(byMail()&&GH.email)||ta('au_btn');
@@ -1625,27 +1951,27 @@ function renderGh(){
     return;
   }
   b.className='gh '+(GH.invalid?'bad':GH.saving?'busy':GH.login&&GH.push?'on':'');
-  b.querySelector('span').textContent=GH.invalid?'GitHub key expired':GH.saving?'Saving…':GH.login?GH.login:'Connect GitHub';
+  b.querySelector('span').textContent=GH.invalid?t('gh_keyexp'):GH.saving?t('au_saving'):GH.login?GH.login:t('gh_connect');
   if(PREVIEW&&GH.login) b.className='gh busy';
-  b.title=PREVIEW?'Preview: the data is read from GitHub, changes are not saved.':GH.login?(GH.push?'Connected with write access. Changes are saved as commits.':'Connected, but this account cannot edit the repository.'):'Connect GitHub to see and change the calibration plan';
+  b.title=t(PREVIEW?'gh_t_prev':GH.login?(GH.push?'gh_t_push':'gh_t_nopush'):'gh_t_none');
   document.body.classList.toggle('ro',!!S.ro);
 }
 function openGh(){
-  dlg.dataset.kind='gh'; dlg.dataset.id=''; dlg.classList.add('narrow');
+  dlg.dataset.kind='gh'; dlg.dataset.id=''; dlg.classList.add('narrow'); dlg.dataset.dirty=''; dlg._re=openGh;
   if(LA) return openMail();
-  const body=`${GH.login?`<p class="note">Connected as <b>${esc(GH.login)}</b>${GH.push?' with write access.':', but this account cannot edit the repository.'}</p>`:''}
+  const body=`${GH.login?`<p class="note">${t(GH.push?'gh_as_push':'gh_as_nopush',esc(GH.login))}</p>`:''}
   <ol class="guide">
-    <li>Create an access key in GitHub: <a href="https://github.com/settings/tokens/new?scopes=repo&amp;description=Laboratorio%20Polinya" target="_blank" rel="noopener">open the form</a>. The <span class="mono">repo</span> permission is already ticked (needed because the lab data is private); choose an expiry and press <i>Generate token</i>.</li>
-    <li>Copy the key and paste it here.</li>
+    <li>${t('gh_step1')}</li>
+    <li>${t('gh_step2')}</li>
   </ol>
   ${keyFields()}`;
-  dlg.innerHTML=`<form class="dlg-form" id="dlg-form" novalidate><header class="dlg-h"><div><p class="eyebrow">Access</p><h2>Connect GitHub</h2></div><button type="button" class="icon-btn" data-act="close" aria-label="Close">×</button></header>
+  dlg.innerHTML=`<form class="dlg-form" id="dlg-form" novalidate><header class="dlg-h"><div><p class="eyebrow">${t('au_eyebrow')}</p><h2>${t('gh_connect')}</h2></div><button type="button" class="icon-btn" data-act="close" aria-label="${t('au_close')}">×</button></header>
   <div class="dlg-body">${body}<div id="f-err" class="form-err" hidden></div></div>
-  <footer class="dlg-f">${GH.token?'<button type="button" class="btn ghost danger" data-act="gh-off">Disconnect</button>':''}<span class="sp"></span><button type="button" class="btn ghost" data-act="close">Cancel</button><button class="btn primary gh-ok" type="submit">Connect</button></footer></form>`;
+  <footer class="dlg-f">${GH.token?`<button type="button" class="btn ghost danger" data-act="gh-off">${t('gh_disc')}</button>`:''}<span class="sp"></span><button type="button" class="btn ghost" data-act="close">${t('au_cancel')}</button><button class="btn primary gh-ok" type="submit">${t('gh_conn')}</button></footer></form>`;
   if(!dlg.open) dlg.showModal(); $('#gh-token').focus();
 }
-const keyFields=()=>`<div class="field"><label for="gh-token">Access key (token)</label><input id="gh-token" type="password" placeholder="ghp_…" autocomplete="off" spellcheck="false"></div>
-  <p class="note">The key is kept only in this browser and is shared with the other lab apps. Your GitHub account must have access to the data repository <span class="mono">${REPO.owner}/${REPO.repo}</span>: Read to view, Write to edit. Every change is saved as a commit, so the history shows who changed what.</p>`;
+const keyFields=()=>`<div class="field"><label for="gh-token">${t('gh_key')}</label><input id="gh-token" type="password" placeholder="ghp_…" autocomplete="off" spellcheck="false"></div>
+  <p class="note">${t('gh_key_n',`<span class="mono">${REPO.owner}/${REPO.repo}</span>`)}</p>`;
 /* With email sign-in configured: "Sign in with your email" first (email + password, one step), "Use a GitHub key" below. */
 function openMail(){
   const signed=byMail()&&GH.login&&!GH.expired, keyOn=GH.modo==='clave'&&GH.login;
@@ -1657,11 +1983,11 @@ function openMail(){
     <div class="field"><label for="gh-pass">${ta('au_pass')}</label><input id="gh-pass" type="password" autocomplete="current-password" spellcheck="false"></div>
     <p class="note">${ta('au_forgot')}</p></section>`;
   const key=signed?'':`<details class="manual gh-key" ${keyOn?'open':''}><summary>${ta('au_key')}</summary>
-    ${keyOn?`<p class="note">Connected as <b>${esc(GH.login)}</b>${GH.push?' with write access.':', but this account cannot edit the repository.'}</p>`:''}
-    <ol class="guide"><li>Create an access key in GitHub: <a href="https://github.com/settings/tokens/new?scopes=repo&amp;description=Laboratorio%20Polinya" target="_blank" rel="noopener">open the form</a>. The <span class="mono">repo</span> permission is already ticked (needed because the lab data is private); choose an expiry and press <i>Generate token</i>.</li><li>Copy the key and paste it here.</li></ol>
-    ${keyFields()}<p>${keyOn?'<button type="button" class="btn ghost danger" data-act="gh-off">Disconnect</button> ':''}<button type="button" class="btn" data-act="gh-key">Connect</button></p></details>`;
+    ${keyOn?`<p class="note">${t(GH.push?'gh_as_push':'gh_as_nopush',esc(GH.login))}</p>`:''}
+    <ol class="guide"><li>${t('gh_step1')}</li><li>${t('gh_step2')}</li></ol>
+    ${keyFields()}<p>${keyOn?`<button type="button" class="btn ghost danger" data-act="gh-off">${t('gh_disc')}</button> `:''}<button type="button" class="btn" data-act="gh-key">${t('gh_conn')}</button></p></details>`;
   const main=signed?'':`<button class="btn primary gh-ok" type="submit">${ta('au_enter')}</button>`;
-  dlg.innerHTML=`<form class="dlg-form" id="dlg-form" novalidate><header class="dlg-h"><div><p class="eyebrow">${ta('au_eyebrow')}</p><h2>${ta('au_btn')}</h2></div><button type="button" class="icon-btn" data-act="close" aria-label="Close">×</button></header>
+  dlg.innerHTML=`<form class="dlg-form" id="dlg-form" novalidate><header class="dlg-h"><div><p class="eyebrow">${ta('au_eyebrow')}</p><h2>${ta('au_btn')}</h2></div><button type="button" class="icon-btn" data-act="close" aria-label="${t('au_close')}">×</button></header>
   <div class="dlg-body">${mail}${key}<div id="f-err" class="form-err" hidden></div></div>
   <footer class="dlg-f">${signed?`<button type="button" class="btn ghost danger" data-act="gh-out">${ta('au_signout')}</button>`:''}<span class="sp"></span><button type="button" class="btn ghost" data-act="close">${ta(signed?'au_close':'au_cancel')}</button>${main}</footer></form>`;
   if(!dlg.open) dlg.showModal(); const m=$('#gh-mail'); if(m) (m.value?$('#gh-pass'):m).focus();
@@ -1696,14 +2022,14 @@ async function saveMail(){
 }
 function saveGh(){ return LA&&document.activeElement!==$('#gh-token')?saveMail():saveKey(); }
 async function saveKey(){
-  const t=($('#gh-token').value||'').trim(); if(!t) return formErr('Paste the access key.');
-  const btn=LA?dlg.querySelector('[data-act="gh-key"]'):dlg.querySelector('button[type="submit"]'); btn.disabled=true; btn.textContent='Checking…';
+  const tk=($('#gh-token').value||'').trim(); if(!tk) return formErr(t('gh_e_paste'));
+  const btn=LA?dlg.querySelector('[data-act="gh-key"]'):dlg.querySelector('button[type="submit"]'); btn.disabled=true; btn.textContent=t('au_wait');
   try{
-    await connectGh(t); try{localStorage.setItem(TOKEN_KEY,t);}catch(e){}
+    await connectGh(tk); try{localStorage.setItem(TOKEN_KEY,tk);}catch(e){}
     if(LA){ dlg.dataset.verified=''; if(await LA.sesion()){mailBusy=true; try{await LA.salir();}catch(e){} mailBusy=false;} }
     remote.etag=null; S.noDb=false; await refresh(); dlg.close(); render();
-    toast(GH.push?`Connected as ${GH.login}. You can now edit.`:`Connected as ${GH.login}, but this account cannot edit the repository.`);
-  }catch(err){ btn.disabled=false; btn.textContent='Connect'; formErr(err.code==='auth'?'That key is not valid or has expired.':err.code==='forbidden'?'That key cannot see the repository.':'Could not reach GitHub. Check your connection.'); }
+    toast(t(GH.push?'gh_ok_push':'gh_ok_nopush',GH.login));
+  }catch(err){ btn.disabled=false; btn.textContent=t('gh_conn'); formErr(t(err.code==='auth'?'gh_e_auth':err.code==='forbidden'?'gh_e_forb':'gh_e_net')); }
 }
 const json=()=>JSON.stringify(DATA,null,1)+'\n';
 function download(){
@@ -1718,8 +2044,8 @@ document.addEventListener('click',async ev=>{
   const op=ev.target.closest('[data-open]'); if(op){const d=document.getElementById(op.dataset.open); if(d) d.open=true; return;}
   if(ev.target.closest('a[href]')||ev.target.closest('input[data-tog],select[data-tol]')) return;
   const v=ev.target.closest('[data-view]'); if(v){setView(v.dataset.view); return;}
-  const t=ev.target.closest('[data-act]'); if(!t) return;
-  const a=t.dataset.act, id=t.dataset.id;
+  const tg=ev.target.closest('[data-act]'); if(!tg) return;
+  const a=tg.dataset.act, id=tg.dataset.id;
   if(a==='eq') openEq(id);
   else if(a==='eq-new') openEq(null);
   else if(a==='cal-new'){const i=id&&IX.info.get(id); if(i&&i.planned) openCal(i.planned.id,{status:'Done',month:mStr(nowIdx())}); else openCal(null,{equipmentId:id||''});}
@@ -1728,46 +2054,46 @@ document.addEventListener('click',async ev=>{
   else if(a==='ev-new') openEv(null,{equipmentId:id||''});
   else if(a==='ev-edit') openEv(id);
   else if(a==='close') dlg.close();
-  else if(a==='del') deleteFromDialog(t);
+  else if(a==='del') deleteFromDialog(tg);
   else if(a==='pt-add'){$('#pt-list').insertAdjacentHTML('beforeend',ptRow({})); $('#pt-list').lastElementChild.querySelector('input').focus();}
-  else if(a==='pt-del'){const r=t.closest('.pt-row'); if($('#pt-list').children.length>1) r.remove(); else r.querySelectorAll('input').forEach(i=>i.value='');}
-  else if(a==='note-done'){const e=DATA.equipment[id]; const notes=clone(e.importNotes||[]); if(notes[+t.dataset.n]) notes[+t.dataset.n].done=true; save([{op:'update',col:'equipment',id,data:{importNotes:notes}}],'Marked as reviewed.'); if(dlg.open&&dlg.dataset.kind==='eq') openEq(id);}
-  else if(a==='sort'){const st=S.sort.eq; if(st.k===t.dataset.k) st.dir=-st.dir; else {st.k=t.dataset.k; st.dir=1;} render();}
-  else if(a==='kpi'){const k=t.dataset.k; if(k==='review') return setView('review'); S.f={group:[],lab:[],status:[k]}; S.q=''; setView('equipment');}
+  else if(a==='pt-del'){const r=tg.closest('.pt-row'); if($('#pt-list').children.length>1) r.remove(); else r.querySelectorAll('input').forEach(i=>i.value='');}
+  else if(a==='note-done'){const e=DATA.equipment[id]; const notes=clone(e.importNotes||[]); if(notes[+tg.dataset.n]) notes[+tg.dataset.n].done=true; save([{op:'update',col:'equipment',id,data:{importNotes:notes}}],t('ts_rev')); if(dlg.open&&dlg.dataset.kind==='eq') openEq(id);}
+  else if(a==='sort'){const st=S.sort.eq; if(st.k===tg.dataset.k) st.dir=-st.dir; else {st.k=tg.dataset.k; st.dir=1;} render();}
+  else if(a==='kpi'){const k=tg.dataset.k; if(k==='review') return setView('review'); S.f={group:[],lab:[],status:[k]}; S.q=''; setView('equipment');}
   else if(a==='clear-f'){S.f={group:[],status:[],lab:[]}; S.q=''; render();}
   else if(a==='clear-calf'){S.calf={status:[],year:[]}; S.q=''; render();}
-  else if(a==='fchip'){const arr=S[t.dataset.scope][t.dataset.k], v=t.dataset.v, i=arr.indexOf(v); if(i<0) arr.push(v); else arr.splice(i,1); render();}
-  else if(a==='cell'){if(S.ro&&!(IX.recs.get(id)||[]).some(c=>c.month===t.dataset.m)) return; const ms=t.dataset.m, here=(IX.recs.get(id)||[]).filter(c=>c.month===ms); if(here.length) openCal((here.find(c=>c.status==='Planned')||here[0]).id); else openCal(null,{equipmentId:id,status:mIdx(ms)>nowIdx()?'Planned':'Done',month:ms});}
-  else if(a==='plan-nav'){const d=+t.dataset.d, y=Math.floor(nowIdx()/12); S.plan.start=d===0?null:(S.plan.start??y)+d; render();}
-  else if(a==='plan-span'){S.plan.span=+t.dataset.s; try{localStorage.setItem('cal.span',S.plan.span)}catch(e){} render();}
-  else if(a==='do-import'){const {ops,st}=S.imp; S.imp=null; save(ops,`Import finished: ${st.eqNew} new and ${st.eqUpd} updated equipment, ${st.calNew} calibrations, ${st.evNew} evaluations.`); setView('overview');}
+  else if(a==='fchip'){const arr=S[tg.dataset.scope][tg.dataset.k], v=tg.dataset.v, i=arr.indexOf(v); if(i<0) arr.push(v); else arr.splice(i,1); render();}
+  else if(a==='cell'){if(S.ro&&!(IX.recs.get(id)||[]).some(c=>c.month===tg.dataset.m)) return; const ms=tg.dataset.m, here=(IX.recs.get(id)||[]).filter(c=>c.month===ms); if(here.length) openCal((here.find(c=>c.status==='Planned')||here[0]).id); else openCal(null,{equipmentId:id,status:mIdx(ms)>nowIdx()?'Planned':'Done',month:ms});}
+  else if(a==='plan-nav'){const d=+tg.dataset.d, y=Math.floor(nowIdx()/12); S.plan.start=d===0?null:(S.plan.start??y)+d; render();}
+  else if(a==='plan-span'){S.plan.span=+tg.dataset.s; try{localStorage.setItem('cal.span',S.plan.span)}catch(e){} render();}
+  else if(a==='do-import'){const {ops,st}=S.imp; S.imp=null; save(ops,t('ts_import',st.eqNew,st.eqUpd,st.calNew,st.evNew)); setView('overview');}
   else if(a==='cancel-import'){S.imp=null; render();}
   else if(a==='export-xlsx') exportXlsx();
   else if(a==='settings') openSettings();
   else if(a==='download') download();
-  else if(a==='gh'){ if(LOCAL) toast('Local test mode: the data stays in this browser and GitHub is not used.'); else openGh(); }
-  else if(a==='local-reset'){try{localStorage.removeItem(LS_LOCAL);}catch(e){} remote.data=null; await refresh(); toast('Test data reset.');}
+  else if(a==='gh'){ if(LOCAL) toast(t('ts_local')); else openGh(); }
+  else if(a==='local-reset'){try{localStorage.removeItem(LS_LOCAL);}catch(e){} remote.data=null; await refresh(); toast(t('ts_reset'));}
   else if(a==='sheet'){S.sheet=id; dlg.close(); setView('sheets');}
-  else if(a==='print'){const e=eqById(S.sheet), t=document.title; if(e) document.title=`${e.code}-VAL ${todayIso()}`; window.print(); document.title=t;}
-  else if(a==='cert-reg'){const ct=CERTS[t.dataset.k]; if(ct) openCal(null,{equipmentId:id,status:'Done',month:String(ct.calDate||'').slice(0,7)||mStr(nowIdx()),lab:ct.lab||'',certRef:ct.certRef||'',certificate:true,spKey:t.dataset.k});}
+  else if(a==='print'){const e=eqById(S.sheet), dt=document.title; if(e) document.title=`${e.code}-VAL ${todayIso()}`; window.print(); document.title=dt;}
+  else if(a==='cert-reg'){const ct=CERTS[tg.dataset.k]; if(ct) openCal(null,{equipmentId:id,status:'Done',month:String(ct.calDate||'').slice(0,7)||mStr(nowIdx()),lab:ct.lab||'',certRef:ct.certRef||'',certificate:true,spKey:tg.dataset.k});}
   else if(a==='res-add'){$('#res-list').insertAdjacentHTML('beforeend',resRow({q:'T'})); $('#res-list').lastElementChild.querySelector('input').focus();}
-  else if(a==='res-del') t.closest('.res-row').remove();
+  else if(a==='res-del') tg.closest('.res-row').remove();
   else if(a==='gh-off') disconnectGh();
   else if(a==='gh-out'){dlg.close(); mailSignOut();}
   else if(a==='gh-key') saveKey();
 });
 document.addEventListener('input',ev=>{
   if(ev.target.id==='q'){S.q=ev.target.value; const pos=ev.target.selectionStart; render(); const q=$('#q'); if(q){q.focus(); try{q.setSelectionRange(pos,pos)}catch(e){}}}
-  else if(dlg.open&&dlg.contains(ev.target)){eqHints(); calHints(); evHints();}
+  else if(dlg.open&&dlg.contains(ev.target)){dlg.dataset.dirty='1'; eqHints(); calHints(); evHints();}
 });
 document.addEventListener('change',ev=>{
   const el=ev.target;
   if(el.id==='file-xlsx') onXlsx(el.files[0]);
   else if(el.id==='plan-all'){S.plan.all=el.checked; render();}
   else if(el.id==='sheet-pick'){S.sheet=el.value; render();}
-  else if(el.dataset.tog){const c=DATA.calibrations[el.dataset.id]; save([{op:'update',col:'calibrations',id:el.dataset.id,data:{[el.dataset.tog]:el.checked,updated:nowIso()}}],`${eqById(c.equipmentId)?.code||''} ${fmtM(c.month)}: ${el.dataset.tog==='label'?'label':'certificate'} ${el.checked?'ticked':'unticked'}.`);}
-  else if(el.dataset.tol){const c=DATA.calibrations[el.dataset.tol]; save([{op:'update',col:'calibrations',id:el.dataset.tol,data:{inTolerance:el.value,updated:nowIso()}}],`${eqById(c.equipmentId)?.code||''} ${fmtM(c.month)}: in tolerance = ${el.value||'not checked'}.`);}
-  else if(dlg.open&&dlg.contains(el)){eqHints(); calHints(); evHints();}
+  else if(el.dataset.tog){const c=DATA.calibrations[el.dataset.id]; save([{op:'update',col:'calibrations',id:el.dataset.id,data:{[el.dataset.tog]:el.checked,updated:nowIso()}}],t('ts_tog',`${eqById(c.equipmentId)?.code||''} ${fmtM(c.month)}`,t(el.dataset.tog==='label'?'c_label':'certificate'),el.checked));}
+  else if(el.dataset.tol){const c=DATA.calibrations[el.dataset.tol]; save([{op:'update',col:'calibrations',id:el.dataset.tol,data:{inTolerance:el.value,updated:nowIso()}}],t('ts_tol',`${eqById(c.equipmentId)?.code||''} ${fmtM(c.month)}`,el.value?dv(el.value):t('not_checked')));}
+  else if(dlg.open&&dlg.contains(el)){dlg.dataset.dirty='1'; eqHints(); calHints(); evHints();}
 });
 document.addEventListener('submit',ev=>{ if(ev.target.id!=='dlg-form') return; ev.preventDefault(); if(dlg.dataset.kind==='gh') saveGh(); else saveDialog(); });
 const dzOf=ev=>ev.target.closest&&ev.target.closest('[data-dz]');
@@ -1777,6 +2103,9 @@ document.addEventListener('drop',ev=>{const z=dzOf(ev); if(z&&ev.dataTransfer.fi
 window.addEventListener('hashchange',()=>{const h=location.hash.slice(1); if(VIEWS.some(x=>x[0]===h)&&h!==S.view) setView(h);});
 
 /* ---------- Boot ---------- */
+applyLang();
+/* Language switch: re-render in place; an open dialog is redrawn unless something was typed in it. */
+LabLang.onChange(()=>{ applyLang(); render(); if(dlg.open&&dlg._re&&!dlg.dataset.dirty) dlg._re(); });
 render();
 (async()=>{
   if(LA&&!LOCAL){ await LA.listo; const s=await LA.sesion();

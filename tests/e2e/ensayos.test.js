@@ -62,10 +62,12 @@ async function averiarUser(ctx, estado) {
 }
 
 async function abrir(browser, url, opts = {}) {
-  const { reloj, clave, ...lab_opts } = opts;
+  const { reloj, clave, idioma, ...lab_opts } = opts;
   const ctx = await browser.newContext({ serviceWorkers: 'block' });
   const lab = await setupLab(ctx, { usuarios: USUARIOS, ...lab_opts });
   datosExtra(lab);
+  // Idioma elegido con el selector ES/EN (lab-lang.js); sin él, el del navegador (Chromium: en-US → inglés).
+  if (idioma) await ctx.addInitScript((l) => { try { if (!localStorage.getItem('lab.lang')) localStorage.setItem('lab.lang', l); } catch (e) { /* */ } }, idioma);
   if (clave) await ctx.addInitScript((t) => { try { if (!sessionStorage.getItem('__k')) { localStorage.setItem('pd-gh-token', t); sessionStorage.setItem('__k', '1'); } } catch (e) { /* */ } }, clave);
   const page = await ctx.newPage();
   page.setDefaultTimeout(8000);
@@ -84,7 +86,7 @@ async function abrir(browser, url, opts = {}) {
 }
 const esperarCarga = (page) => page.waitForFunction(() => {
   const v = document.querySelector('#view');
-  return v && !/Loading lab data/.test(v.textContent);
+  return v && !/Loading lab data|Cargando datos del laboratorio/.test(v.textContent);
 });
 const textoBoton = (page) => page.locator('#btn-gh span').textContent();
 const lecturasFuncion = (peticiones) =>
@@ -92,7 +94,7 @@ const lecturasFuncion = (peticiones) =>
 const lecturasGithub = (peticiones) =>
   peticiones.filter((p) => p.method === 'GET' && p.url.startsWith('https://api.github.com/') && p.url.includes('/contents/' + FICHERO)).length;
 
-// Entra con correo y contraseña desde el botón de la cabecera; textos en inglés (es=false) o castellano (Muestras).
+// Entra con correo y contraseña desde el botón de la cabecera; textos en inglés (es=false) o castellano (idioma 'es').
 async function entrar(page, email, nombre, es = false) {
   await page.click('#btn-gh');
   await page.waitForSelector('#gh-mail');
@@ -217,7 +219,7 @@ async function entrar(page, email, nombre, es = false) {
 
     // ---------- Muestras ----------
     {
-      const { ctx, page, lab, errores } = await abrir(browser, MUESTRAS);
+      const { ctx, page, lab, errores } = await abrir(browser, MUESTRAS, { idioma: 'es' });
       await check('Muestras: contraseña incorrecta → "Correo o contraseña incorrectos.", sin sesión y campo vacío', async () => {
         await page.click('#btn-gh');
         await page.waitForSelector('#gh-mail');
@@ -257,7 +259,7 @@ async function entrar(page, email, nombre, es = false) {
       await ctx.close();
     }
     {
-      const { ctx, page, lab, errores } = await abrir(browser, MUESTRAS);
+      const { ctx, page, lab, errores } = await abrir(browser, MUESTRAS, { idioma: 'es' });
       await check('Muestras con editar en ensayos: Import ARAS sí aparece', async () => {
         await entrar(page, 'ana.ruiz@fluidra.com', 'Ana Ruiz', true);
         assert.equal(await page.locator('#tabs [data-view="import"]').count(), 1);
@@ -268,7 +270,7 @@ async function entrar(page, email, nombre, es = false) {
       await ctx.close();
     }
     {
-      const { ctx, page, lab, errores } = await abrir(browser, MUESTRAS);
+      const { ctx, page, lab, errores } = await abrir(browser, MUESTRAS, { idioma: 'es' });
       await check('Muestras con ninguno: "No tienes acceso a esta app" y ningún dato', async () => {
         lab.setUsuarios([...USUARIOS, { email: 'sin.muestras@fluidra.com', nombre: 'Sin Muestras', roles: { ensayos: 'editar' }, admin: false }]);
         await entrar(page, 'sin.muestras@fluidra.com', 'Sin Muestras', true);
@@ -518,6 +520,77 @@ async function entrar(page, email, nombre, es = false) {
         assert.deepEqual(lab.bloqueadas, []);
         assert.deepEqual(erroresReales(errores), []);
         assert.deepEqual(errores.otros404(), []);
+      });
+      await ctx.close();
+    }
+
+    // ---------- Selector de idioma ES / EN (acceso/lab-lang.js) ----------
+    {
+      const { ctx, page, lab, errores } = await abrir(browser, ENSAYOS);
+      await check('Control de ensayos: ES/EN cambia los textos sin recargar; los valores guardados siguen en inglés y no se escribe nada', async () => {
+        await entrar(page, 'ana.ruiz@fluidra.com', 'Ana Ruiz');
+        await page.click('#tabs [data-view="queue"]');
+        const antes = JSON.stringify(lab.datos('lab-data', FICHERO));
+        const sel = 'select[data-setstatus="t-demo-002"]';
+        assert.match(await page.locator('#tabs [data-view="queue"]').textContent(), /^Queue\d*$/);
+        assert.equal(await page.locator('#btn-new').textContent(), '+ New test');
+        assert.equal(await page.locator(`${sel} option[value="Planned"]`).textContent(), 'Planned');
+        await page.evaluate(() => { window.__sinRecarga = 1; });
+        // Diálogo abierto con algo escrito: se redibuja en el otro idioma sin perderlo.
+        await page.click('tr[data-id="t-demo-002"] td.ref');
+        await page.fill('#f-labNotes', 'nota sin guardar');
+        // Con el diálogo modal abierto la cabecera no se puede pulsar: el cambio llega por LabLang.set (p. ej. otra parte de la página).
+        await page.evaluate(() => window.LabLang.set('es'));
+        await page.waitForFunction(() => document.querySelector('#tabs [data-view="queue"]').textContent.startsWith('Cola'));
+        assert.equal(await page.locator('#dlg legend').first().textContent(), 'Petición');
+        assert.equal(await page.inputValue('#f-labNotes'), 'nota sin guardar');
+        assert.equal(await page.locator('#f-status option[value="In progress"]').textContent(), 'En curso');
+        await page.click('#dlg [data-act="close"]');
+        await page.click('.lab-lang button[data-l="en"]');
+        await page.waitForFunction(() => document.querySelector('#btn-new').textContent === '+ New test');
+        await page.click('.lab-lang button[data-l="es"]');
+        assert.equal(await page.locator('#btn-new').textContent(), '+ Nuevo ensayo');
+        assert.equal(await page.locator(`${sel} option[value="Planned"]`).textContent(), 'Planificado');
+        assert.equal(await page.inputValue(sel), (JSON.parse(antes).tests['t-demo-002'] || {}).status);
+        assert.match(await page.locator('#view').textContent(), /Cola de ensayos/);
+        assert.equal(await page.evaluate(() => [document.documentElement.lang, localStorage.getItem('lab.lang'), window.__sinRecarga]).then((x) => x.join()), 'es,es,1');
+        await page.click('#tabs [data-view="overview"]');
+        assert.match(await page.locator('#view').textContent(), /Resumen del laboratorio/);
+        await page.click('.lab-lang button[data-l="en"]');
+        await page.waitForFunction(() => /Lab overview/.test(document.querySelector('#view').textContent));
+        await page.waitForTimeout(1200);
+        assert.equal(lab.puts.length, 0, 'cambiar de idioma no guarda nada');
+        assert.equal(JSON.stringify(lab.datos('lab-data', FICHERO)), antes);
+        assert.deepEqual(erroresReales(errores), []);
+        assert.deepEqual(lab.bloqueadas, []);
+      });
+      await ctx.close();
+    }
+    {
+      const { ctx, page, lab, errores } = await abrir(browser, MUESTRAS, { idioma: 'es' });
+      await check('Muestras: el selector global sustituye al suyo; ES → EN traduce y no cambia los datos; Control de ensayos sigue el idioma elegido', async () => {
+        await entrar(page, 'marta.m@fluidra.com', 'Marta Muestras', true);
+        await page.click('#tabs [data-view="samples"]');
+        const antes = JSON.stringify(lab.datos('lab-data', FICHERO));
+        assert.equal(await page.locator('[data-sa="lang"]').count(), 0, 'sin el selector propio de Muestras');
+        assert.equal(await page.locator('.lab-lang').count(), 1);
+        assert.match(await page.locator('#tabs [data-view="samples"]').textContent(), /^Muestras\d*$/);
+        assert.match(await page.locator('#view').textContent(), /En el laboratorio/);
+        await page.click('.lab-lang button[data-l="en"]');
+        await page.waitForFunction(() => /^Samples\d*$/.test(document.querySelector('#tabs [data-view="samples"]').textContent));
+        assert.match(await page.locator('#view').textContent(), /In the lab/);
+        assert.equal(await page.locator('header h1').textContent(), 'Samples');
+        assert.equal(await page.locator('#btn-gh span').textContent(), 'Marta Muestras');
+        await page.waitForTimeout(1200);
+        assert.equal(lab.puts.length, 0);
+        assert.equal(JSON.stringify(lab.datos('lab-data', FICHERO)), antes);
+        const p2 = await ctx.newPage();
+        await p2.goto(ENSAYOS);
+        await esperarCarga(p2);
+        assert.equal(await p2.evaluate(() => window.LabLang.lang), 'en');
+        await p2.close();
+        assert.deepEqual(erroresReales(errores), []);
+        assert.deepEqual(lab.bloqueadas, []);
       });
       await ctx.close();
     }

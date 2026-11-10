@@ -14,16 +14,14 @@ const PRIO_RANK={Urgent:0,High:1,Medium:2,Low:3};
 const EQ_STATUS=['Operational','Maintenance','Calibration','Out of service'];
 const EQ_LEGACY={'Operativo':'Operational','Mantenimiento':'Maintenance','Calibración':'Calibration','Fuera de servicio':'Out of service'};
 const UNITS=['Hours','Days','Weeks','Cycles'];
-const UNIT_SHORT={Hours:'h',Days:'d',Weeks:'wk',Cycles:'cycles'};
 const RESULTS=['Pass','Fail','N/A'];
 const ARAS_STATUS={'in queue':'Queued','queued':'Queued','in progress':'In progress','completed':'Completed','complete':'Completed','cancelled':'Cancelled','canceled':'Cancelled','endurance running':'Endurance running','endurance':'Endurance running','not approved':'Not approved','not aproved':'Not approved','rejected':'Not approved'};
 /* The same code runs three apps on the same data, chosen by <body data-app>: Control de ensayos (tests), Ocupación
    (equipment and technician load) and Muestras (samples: reception, PLR links and labels). Each app shows only its own views. */
 const APP=['occupancy','samples'].includes(document.body.dataset.app)?document.body.dataset.app:'tests';
-const VIEWS=APP==='occupancy'
-  ?[['overview','Overview'],['planning','Planning'],['occupancy','Occupancy'],['resources','Equipment & team']]
-  :APP==='samples'?[['samples','Samples'],['import','Import ARAS']]
-  :[['overview','Overview'],['board','Board'],['queue','Queue'],['planning','Planning'],['history','History'],['resources','Equipment & team'],['library','QTP library'],['import','Import ARAS']];
+const VIEWS=(APP==='occupancy'?['overview','planning','occupancy','resources']
+  :APP==='samples'?['samples','import']
+  :['overview','board','queue','planning','history','resources','library','import']).map(k=>[k]);
 const VIEW_KEY=APP==='occupancy'?'occ.view':APP==='samples'?'smp.view':'tl.view';
 /* Muestras signed in by email: Import ARAS writes tests, so it is shown only with edit rights in ensayos. */
 const importHidden=k=>k==='import'&&APP==='samples'&&GH.modo==='correo'&&(GH.noAccess||!GH.pushEnsayos);
@@ -32,37 +30,37 @@ const DAY=86400000, WEEKS_HEAT=8;
 const COL={tests:'tests',people:'personas',equipment:'bancos',qtps:'qtps',samples:'muestras'};
 
 const ARAS_FIELDS=[
-  {k:'plr',label:'Request number (PLR)',req:true,syn:['request number','request','plr','request no']},
-  {k:'qtp',label:'Task item (QTP)',req:true,syn:['task item','qtp','task','procedure']},
-  {k:'title',label:'Test description',syn:['description','test','title','test name']},
-  {k:'project',label:'Project',syn:['project']},
-  {k:'requester',label:'Request creator',syn:['created by id','created by','requester','created by name','creator']},
-  {k:'comments',label:'Comments',syn:['comments','comment']},
-  {k:'status',label:'Task status',syn:['task status','status']},
-  {k:'techName',label:'Lab resource (technician)',syn:['lab resource lab manager use only','lab resource','technician']},
-  {k:'equipmentName',label:'Equipment',syn:['equipment']},
-  {k:'start',label:'Start work date',type:'date',syn:['start work date','start date']},
-  {k:'requestedDue',label:'Requested due date',type:'date',syn:['requested due date','due date']},
-  {k:'flexible',label:'Due date flexible?',type:'bool',syn:['due date flexible']},
-  {k:'durVal',label:'Duration',type:'num',syn:['duration']},
-  {k:'durUnit',label:'Duration units',syn:['duration units']},
-  {k:'pieces',label:'Number of pieces',type:'num',syn:['number of pieces requested','number of pieces','pieces']},
-  {k:'sequence',label:'Test sequence',type:'num',syn:['test sequence','sequence']},
-  {k:'result',label:'Test result',syn:['test result','result']},
-  {k:'category',label:'Product category',syn:['product category','category']},
-  {k:'requestNote',label:'Request status note',syn:['request status']},
+  {k:'plr',req:true,syn:['request number','request','plr','request no']},
+  {k:'qtp',req:true,syn:['task item','qtp','task','procedure']},
+  {k:'title',syn:['description','test','title','test name']},
+  {k:'project',syn:['project']},
+  {k:'requester',syn:['created by id','created by','requester','created by name','creator']},
+  {k:'comments',syn:['comments','comment']},
+  {k:'status',syn:['task status','status']},
+  {k:'techName',syn:['lab resource lab manager use only','lab resource','technician']},
+  {k:'equipmentName',syn:['equipment']},
+  {k:'start',type:'date',syn:['start work date','start date']},
+  {k:'requestedDue',type:'date',syn:['requested due date','due date']},
+  {k:'flexible',type:'bool',syn:['due date flexible']},
+  {k:'durVal',type:'num',syn:['duration']},
+  {k:'durUnit',syn:['duration units']},
+  {k:'pieces',type:'num',syn:['number of pieces requested','number of pieces','pieces']},
+  {k:'sequence',type:'num',syn:['test sequence','sequence']},
+  {k:'result',syn:['test result','result']},
+  {k:'category',syn:['product category','category']},
+  {k:'requestNote',syn:['request status']},
 ];
 const QTP_FIELDS=[
-  {k:'code',label:'QTP code',req:true,syn:['qtp','qtp code','code','task item','procedure','document number']},
-  {k:'name',label:'Test name',syn:['description','name','test name','title','test']},
-  {k:'durVal',label:'Estimated duration',type:'num',syn:['duration','estimated duration','est duration','duration h','duration hours']},
-  {k:'durUnit',label:'Duration unit',syn:['unit','units','duration unit','duration units']},
-  {k:'techHours',label:'Technician hours',type:'num',syn:['technician hours','tech hours','labour hours','labor hours','man hours']},
-  {k:'equipmentName',label:'Default equipment',syn:['equipment','bench','testbench']},
-  {k:'durBasis',label:'Duration basis (per test / per sample)',syn:['basis','duration basis','per','time basis']},
-  {k:'testType',label:'Test type',syn:['lab test type','test type','type of test']},
-  {k:'standard',label:'Standard',syn:['lab agency standard','standard','norma','agency standard']},
-  {k:'notes',label:'Notes',syn:['notes','note','remarks']},
+  {k:'code',req:true,syn:['qtp','qtp code','code','task item','procedure','document number']},
+  {k:'name',syn:['description','name','test name','title','test']},
+  {k:'durVal',type:'num',syn:['duration','estimated duration','est duration','duration h','duration hours']},
+  {k:'durUnit',syn:['unit','units','duration unit','duration units']},
+  {k:'techHours',type:'num',syn:['technician hours','tech hours','labour hours','labor hours','man hours']},
+  {k:'equipmentName',syn:['equipment','bench','testbench']},
+  {k:'durBasis',syn:['basis','duration basis','per','time basis']},
+  {k:'testType',syn:['lab test type','test type','type of test']},
+  {k:'standard',syn:['lab agency standard','standard','norma','agency standard']},
+  {k:'notes',syn:['notes','note','remarks']},
 ];
 
 /* ---------- State ---------- */
@@ -93,7 +91,7 @@ const slug=s=>String(s||'').trim().replace(/[^A-Za-z0-9_-]+/g,'_').slice(0,60);
 const eqById=id=>id?S.equipment.find(b=>b.id===id):null;
 const personById=id=>id?S.people.find(p=>p.id===id):null;
 const libOf=t=>t&&t.qtp?S.qtps.find(q=>q.id===qid(t.qtp)):null;
-const eqName=b=>b?(b.nombre||'(unnamed)'):'(deleted equipment)';
+const eqName=b=>b?(b.nombre||tx('unnamed')):tx('delEq');
 const eqStatus=b=>EQ_LEGACY[b?.estado]||b?.estado||'Operational';
 /* Instruments (FLE) come from the calibration plan (lab-data/calibraciones/calibraciones.json, read-only here).
    Each equipment keeps the ids of the instruments usually used on it in `instrumentos`. */
@@ -105,18 +103,18 @@ function fleDue(e){
   const i=calMonth(e.lastCal,+e.periodMonths||0); return e.nextOverride||(i==null?'':`${Math.floor(i/12)}-${String(i%12+1).padStart(2,'0')}`);
 }
 function fleState(e){
-  if(!e) return {cls:'off',text:'not in the calibration plan'};
-  if(e.state&&e.state!=='In use') return {cls:'off',text:e.state};
-  if(e.calMode==='Not required') return {cls:'',text:'no calibration required'};
-  if(e.calMode==='Before use') return {cls:'',text:'checked before use'};
+  if(!e) return {cls:'off',text:tx('fle_none')};
+  if(e.state&&e.state!=='In use') return {cls:'off',text:tx('fleSt')[e.state]||e.state};
+  if(e.calMode==='Not required') return {cls:'',text:tx('fle_nreq')};
+  if(e.calMode==='Before use') return {cls:'',text:tx('fle_before')};
   const due=fleDue(e), di=calMonth(due), n=new Date(), now=n.getFullYear()*12+n.getMonth();
-  if(di==null) return {cls:'warn',text:'calibration dates missing'};
+  if(di==null) return {cls:'warn',text:tx('fle_nodates')};
   const m=`${due.slice(5,7)}/${due.slice(2,4)}`;
-  return di<now?{cls:'crit',text:`calibration overdue since ${m}`}:di-now<=1?{cls:'warn',text:`calibration due ${m}`}:{cls:'ok',text:`calibrated until ${m}`};
+  return di<now?{cls:'crit',text:tx('fle_over',m)}:di-now<=1?{cls:'warn',text:tx('fle_due',m)}:{cls:'ok',text:tx('fle_ok',m)};
 }
 const fleById=id=>CAL.eq&&CAL.eq[id];
-const fleLabel=e=>[e.description||'(no description)',[e.brand,e.model].filter(Boolean).join(' ')].filter(Boolean).join(' · ');
-const fleChip=id=>{const e=fleById(id), s=CAL.eq?fleState(e):{cls:'',text:'calibration plan not loaded'}; return `<span class="chip fle ${s.cls}" title="${esc(`${e?fleLabel(e):id} · ${s.text}`)}">${esc(e?e.code:String(id).replace(/^eq-/,''))}</span>`;};
+const fleLabel=e=>[e.description||tx('noDesc'),[e.brand,e.model].filter(Boolean).join(' ')].filter(Boolean).join(' · ');
+const fleChip=id=>{const e=fleById(id), s=CAL.eq?fleState(e):{cls:'',text:tx('fle_noplan')}; return `<span class="chip fle ${s.cls}" title="${esc(`${e?fleLabel(e):id} · ${s.text}`)}">${esc(e?e.code:String(id).replace(/^eq-/,''))}</span>`;};
 const eqCap=b=>Math.max(1,parseInt(b?.capacidad)||1);
 const eqStateCls=s=>s==='Operational'?'ok':s==='Out of service'?'off':'no';
 const byName=(a,b)=>String(a.nombre||a.name||a.id||'').localeCompare(String(b.nombre||b.name||b.id||''),'en');
@@ -129,15 +127,15 @@ function toast(msg){const t=$('#toast'); t.textContent=msg; t.hidden=false; clea
 function errMsg(e){const c=e&&e.code;
   if(byMail()&&(c==='auth'||c==='not_granted'&&GH.expired)) return ta('au_e_save');
   if(byMail()&&(c==='not_granted'||c==='forbidden')) return ta('au_e_perm');
-  if(c==='not_granted'||c==='forbidden') return 'You cannot change data: connect GitHub with an account that has write access to the repository.'; if(c==='auth') return 'Your GitHub key is no longer valid. Connect GitHub again with a new key.'; if(c==='conflict') return 'Someone else saved at the same time. Your change was not saved; try again.'; if(c==='rate') return 'GitHub is limiting requests right now. Wait a minute and try again.'; if(c==='unavailable') return 'Could not reach GitHub. Check your connection and try again.'; return 'Could not save: '+(e&&e.message||e)}
-const estPill=s=>`<span class="pill est st-${ST_CLS[s]||'cola'}">${esc(s)}</span>`;
-const prioTag=p=>`<span class="prio ${esc(p||'Medium')}">${esc(p||'Medium')}</span>`;
-const resTag=r=>r?`<span class="res ${r==='N/A'?'NA':esc(r)}">${esc(r)}</span>`:'';
+  if(c==='not_granted'||c==='forbidden') return tx('e_perm'); if(c==='auth') return tx('e_auth'); if(c==='conflict') return tx('e_conflict'); if(c==='rate') return tx('e_rate'); if(c==='unavailable') return tx('e_net'); return tx('e_save',e&&e.message||e)}
+const estPill=s=>`<span class="pill est st-${ST_CLS[s]||'cola'}">${esc(stName(s))}</span>`;
+const prioTag=p=>`<span class="prio ${esc(p||'Medium')}">${esc(prioName(p||'Medium'))}</span>`;
+const resTag=r=>r?`<span class="res ${r==='N/A'?'NA':esc(r)}">${esc(resName(r))}</span>`:'';
 const projChip=t=>t.project?`<span class="chip proj" title="${esc(t.project)}">${esc(projectNo(t))}</span>`:'';
 const projectName=t=>{const s=String(t.project||''); const m=s.match(/^\s*[A-Za-z0-9]+\s*-\s+(.*)$/); return m?m[1]:(projectNo(t)===s?'':s)};
 const projCell=t=>t.project?`${projChip(t)}${projectName(t)?`<span class="pname">${esc(projectName(t))}</span>`:''}`:'<span class="muted">—</span>';
 const isoWeek=ms=>{const dt=new Date(ms); const day=(dt.getUTCDay()+6)%7; const th=ms-day*DAY+3*DAY; const y=new Date(th).getUTCFullYear(); return 1+Math.round((th-Date.UTC(y,0,4))/DAY/7-((new Date(Date.UTC(y,0,4)).getUTCDay()+6)%7-3)/7)};
-const WD=['Su','Mo','Tu','We','Th','Fr','Sa'];
+const wd=i=>tx('wd')[i];
 /* Sortable table header. cols: [key,label,cls?] */
 function sortHead(table,cols){const st=S.sort[table]; return `<tr>${cols.map(([k,l,c])=>k?`<th class="${c||''}"><button type="button" class="th-sort" data-act="sort" data-table="${table}" data-k="${k}" ${st.k===k?`aria-sort="${st.dir>0?'ascending':'descending'}"`:''}>${l}<span class="arr">${st.k===k?(st.dir>0?'▲':'▼'):'↕'}</span></button></th>`:`<th class="${c||''}">${l}</th>`).join('')}</tr>`;}
 function sortBy(list,table,getters,fallback){
@@ -147,9 +145,9 @@ function sortBy(list,table,getters,fallback){
     const c=typeof x==='number'&&typeof y==='number'?x-y:String(x).localeCompare(String(y),'en',{numeric:true,sensitivity:'base'}); return c*st.dir||fallback(a,b);});
 }
 function durHours(x){if(!x) return null; if(x.unit==='Hours') return x.val; if(x.unit==='Days') return x.val*24; if(x.unit==='Weeks') return x.val*168; if(x.unit==='Cycles') return x.cpd?x.val/x.cpd*24:null; return null;}
-const techSel=t=>{const p=personById(t.techId); if(S.ro) return `<span class="tech-cell ${p?'':'none'}">${esc(p?p.nombre:'Unassigned')}</span>`;
-  return `<select class="tech-sel ${p?'':'none'}" data-settech="${esc(t.id)}" aria-label="Technician of ${esc(baseRef(t))}"><option value="">Unassigned</option>${[...S.people].sort(byName).map(x=>`<option value="${esc(x.id)}" ${x.id===t.techId?'selected':''}>${esc(x.nombre)}</option>`).join('')}${t.techId&&!p?`<option value="${esc(t.techId)}" selected>(deleted person)</option>`:''}</select>`};
-const statusSel=t=>S.ro?estPill(t.status):`<select class="st-sel st-${ST_CLS[t.status]||'cola'}" data-setstatus="${esc(t.id)}" aria-label="Status of ${esc(baseRef(t))}">${STATUSES.map(s=>`<option ${s===t.status?'selected':''}>${s}</option>`).join('')}</select>`;
+const techSel=t=>{const p=personById(t.techId); if(S.ro) return `<span class="tech-cell ${p?'':'none'}">${esc(p?p.nombre:tx('unassigned'))}</span>`;
+  return `<select class="tech-sel ${p?'':'none'}" data-settech="${esc(t.id)}" aria-label="${esc(tx('a_techOf',baseRef(t)))}"><option value="">${esc(tx('unassigned'))}</option>${[...S.people].sort(byName).map(x=>`<option value="${esc(x.id)}" ${x.id===t.techId?'selected':''}>${esc(x.nombre)}</option>`).join('')}${t.techId&&!p?`<option value="${esc(t.techId)}" selected>${esc(tx('delPerson'))}</option>`:''}</select>`};
+const statusSel=t=>S.ro?estPill(t.status):`<select class="st-sel st-${ST_CLS[t.status]||'cola'}" data-setstatus="${esc(t.id)}" aria-label="${esc(tx('a_stOf',baseRef(t)))}">${STATUSES.map(s=>`<option value="${s}" ${s===t.status?'selected':''}>${esc(stName(s))}</option>`).join('')}</select>`;
 
 /* ---------- Duration and end date ---------- */
 /* A QTP can give its duration and technician hours per test or per sample; per sample they are
@@ -162,15 +160,15 @@ function effDur(t){
   const L=libOf(t);
   const cont=t.continuous==='yes'?true:t.continuous==='no'?false:!(L&&L.continuous===false);
   const cpd=+(t.cyclesPerDay||(L&&L.cyclesPerDay))||0;
-  if(+t.durVal>0) return {val:+t.durVal,unit:t.durUnit||'Hours',cont,cpd,src:'this test'};
+  if(+t.durVal>0) return {val:+t.durVal,unit:t.durUnit||'Hours',cont,cpd,src:tx('src_test')};
   /* Precedence: this test > QTP library per sample > QTP library per test > ARAS */
   if(L&&+L.durVal>0&&L.durBasis==='sample'){const unit=L.durUnit||'Hours', n=samplesOf(t);
-    return {val:round2(+L.durVal*n),unit,cont,cpd,src:`QTP library · ${L.durVal} ${UNIT_SHORT[unit]||unit} × ${n}${piecesSet(t)?'':' (pieces not set)'}`,perSample:true};}
-  if(L&&+L.durVal>0) return {val:+L.durVal,unit:L.durUnit||'Hours',cont,cpd,src:'QTP library'};
+    return {val:round2(+L.durVal*n),unit,cont,cpd,src:tx('src_libS',L.durVal,unitS(unit),n,piecesSet(t)),perSample:true};}
+  if(L&&+L.durVal>0) return {val:+L.durVal,unit:L.durUnit||'Hours',cont,cpd,src:tx('src_lib')};
   if(+t.arasDurVal>0) return {val:+t.arasDurVal,unit:normUnit(t.arasDurUnit)||'Hours',cont,cpd,src:'ARAS'};
   return null;
 }
-const durLabel=x=>x?`${x.val} ${UNIT_SHORT[x.unit]||x.unit}`:'—';
+const durLabel=x=>x?`${x.val} ${unitS(x.unit)}`:'—';
 function durDays(x){
   if(!x) return null; const v=x.val;
   if(x.unit==='Hours') return x.cont?{n:Math.max(1,Math.ceil(v/24)),work:false}:{n:Math.max(1,Math.ceil(v/8)),work:true};
@@ -224,9 +222,9 @@ function effTech(t){
   const s=d(t.start)??nextWork(todayMs()), ei=endInfo({...t,start:iso(s)});
   return planTotal(techPlan(t,s,Math.max(s,ei.end??s),ei.kind==='open'));
 }
-const loadSummary=q=>q.profile==='endurance'
-  ?`Endurance · setup ${+q.setupH||0} h · daily ${+q.dailyH||0} h${+q.reviewEvery&&+q.reviewH?` · review ${q.reviewH} h every ${q.reviewEvery} ${UNIT_SHORT[q.reviewUnit||'Hours']}`:''} · teardown ${+q.teardownH||0} h`
-  :(+q.techHours?`${q.techHours} h ${q.techBasis==='sample'?'per sample':'total'}, spread evenly`:'—');
+const enduBody=q=>tx('ld_endu',+q.setupH||0,+q.dailyH||0,+q.reviewEvery&&+q.reviewH?[q.reviewH,q.reviewEvery,unitS(q.reviewUnit||'Hours')]:null,+q.teardownH||0);
+const loadSummary=q=>q.profile==='endurance'?`${tx('prof_endu')} · ${enduBody(q)}`
+  :(+q.techHours?tx('ld_even',q.techHours,q.techBasis==='sample'):'—');
 
 /* ---------- Index: siblings, end dates, equipment load ---------- */
 function buildIndex(list){
@@ -267,32 +265,33 @@ function personHours(ix,pid,wk){
 /* ---------- Alerts (active tests only) ---------- */
 function testAlerts(t,ix){
   const out=[]; if(!ACTIVE.includes(t.status)||t.status==='Not approved') return out;
-  const push=(sev,short,text,key,occ)=>out.push({sev,short,text,key,occ});
+  const push=(sev,short,text,key,occ)=>out.push({sev,short:tx(short),text,key,occ});
   const T=todayMs(), b=eqById(t.equipmentId), p=personById(t.techId), ei=ix.END.get(t.id)||endInfo(t), s=d(t.start), e=ei.end, useEq=EQ_STATES.has(t.status);
-  if((t.status==='Planned'||RUNNING.has(t.status))&&s==null) push('warn','No start date',`${ref(t)}: ${t.status.toLowerCase()} without a start date.`);
-  if(useEq&&s!=null&&ei.kind==='open') push('warn','No duration',`${ref(t)}: no estimated duration on the test or in the QTP library, so the end date is unknown.`);
-  if(t.end&&s!=null&&d(t.end)<s) push('crit','Dates inconsistent',`${ref(t)}: the planned end is before the start.`);
+  const stl=()=>stName(t.status).toLowerCase();
+  if((t.status==='Planned'||RUNNING.has(t.status))&&s==null) push('warn','al_noStart',tx('al_noStart_t',ref(t),stl()));
+  if(useEq&&s!=null&&ei.kind==='open') push('warn','al_noDur',tx('al_noDur_t',ref(t)));
+  if(t.end&&s!=null&&d(t.end)<s) push('crit','al_dates',tx('al_dates_t',ref(t)));
   if(useEq&&b){
     const oc=ix.over.get(b.id);
-    if(oc&&oc.ids.has(t.id)) push('crit','Over capacity',`${eqName(b)}: ${oc.max} tests at the same time from ${fmtMs(oc.first)} (capacity ${eqCap(b)}).`,'cap:'+b.id,true);
-    const st=eqStatus(b); if(st!=='Operational'&&(e==null||e>=T)) push('crit','Equipment not operational',`${ref(t)}: ${eqName(b)} is in status "${st}".`);
+    if(oc&&oc.ids.has(t.id)) push('crit','al_cap',tx('al_cap_t',eqName(b),oc.max,fmtMs(oc.first),eqCap(b)),'cap:'+b.id,true);
+    const st=eqStatus(b); if(st!=='Operational'&&(e==null||e>=T)) push('crit','al_eqOff',tx('al_eqOff_t',ref(t),eqName(b),eqStName(st)));
     if(b.proximaCalibracion&&e!=null){const c=d(b.proximaCalibracion);
-      if(c<T) push('crit','Calibration expired',`${eqName(b)}: calibration expired on ${fmt(b.proximaCalibracion)} (used by ${ref(t)}).`,'calx:'+b.id);
-      else if(c<=e) push('warn','Calibration due',`${eqName(b)}: calibration due on ${fmt(b.proximaCalibracion)}, before ${ref(t)} ends (${fmtMs(e)}).`);}
+      if(c<T) push('crit','al_calx',tx('al_calx_t',eqName(b),fmt(b.proximaCalibracion),ref(t)),'calx:'+b.id);
+      else if(c<=e) push('warn','al_cald',tx('al_cald_t',eqName(b),fmt(b.proximaCalibracion),ref(t),fmtMs(e)));}
   }
-  if(p&&b&&(p.habilitaciones||[]).length&&!p.habilitaciones.includes(b.id)) push('warn','Not qualified',`${p.nombre} is not qualified on ${eqName(b)} (${ref(t)}).`);
+  if(p&&b&&(p.habilitaciones||[]).length&&!p.habilitaciones.includes(b.id)) push('warn','al_qual',tx('al_qual_t',p.nombre,eqName(b),ref(t)));
   const due=t.agreedDue||t.requestedDue;
   if(due){
-    const r=d(due), sev=t.flexible&&!t.agreedDue?'warn':'crit', which=t.agreedDue?'agreed':'requested', fl=t.flexible&&!t.agreedDue?' (flexible)':'';
-    if(t.status!=='Report'&&e!=null&&ei.kind!=='open'&&e>r) push(sev,'Ends after due date',`${ref(t)}: planned end ${fmtMs(e)} is after the ${which} date ${fmt(due)}${fl}.`);
-    else if(r<T) push(sev,'Overdue',`${ref(t)}: ${Math.round((T-r)/DAY)} days past the ${which} date ${fmt(due)}${fl}.`);
-    else if(t.status==='Queued'&&r-T<=10*DAY) push('warn','Due soon',`${ref(t)}: still queued and due on ${fmt(due)}.`);
+    const r=d(due), sev=t.flexible&&!t.agreedDue?'warn':'crit', ag=!!t.agreedDue, fl=t.flexible&&!t.agreedDue?tx('flexP'):'';
+    if(t.status!=='Report'&&e!=null&&ei.kind!=='open'&&e>r) push(sev,'al_late',tx('al_late_t',ref(t),fmtMs(e),ag,fmt(due),fl));
+    else if(r<T) push(sev,'al_over',tx('al_over_t',ref(t),Math.round((T-r)/DAY),ag,fmt(due),fl));
+    else if(t.status==='Queued'&&r-T<=10*DAY) push('warn','al_soon',tx('al_soon_t',ref(t),fmt(due)));
   }
-  if(RUNNING.has(t.status)&&e!=null&&ei.kind!=='open'&&e<T) push('warn','Past planned end',`${ref(t)}: planned end was ${fmtMs(e)} and it is still ${t.status.toLowerCase()}.`);
-  if(t.status==='On hold') push('warn','On hold',`${ref(t)} is on hold${t.holdReason?': '+t.holdReason:' (no reason given)'}.`);
+  if(RUNNING.has(t.status)&&e!=null&&ei.kind!=='open'&&e<T) push('warn','al_past',tx('al_past_t',ref(t),fmtMs(e),stl()));
+  if(t.status==='On hold') push('warn','al_hold',tx('al_hold_t',ref(t),t.holdReason));
   if(p&&s!=null&&e!=null&&TECH_STATES.has(t.status)&&+p.horasSemana){
     for(let w=mondayOf(Math.max(s,mondayOf(T)));w<=e&&w<mondayOf(T)+WEEKS_HEAT*7*DAY;w+=7*DAY){
-      const h=personHours(ix,p.id,w); if(h>+p.horasSemana*1.001){out.push({sev:'warn',short:'Technician overloaded',text:`${p.nombre} reaches ${Math.round(h/p.horasSemana*100)}% of capacity in the week of ${fmtMs(w)}.`,skipGlobal:true,occ:true}); break;}
+      const h=personHours(ix,p.id,w); if(h>+p.horasSemana*1.001){out.push({sev:'warn',short:tx('al_tech'),text:tx('al_tech_t',p.nombre,Math.round(h/p.horasSemana*100),fmtMs(w)),skipGlobal:true,occ:true}); break;}
     }
   }
   return out;
@@ -306,10 +305,10 @@ function computeAlerts(ix){
     for(const x of al){ if(x.skipGlobal) continue; if(x.key){ if(seen.has(x.key)) continue; seen.add(x.key);} global.push({...x,tid:x.key&&x.key.startsWith('cap:')?null:t.id}); }
   }
   for(const p of S.people){const cap=+p.horasSemana||0; if(!cap) continue;
-    for(let i=0;i<WEEKS_HEAT;i++){const w=mondayOf(T)+i*7*DAY, h=personHours(ix,p.id,w); if(h>cap*1.001){global.push({sev:h>cap*1.2?'crit':'warn',text:`${p.nombre}: ${Math.round(h)} h assigned in the week of ${fmtMs(w)} (capacity ${cap} h, ${Math.round(h/cap*100)}%).`,occ:true}); break;}}}
+    for(let i=0;i<WEEKS_HEAT;i++){const w=mondayOf(T)+i*7*DAY, h=personHours(ix,p.id,w); if(h>cap*1.001){global.push({sev:h>cap*1.2?'crit':'warn',text:tx('al_techG',p.nombre,Math.round(h),fmtMs(w),cap,Math.round(h/cap*100)),occ:true}); break;}}}
   for(const b of S.equipment){ if(!b.proximaCalibracion||seen.has('calx:'+b.id)) continue; const c=d(b.proximaCalibracion);
-    if(c<T) global.push({sev:'crit',text:`${eqName(b)}: calibration expired on ${fmt(b.proximaCalibracion)}.`});
-    else if(c-T<=30*DAY) global.push({sev:'warn',text:`${eqName(b)}: calibration due on ${fmt(b.proximaCalibracion)} (in ${Math.round((c-T)/DAY)} days).`}); }
+    if(c<T) global.push({sev:'crit',text:tx('al_calxG',eqName(b),fmt(b.proximaCalibracion))});
+    else if(c-T<=30*DAY) global.push({sev:'warn',text:tx('al_caldG',eqName(b),fmt(b.proximaCalibracion),Math.round((c-T)/DAY))}); }
   for(const [id,al] of per) per.set(id,al.filter(mine));
   global.sort((x,y)=>(x.sev==='crit'?0:1)-(y.sev==='crit'?0:1));
   return {global:global.filter(mine),per};
@@ -323,109 +322,112 @@ function render(){
   $('#qtp-list').innerHTML=[...S.qtps].sort(byName).map(q=>`<option value="${esc(q.code||q.id)}">${esc(q.name||'')}</option>`).join('');
   const crit=A.global.filter(a=>a.sev==='crit').length, nq=S.tests.filter(t=>t.status==='Queued').length, nh=S.tests.filter(t=>CLOSED.includes(t.status)).length, ns=APP!=='occupancy'?smpMissingCount():0;
   const views=VIEWS.filter(([k])=>!importHidden(k)); if(importHidden(S.view)) S.view=views[0][0];
-  $('#tabs').innerHTML=views.map(([k,l])=>`<button data-view="${k}" ${S.view===k?'aria-current="page"':''}>${k==='samples'?tx('tab'):l}${k==='samples'&&ns?`<span class="n warn" title="${esc(tx('k_miss'))}">${ns}</span>`:''}${k==='overview'&&A.global.length?`<span class="n ${crit?'crit':''}">${A.global.length}</span>`:''}${k==='queue'&&nq?`<span class="n">${nq}</span>`:''}${k==='history'&&nh?`<span class="n">${nh}</span>`:''}</button>`).join('');
+  $('#tabs').innerHTML=views.map(([k])=>`<button data-view="${k}" ${S.view===k?'aria-current="page"':''}>${esc(tx('v_'+k))}${k==='samples'&&ns?`<span class="n warn" title="${esc(tx('k_miss'))}">${ns}</span>`:''}${k==='overview'&&A.global.length?`<span class="n ${crit?'crit':''}">${A.global.length}</span>`:''}${k==='queue'&&nq?`<span class="n">${nq}</span>`:''}${k==='history'&&nh?`<span class="n">${nh}</span>`:''}</button>`).join('');
   $('#btn-new').hidden=S.ro||S.noDb||APP!=='tests';
   let banner='';
+  const pvTry=PREVIEW?tx('b_pvTry'):'';
   if(byMail()&&GH.noAccess) banner=`<div class="banner crit"><b>${ta('au_noapp')}</b></div>`;
   else if(byMail()&&GH.expired) banner=`<div class="banner crit">${ta('au_expired')} <button class="link" data-act="gh">${ta('au_again')}</button></div>`;
   else if(S.noDb&&LA&&!GH.login&&S.privateData) banner=`<div class="banner crit"><b>${ta('au_private')}</b> <button class="link" data-act="gh">${ta('au_btn')}</button></div>`;
   else if(S.noDb) banner=S.privateData
     ? (GH.login
-      ? `<div class="banner crit"><b>Your account ${esc(GH.login)} cannot see the lab data.</b> Ask the owner to add you to the private repository <span class="mono">${REPO.owner}/${REPO.repo}</span>.</div>`
-      : `<div class="banner crit"><b>The lab data is private.</b> Press Connect GitHub with an account that has access to see it${PREVIEW?`, or <button class="link" data-pv="demo-on">try the preview with example data</button>`:''}.</div>`)
-    : `<div class="banner crit"><b>Could not load the lab data from GitHub.</b> Check your connection and reload the page${PREVIEW?`, or <button class="link" data-pv="demo-on">try the preview with example data</button>`:''}.</div>`;
-  else if(PREVIEW&&DEMO) banner=`<div class="banner"><b>Preview with example data.</b> The data is invented and changes are kept only in this browser; nothing is read from or sent to GitHub. You can also import an ARAS export to try it. <button class="link" data-pv="demo-reset">Reset the example data</button> · <button class="link" data-pv="demo-off">Use the real data</button></div>`;
-  else if(PREVIEW&&remote.data) banner=`<div class="banner"><b>Preview version.</b> It shows the real data from <span class="mono">lab-data</span>, but changes are not saved to GitHub: they stay in this page until you reload it.</div>`;
-  else if(GH.invalid) banner=`<div class="banner crit">Your GitHub key is no longer valid or has expired. <button class="link" data-act="gh">Connect GitHub</button> and paste a new one.</div>`;
-  else if(!byMail()&&GH.login&&!GH.push) banner=`<div class="banner">Your GitHub account <b>${esc(GH.login)}</b> cannot edit this repository. Ask to be added as a collaborator with the Write role.</div>`;
+      ? `<div class="banner crit">${tx('b_noRead',esc(GH.login),`${REPO.owner}/${REPO.repo}`)}</div>`
+      : `<div class="banner crit">${tx('b_private',pvTry)}</div>`)
+    : `<div class="banner crit">${tx('b_noLoad',pvTry)}</div>`;
+  else if(PREVIEW&&DEMO) banner=`<div class="banner">${tx('b_demo')}</div>`;
+  else if(PREVIEW&&remote.data) banner=`<div class="banner">${tx('b_pvReal')}</div>`;
+  else if(GH.invalid) banner=`<div class="banner crit">${tx('b_invalid')}</div>`;
+  else if(!byMail()&&GH.login&&!GH.push) banner=`<div class="banner">${tx('b_noPush',esc(GH.login))}</div>`;
   else if(byMail()&&GH.login&&!GH.push) banner=`<div class="banner">${ta('au_ro',esc(GH.login))}</div>`;
   else if(S.ro&&LA&&!GH.login) banner=`<div class="banner">${ta('au_ro_out')} <button class="link" data-act="gh">${ta('au_btn')}</button></div>`;
-  else if(S.ro) banner=`<div class="banner">Read-only. To create or change tests, <button class="link" data-act="gh">connect GitHub</button> with an account that has write access to the repository.</div>`;
+  else if(S.ro) banner=`<div class="banner">${tx('b_ro')}</div>`;
   renderGh();
   const loading=!S.noDb&&S.loaded.size<6;
   const fn={overview:vOverview,board:vBoard,queue:vQueue,planning:vPlanning,samples:vSamples,occupancy:vOccupancy,history:vHistory,resources:vResources,library:vLibrary,import:vImport}[S.view]||vOverview;
-  $('#view').innerHTML=banner+(loading?`<div class="empty"><h3>Loading lab data…</h3></div>`:fn(A));
+  $('#view').innerHTML=banner+(loading?`<div class="empty"><h3>${tx('loading')}</h3></div>`:fn(A));
 }
 function noTests(){
-  if(APP==='occupancy') return `<div class="empty"><p class="eyebrow">No tests yet</p><h3>Nothing to plan yet</h3><p>Tests are created in <a href="../control-ensayos/">Control de ensayos</a>, by hand or from the ARAS export. They appear here as soon as they are saved.</p></div>`;
-  return `<div class="empty"><p class="eyebrow">No tests yet</p><h3>Import your ARAS export to get started</h3>
-  <p>Export the lab request search from ARAS to Excel and load it in <b>Import ARAS</b>. Each row becomes one test identified by its PLR and QTP. You can also create tests by hand with <b>+ New test</b>.</p>
-  <div class="row">${S.ro||S.noDb?'':`<button class="btn primary" data-view="import">Import from ARAS</button><button class="btn" data-view="resources">Check equipment & team</button><button class="btn ghost" data-view="library">Open QTP library</button>`}</div></div>`;
+  if(APP==='occupancy') return `<div class="empty"><p class="eyebrow">${tx('nt_eyebrow')}</p><h3>${tx('nt_occ_h')}</h3><p>${tx('nt_occ_p')}</p></div>`;
+  return `<div class="empty"><p class="eyebrow">${tx('nt_eyebrow')}</p><h3>${tx('nt_h')}</h3>
+  <p>${tx('nt_p')}</p>
+  <div class="row">${S.ro||S.noDb?'':`<button class="btn primary" data-view="import">${tx('nt_imp')}</button><button class="btn" data-view="resources">${tx('nt_res')}</button><button class="btn ghost" data-view="library">${tx('nt_lib')}</button>`}</div></div>`;
 }
 const active=()=>S.tests.filter(counts);
-const searchBox=()=>`<input class="search" id="q" type="search" placeholder="Search PLR, QTP, project, requester…" value="${esc(S.q)}" aria-label="Search">`;
+const searchBox=()=>`<input class="search" id="q" type="search" placeholder="${esc(tx('search_ph'))}" value="${esc(S.q)}" aria-label="${esc(tx('a_search'))}">`;
 function matchQ(t){ if(!S.q) return true; const q=S.q.toLowerCase(); return [t.plr,t.qtp,t.title,t.project,t.requester,t.comments,eqName(eqById(t.equipmentId)),personById(t.techId)?.nombre,t.arasEquipment].some(v=>String(v||'').toLowerCase().includes(q)); }
 
 /* Alerts panel. In each app it lists only that app's alerts (see computeAlerts). */
 function alertsPanel(A){
-  const none=APP==='occupancy'?'No conflicts: no equipment over capacity and no overloaded technicians.':'No tests past their dates and no blocked or inconsistent tests.';
-  return `<section class="panel"><div class="panel-h"><h2>Alerts</h2><span class="muted">${A.global.length} active · completed, cancelled and not approved tests never raise alerts</span></div>
-    ${A.global.length?`<ul class="alerts">${A.global.map(a=>`<li class="${a.sev}" ${a.tid?`data-act="edit" data-id="${esc(a.tid)}"`:''}><span class="sev">${a.sev==='crit'?'Critical':'Warning'}</span><span>${esc(a.text)}</span></li>`).join('')}</ul>`:`<div class="empty-ok">${none}</div>`}
+  const none=tx(APP==='occupancy'?'al_none_occ':'al_none');
+  return `<section class="panel"><div class="panel-h"><h2>${tx('alerts')}</h2><span class="muted">${tx('alerts_sub',A.global.length)}</span></div>
+    ${A.global.length?`<ul class="alerts">${A.global.map(a=>`<li class="${a.sev}" ${a.tid?`data-act="edit" data-id="${esc(a.tid)}"`:''}><span class="sev">${tx(a.sev==='crit'?'sev_crit':'sev_warn')}</span><span>${esc(a.text)}</span></li>`).join('')}</ul>`:`<div class="empty-ok">${none}</div>`}
   </section>`;
 }
+const kpiBtn=(view,lab,val,sub,cls='')=>`<button class="kpi ${cls}" data-view="${view}"><span class="eyebrow">${esc(lab)}</span><b>${val}</b><span class="muted">${esc(sub)}</span></button>`;
 function vOverview(A){
   if(!S.tests.length) return noTests();
   const T=todayMs(), act=active(), n=s=>act.filter(t=>t.status===s).length;
   const overdue=act.filter(t=>{const due=t.agreedDue||t.requestedDue; return due&&d(due)<T}).length;
-  const date=new Date().toLocaleDateString('en-GB',{weekday:'long',day:'numeric',month:'long',year:'numeric'});
+  const date=new Date().toLocaleDateString(LL.locale(),{weekday:'long',day:'numeric',month:'long',year:'numeric'});
   if(APP==='occupancy') return vLoadOverview(A,date);
-  return `<div class="view-h"><h2>Lab overview</h2><span class="muted">${date}</span></div>
+  return `<div class="view-h"><h2>${tx('ov_h')}</h2><span class="muted">${date}</span></div>
   <section class="kpis">
-    <button class="kpi" data-view="board"><span class="eyebrow">In progress</span><b>${n('In progress')}</b><span class="muted">${n('Planned')} planned</span></button>
-    <button class="kpi" data-view="board"><span class="eyebrow">Endurance running</span><b>${n('Endurance running')}</b><span class="muted">long-running tests</span></button>
-    <button class="kpi" data-view="queue"><span class="eyebrow">Queued</span><b>${n('Queued')}</b><span class="muted">waiting to be planned</span></button>
-    <button class="kpi" data-view="board"><span class="eyebrow">Report</span><b>${n('Report')}</b><span class="muted">tests finished, report in writing</span></button>
-    <button class="kpi ${n('On hold')?'warn':''}" data-view="board"><span class="eyebrow">On hold</span><b>${n('On hold')}</b><span class="muted">blocked tests</span></button>
-    <button class="kpi ${overdue?'crit':''}" data-view="queue"><span class="eyebrow">Overdue</span><b>${overdue}</b><span class="muted">past requested or agreed date</span></button>
+    ${kpiBtn('board',stName('In progress'),n('In progress'),tx('ov_planned',n('Planned')))}
+    ${kpiBtn('board',stName('Endurance running'),n('Endurance running'),tx('ov_endu'))}
+    ${kpiBtn('queue',stName('Queued'),n('Queued'),tx('ov_queued'))}
+    ${kpiBtn('board',stName('Report'),n('Report'),tx('ov_report'))}
+    ${kpiBtn('board',stName('On hold'),n('On hold'),tx('ov_hold'),n('On hold')?'warn':'')}
+    ${kpiBtn('queue',tx('ov_overdue'),overdue,tx('ov_overdue_s'),overdue?'crit':'')}
   </section>
   ${alertsPanel(A)}`;
 }
+const heatLegend=(extra='')=>`<div class="legend"><span><i style="background:var(--h1)"></i>≤ 40%</span><span><i style="background:var(--h2)"></i>41–75%</span><span><i style="background:var(--h3)"></i>76–100%</span><span><i style="background:var(--crit)"></i>&gt; 100% ${tx('lg_over')}</span>${extra}</div>`;
 /* Occupancy app overview: load this week, weekly heat maps for the team and the equipment, and load alerts. */
 function vLoadOverview(A,date){
   const T=todayMs(), M=mondayOf(T);
   const weeks=[...Array(WEEKS_HEAT)].map((_,i)=>M+i*7*DAY);
   const cls=p=>p<=0?'':p<=40?'h1':p<=75?'h2':p<=100?'h3':'hx';
-  const head=`<tr><th></th>${weeks.map((w,i)=>`<th class="wk ${i===0?'now':''}">${i===0?'This wk':fmtMs(w).slice(0,5)}</th>`).join('')}</tr>`;
-  const pRows=[...S.people].sort(byName).map(p=>{const cap=+p.horasSemana||0; return `<tr><th class="rl" title="${esc(p.nombre)}">${esc(p.nombre)}</th>${weeks.map(w=>{const h=personHours(IX,p.id,w), pc=cap?h/cap*100:0; return `<td class="${cls(pc)}" title="${Math.round(h)} h of ${cap} h">${pc?Math.round(pc)+'%':'·'}</td>`}).join('')}</tr>`}).join('');
-  const bRows=[...S.equipment].sort(byName).map(b=>`<tr><th class="rl" title="${esc(eqName(b))} · capacity ${eqCap(b)}">${esc(eqName(b))}</th>${weeks.map(w=>{const pc=eqWeekPct(IX,b.id,w); return `<td class="${cls(pc)}" title="${Math.round(pc)}% of ${eqCap(b)} slot(s)">${pc?Math.round(pc)+'%':'·'}</td>`}).join('')}</tr>`).join('');
+  const head=`<tr><th></th>${weeks.map((w,i)=>`<th class="wk ${i===0?'now':''}">${i===0?tx('thisWk'):fmtMs(w).slice(0,5)}</th>`).join('')}</tr>`;
+  const pRows=[...S.people].sort(byName).map(p=>{const cap=+p.horasSemana||0; return `<tr><th class="rl" title="${esc(p.nombre)}">${esc(p.nombre)}</th>${weeks.map(w=>{const h=personHours(IX,p.id,w), pc=cap?h/cap*100:0; return `<td class="${cls(pc)}" title="${esc(tx('hOf',Math.round(h),cap))}">${pc?Math.round(pc)+'%':'·'}</td>`}).join('')}</tr>`}).join('');
+  const bRows=[...S.equipment].sort(byName).map(b=>`<tr><th class="rl" title="${esc(eqName(b))} · ${esc(tx('capN',eqCap(b)))}">${esc(eqName(b))}</th>${weeks.map(w=>{const pc=eqWeekPct(IX,b.id,w); return `<td class="${cls(pc)}" title="${esc(tx('slotPct',Math.round(pc),eqCap(b)))}">${pc?Math.round(pc)+'%':'·'}</td>`}).join('')}</tr>`).join('');
   const hours=S.people.reduce((a,p)=>a+personHours(IX,p.id,M),0), capH=S.people.reduce((a,p)=>a+(+p.horasSemana||0),0);
   const inUse=S.equipment.filter(b=>eqCount(IX,b.id,T)>0).length, over=IX.over.size;
   const overP=S.people.filter(p=>+p.horasSemana&&personHours(IX,p.id,M)>+p.horasSemana*1.001).length;
-  return `<div class="view-h"><h2>Occupancy overview</h2><span class="muted">${date}</span></div>
+  return `<div class="view-h"><h2>${tx('ovo_h')}</h2><span class="muted">${date}</span></div>
   <section class="kpis">
-    <button class="kpi" data-view="occupancy"><span class="eyebrow">Team load this week</span><b>${capH?Math.round(hours/capH*100):0}%</b><span class="muted">${fmtH(hours)} h of ${fmtH(capH)} h</span></button>
-    <button class="kpi ${overP?'warn':''}" data-view="occupancy"><span class="eyebrow">Overloaded technicians</span><b>${overP}</b><span class="muted">this week</span></button>
-    <button class="kpi" data-view="resources"><span class="eyebrow">Equipment in use today</span><b>${inUse}</b><span class="muted">of ${S.equipment.length}</span></button>
-    <button class="kpi ${over?'crit':''}" data-view="planning"><span class="eyebrow">Over capacity</span><b>${over}</b><span class="muted">equipment double-booked</span></button>
+    ${kpiBtn('occupancy',tx('ovo_team'),`${capH?Math.round(hours/capH*100):0}%`,tx('hOf',fmtH(hours),fmtH(capH)))}
+    ${kpiBtn('occupancy',tx('ovo_overP'),overP,tx('ovo_thisWk'),overP?'warn':'')}
+    ${kpiBtn('resources',tx('ovo_inUse'),inUse,tx('ofN',S.equipment.length))}
+    ${kpiBtn('planning',tx('al_cap'),over,tx('ovo_over_s'),over?'crit':'')}
   </section>
   <div class="grid2">
     ${alertsPanel(A)}
-    <section class="panel"><div class="panel-h"><h2>Occupancy, next ${WEEKS_HEAT} weeks</h2></div>
-      <p class="eyebrow" style="margin-bottom:4px">Team · assigned hours / weekly capacity</p>
-      ${pRows?`<div class="scroll-x"><table class="heat">${head}${pRows}</table></div>`:'<p class="muted">No team members yet.</p>'}
-      <p class="eyebrow" style="margin:14px 0 4px">Equipment · slot-days used / available (capacity × 7)</p>
-      ${bRows?`<div class="scroll-x"><table class="heat">${head}${bRows}</table></div>`:'<p class="muted">No equipment yet.</p>'}
-      <div class="legend"><span><i style="background:var(--h1)"></i>≤ 40%</span><span><i style="background:var(--h2)"></i>41–75%</span><span><i style="background:var(--h3)"></i>76–100%</span><span><i style="background:var(--crit)"></i>&gt; 100% overbooked</span></div>
+    <section class="panel"><div class="panel-h"><h2>${tx('ovo_next',WEEKS_HEAT)}</h2></div>
+      <p class="eyebrow" style="margin-bottom:4px">${tx('ovo_teamH')}</p>
+      ${pRows?`<div class="scroll-x"><table class="heat">${head}${pRows}</table></div>`:`<p class="muted">${tx('noPeople')}</p>`}
+      <p class="eyebrow" style="margin:14px 0 4px">${tx('ovo_eqH')}</p>
+      ${bRows?`<div class="scroll-x"><table class="heat">${head}${bRows}</table></div>`:`<p class="muted">${tx('noEq')}</p>`}
+      ${heatLegend()}
     </section>
   </div>`;
 }
 
 function planText(t){
   const ei=IX.END.get(t.id)||endInfo(t);
-  if(ei.kind==='none'){const x=effDur(t); return x?`not scheduled · est. ${durLabel(x)}`:'not scheduled';}
+  if(ei.kind==='none'){const x=effDur(t); return tx('pl_ns',x?durLabel(x):'');}
   return `${fmt(t.start)} → ${ei.kind==='auto'?'~':ei.kind==='open'?'?':''}${fmtMs(ei.end)}`;
 }
-function dueText(t){const due=t.agreedDue||t.requestedDue; return due?`${fmt(due)}${t.agreedDue?' (agreed)':''}${t.flexible&&!t.agreedDue?'<span class="flex">flex</span>':''}`:'—';}
+function dueText(t){const due=t.agreedDue||t.requestedDue; return due?`${fmt(due)}${t.agreedDue?esc(tx('agreedP')):''}${t.flexible&&!t.agreedDue?`<span class="flex">${esc(tx('flex'))}</span>`:''}`:'—';}
 function card(t,al){
   const b=eqById(t.equipmentId), p=personById(t.techId), cls=ST_CLS[t.status]||'cola', g=IX.tag.get(t.id);
   const uniq=[...new Map(al.map(x=>[x.short,x])).values()];
   return `<article class="card st-${cls} ${al.some(x=>x.sev==='crit')?'has-crit':''}" draggable="${!S.ro}" data-act="edit" data-id="${esc(t.id)}" tabindex="0">
     <div class="card-top"><span class="ref">${esc(baseRef(t))}</span>${prioTag(t.priority)}</div>
     ${g?`<div class="tagline">${esc(g)}</div>`:''}
-    <h4>${esc(t.title||'(no description)')}</h4>
-    <div class="chips">${projChip(t)}${t.requester?`<span class="by">by ${esc(t.requester)}</span>`:''}${smpTestChip(t)}</div>
-    <dl class="meta"><div><dt>Equipment</dt><dd>${esc(b?eqName(b):(t.arasEquipment?t.arasEquipment+' (ARAS)':'—'))}</dd></div><div><dt>Technician</dt><dd>${esc(p?p.nombre:'—')}</dd></div>
-    <div><dt>Plan</dt><dd>${esc(planText(t))}</dd></div><div><dt>Due</dt><dd>${dueText(t)}</dd></div></dl>
+    <h4>${esc(t.title||tx('noDesc'))}</h4>
+    <div class="chips">${projChip(t)}${t.requester?`<span class="by">${esc(tx('by'))} ${esc(t.requester)}</span>`:''}${smpTestChip(t)}</div>
+    <dl class="meta"><div><dt>${tx('c_eq')}</dt><dd>${esc(b?eqName(b):(t.arasEquipment?t.arasEquipment+' (ARAS)':'—'))}</dd></div><div><dt>${tx('c_tech')}</dt><dd>${esc(p?p.nombre:'—')}</dd></div>
+    <div><dt>${tx('c_planL')}</dt><dd>${esc(planText(t))}</dd></div><div><dt>${tx('c_due')}</dt><dd>${dueText(t)}</dd></div></dl>
     ${['In progress','Endurance running','Report','On hold'].includes(t.status)?`<div class="prog" title="${+t.progress||0}%"><span style="width:${Math.min(100,+t.progress||0)}%"></span></div>`:''}
     ${uniq.length?`<ul class="card-al">${uniq.map(x=>`<li class="${x.sev}">${esc(x.short)}</li>`).join('')}</ul>`:''}
   </article>`;
@@ -434,17 +436,17 @@ const sortQueue=(a,b)=>(PRIO_RANK[a.priority]??2)-(PRIO_RANK[b.priority]??2)||(d
 function vBoard(A){
   if(!S.tests.length) return noTests();
   const cols=ACTIVE.map(s=>{const list=S.tests.filter(t=>t.status===s&&matchQ(t)).sort(sortQueue);
-    return `<section class="col st-${ST_CLS[s]}" data-drop="${s}"><div class="col-h"><h3>${s}</h3><span class="mono">${list.length}</span></div>${list.map(t=>card(t,A.per.get(t.id)||[])).join('')}</section>`}).join('');
-  return `<div class="view-h"><h2>Test board</h2>${searchBox()}</div>
-  <p class="muted" style="margin:0">${S.ro?'':'Drag a card to change its status, or open it to edit. Report = test finished, report being written.'}</p>
+    return `<section class="col st-${ST_CLS[s]}" data-drop="${s}"><div class="col-h"><h3>${esc(stName(s))}</h3><span class="mono">${list.length}</span></div>${list.map(t=>card(t,A.per.get(t.id)||[])).join('')}</section>`}).join('');
+  return `<div class="view-h"><h2>${tx('bd_h')}</h2>${searchBox()}</div>
+  <p class="muted" style="margin:0">${S.ro?'':tx('bd_help')}</p>
   <div class="board">${cols}</div>
-  ${S.ro?'':`<div class="close-row"><div class="close-zone st-cerr" data-drop="Completed">Drop here to mark as <b>Completed</b> and move it to History</div><div class="close-zone st-canc" data-drop="Cancelled">Drop here to mark as <b>Cancelled</b> and move it to History</div></div>`}`;
+  ${S.ro?'':`<div class="close-row"><div class="close-zone st-cerr" data-drop="Completed">${tx('bd_done')}</div><div class="close-zone st-canc" data-drop="Cancelled">${tx('bd_canc')}</div></div>`}`;
 }
 
 function vQueue(){
   if(!S.tests.length) return noTests();
   const T=todayMs();
-  const due=t=>{const dd=t.agreedDue||t.requestedDue, n=daysTo(dd); if(n==null) return '<span class="muted">—</span>'; const c=n<0?(t.flexible&&!t.agreedDue?'warn':'crit'):n<=10?'warn':''; return `<span class="due ${c}">${dueText(t)}<br><small>${n<0?`${-n} d overdue`:n===0?'today':`in ${n} d`}</small></span>`};
+  const due=t=>{const dd=t.agreedDue||t.requestedDue, n=daysTo(dd); if(n==null) return '<span class="muted">—</span>'; const c=n<0?(t.flexible&&!t.agreedDue?'warn':'crit'):n<=10?'warn':''; return `<span class="due ${c}">${dueText(t)}<br><small>${esc(n<0?tx('d_over',-n):n===0?tx('today'):tx('d_in',n))}</small></span>`};
   const counts=Object.fromEntries(ACTIVE.map(s=>[s,S.tests.filter(t=>t.status===s).length]));
   const list=S.tests.filter(t=>S.qst.includes(t.status)&&matchQ(t));
   const G={tech:t=>personById(t.techId)?.nombre||null,id:t=>baseRef(t),project:t=>t.project||null,test:t=>t.title||null,requester:t=>t.requester||null,
@@ -452,21 +454,21 @@ function vQueue(){
     start:t=>d(t.start),end:t=>{const ei=IX.END.get(t.id); return ei&&ei.kind!=='open'&&ei.kind!=='none'?ei.end:null},status:t=>STATUSES.indexOf(t.status),priority:t=>PRIO_RANK[t.priority]??2};
   const fallback=(a,b)=>STATUSES.indexOf(b.status)-STATUSES.indexOf(a.status)||sortQueue(a,b);
   sortBy(list,'queue',G,fallback);
-  const dateIn=(t,field,val,cls,extra='')=>`<input type="date" class="cell-date ${cls}" data-setdate="${esc(t.id)}" data-field="${field}" value="${esc(val||'')}" aria-label="${field==='start'?'Start date':'End date'} of ${esc(baseRef(t))}" ${extra}>`;
+  const dateIn=(t,field,val,cls,extra='')=>`<input type="date" class="cell-date ${cls}" data-setdate="${esc(t.id)}" data-field="${field}" value="${esc(val||'')}" aria-label="${esc(tx(field==='start'?'a_startOf':'a_endOf',baseRef(t)))}" ${extra}>`;
   const startCell=t=>{if(t.status==='Not approved') return '<span class="muted">—</span>';
-    const fr=APP==='occupancy'&&!t.start&&t.equipmentId?freeFrom(IX,t.equipmentId,t.id):null, hint=fr==null?'':`<span class="sub">free ${fr===T?'today':fmtMs(fr)}</span>`;
+    const fr=APP==='occupancy'&&!t.start&&t.equipmentId?freeFrom(IX,t.equipmentId,t.id):null, hint=fr==null?'':`<span class="sub">${esc(tx('freeFrom',fr===T?tx('today'):fmtMs(fr)))}</span>`;
     return S.ro?(t.start?fmt(t.start):'<span class="muted">—</span>')+hint:dateIn(t,'start',t.start,'')+hint};
   const endCell=t=>{if(t.status==='Not approved') return '<span class="muted">—</span>'; const ei=IX.END.get(t.id)||endInfo(t), manual=!!t.end;
     const val=manual?t.end:ei.kind==='auto'?iso(ei.end):'';
-    const sub=manual?'manual':ei.kind==='auto'?'auto':t.start?'no duration':'';
+    const sub=manual?tx('end_manual'):ei.kind==='auto'?tx('end_auto'):t.start?tx('end_nodur'):'';
     if(S.ro) return (val?(manual?'':'~')+fmt(val):'<span class="muted">—</span>');
-    return dateIn(t,'end',val,manual?'':'auto',t.start?'title="Clear the date to compute it from start + duration"':'disabled title="Set a start date first"')+(sub?`<span class="sub" title="${manual?'Set by hand. Clear the date to go back to start + estimated duration.':'Start + estimated duration'}">${sub}</span>`:'')};
+    return dateIn(t,'end',val,manual?'':'auto',t.start?`title="${esc(tx('end_t_clear'))}"`:`disabled title="${esc(tx('end_t_first'))}"`)+(sub?`<span class="sub" title="${esc(tx(manual?'end_t_manual':'end_t_auto'))}">${esc(sub)}</span>`:'')};
   const rows=list.map(t=>{const b=eqById(t.equipmentId), x=effDur(t);
-    return `<tr class="click strow st-${ST_CLS[t.status]||'cola'}" data-act="edit" data-id="${esc(t.id)}"><td class="ref nowrap">${esc(baseRef(t))}${IX.tag.get(t.id)?`<small>${esc(IX.tag.get(t.id))}</small>`:''}</td><td>${techSel(t)}</td><td>${statusSel(t)}</td><td>${projCell(t)}</td><td><b>${esc(t.title||'')}</b>${t.comments?`<span class="snip" title="${esc(t.comments)}">${esc(t.comments.replace(/\s+/g,' '))}</span>`:''}</td><td class="nowrap">${startCell(t)}</td><td class="nowrap">${endCell(t)}</td><td class="nowrap">${x?`${durLabel(x)}<br><small class="muted">${esc(x.src)}</small>`:'<span class="muted">no estimate</span>'}</td><td class="nowrap">${due(t)}</td><td>${esc(t.requester||'—')}</td></tr>`}).join('');
-  return `<div class="view-h"><h2>Test queue</h2>${searchBox()}</div>
-  <div class="row" role="group" aria-label="Statuses shown"><span class="muted" style="font-size:13px">Show:</span>${ACTIVE.map(s=>`<button type="button" class="chipbtn st-${ST_CLS[s]}" data-act="qst" data-s="${s}" aria-pressed="${S.qst.includes(s)}">${s} · ${counts[s]}</button>`).join('')}</div>
-  <section class="panel"><div class="panel-h"><h2>${list.length} test${list.length===1?'':'s'}</h2><span class="muted">Click a column header to sort. Technician, status, start and end dates can be changed directly in the table. Setting a start date on a queued test moves it to Planned.</span></div>
-  ${list.length?`<div class="scroll-x"><table class="tbl compact"><thead>${sortHead('queue',[['id','PLR · QTP'],['tech','Technician'],['status','Status'],['project','Project'],['test','Test · comments'],['start','Start date'],['end','End date'],['dur','Est. duration'],['due','Due'],['requester','Requester']])}</thead><tbody>${rows}</tbody></table></div>`:'<div class="empty-ok">No tests with the selected statuses.</div>'}
+    return `<tr class="click strow st-${ST_CLS[t.status]||'cola'}" data-act="edit" data-id="${esc(t.id)}"><td class="ref nowrap">${esc(baseRef(t))}${IX.tag.get(t.id)?`<small>${esc(IX.tag.get(t.id))}</small>`:''}</td><td>${techSel(t)}</td><td>${statusSel(t)}</td><td>${projCell(t)}</td><td><b>${esc(t.title||'')}</b>${t.comments?`<span class="snip" title="${esc(t.comments)}">${esc(t.comments.replace(/\s+/g,' '))}</span>`:''}</td><td class="nowrap">${startCell(t)}</td><td class="nowrap">${endCell(t)}</td><td class="nowrap">${x?`${durLabel(x)}<br><small class="muted">${esc(x.src)}</small>`:`<span class="muted">${tx('noEst')}</span>`}</td><td class="nowrap">${due(t)}</td><td>${esc(t.requester||'—')}</td></tr>`}).join('');
+  return `<div class="view-h"><h2>${tx('q_h')}</h2>${searchBox()}</div>
+  <div class="row" role="group" aria-label="${esc(tx('a_stShown'))}"><span class="muted" style="font-size:13px">${tx('show')}</span>${ACTIVE.map(s=>`<button type="button" class="chipbtn st-${ST_CLS[s]}" data-act="qst" data-s="${s}" aria-pressed="${S.qst.includes(s)}">${esc(stName(s))} · ${counts[s]}</button>`).join('')}</div>
+  <section class="panel"><div class="panel-h"><h2>${tx('nTests',list.length)}</h2><span class="muted">${tx('q_help')}</span></div>
+  ${list.length?`<div class="scroll-x"><table class="tbl compact"><thead>${sortHead('queue',[['id','PLR · QTP'],['tech',tx('col_tech')],['status',tx('col_status')],['project',tx('col_project')],['test',tx('col_test')],['start',tx('col_start')],['end',tx('col_end')],['dur',tx('col_dur')],['due',tx('col_due')],['requester',tx('col_req')]])}</thead><tbody>${rows}</tbody></table></div>`:`<div class="empty-ok">${tx('q_none')}</div>`}
   </section>`;
 }
 function lanes(items){const ends=[],out=[]; for(const it of [...items].sort((a,b)=>a.s-b.s)){let l=ends.findIndex(x=>x<it.s); if(l<0){l=ends.length; ends.push(it.e);} else ends[l]=it.e; out.push({...it,lane:l});} return {out,n:Math.max(1,ends.length)};}
@@ -475,34 +477,34 @@ function vPlanning(){
   const T=todayMs(), W=S.dayW, dayMode=W>=26, start=mondayOf(T)-7*DAY, nW=dayMode?8:14, days=nW*7, end=start+(days-1)*DAY, labW=window.innerWidth<600?130:220;
   const item=t=>{const s=d(t.start), ei=IX.END.get(t.id); if(s==null||!ei||ei.end==null) return null; const e=Math.max(s,ei.end); if(e<start||s>end) return null; return {t,s,e,kind:ei.kind}};
   const bar=(x,light)=>{const a=Math.max(x.s,start), b=Math.min(x.e,end), left=(a-start)/DAY*W, w=((b-a)/DAY+1)*W-2, eq=eqById(x.t.equipmentId), p=personById(x.t.techId);
-    return `<button class="bar st-${ST_CLS[x.t.status]} ${x.kind==='open'?'open':''} ${light?'light':''}" style="left:${left+1}px;width:${Math.max(w,6)}px;top:${x.lane*26+4}px" data-act="edit" data-id="${esc(x.t.id)}" title="${esc(`${ref(x.t)} · ${x.t.title||''}\n${fmtMs(x.s)} → ${x.kind==='open'?'end unknown':fmtMs(x.e)} · ${x.t.status}\n${eq?eqName(eq):'no equipment'} · ${p?p.nombre:'no technician'}`)}">${esc(baseRef(x.t))} · ${esc(x.t.title||'')}</button>`};
+    return `<button class="bar st-${ST_CLS[x.t.status]} ${x.kind==='open'?'open':''} ${light?'light':''}" style="left:${left+1}px;width:${Math.max(w,6)}px;top:${x.lane*26+4}px" data-act="edit" data-id="${esc(x.t.id)}" title="${esc(`${ref(x.t)} · ${x.t.title||''}\n${fmtMs(x.s)} → ${x.kind==='open'?tx('endUnknown'):fmtMs(x.e)} · ${stName(x.t.status)}\n${eq?eqName(eq):tx('noEqL')} · ${p?p.nombre:tx('noTechL')}`)}">${esc(baseRef(x.t))} · ${esc(x.t.title||'')}</button>`};
   let weekend=''; for(let t=start;t<=end;t+=DAY) if(!isWork(t)) weekend+=`<div class="weekend" style="left:${(t-start)/DAY*W}px;width:${W}px"></div>`;
   const todayL=`<div class="today" style="left:${(T-start)/DAY*W+W/2}px"></div>`;
   const row=(label,sub,items,conf,lightFn)=>{const L=lanes(items.filter(Boolean)), h=Math.max(46,L.n*26+8);
     return `<div class="g-lab ${conf?'conf':''}" style="height:${h}px"><b title="${esc(label)}">${esc(label)}</b><small>${sub}</small></div><div class="g-track" style="height:${h}px">${weekend}${todayL}${L.out.map(o=>bar(o,lightFn&&lightFn(o.t))).join('')}</div>`};
-  const head=`<div class="g-lab" style="height:30px"><small>${dayMode?'Week':'Week of'}</small></div><div class="g-head">${[...Array(nW)].map((_,i)=>{const w=start+i*7*DAY; return `<div style="width:${7*W}px" class="${w===mondayOf(T)?'now':''}">${dayMode?`W${isoWeek(w)} · ${new Date(w).toLocaleDateString('en-GB',{month:'short',year:'numeric',timeZone:'UTC'})}`:fmtMs(w).slice(0,5)}</div>`}).join('')}</div>`
-    +(dayMode?`<div class="g-lab" style="height:34px"><small>Day</small></div><div class="g-days">${[...Array(days)].map((_,i)=>{const t=start+i*DAY, dt=new Date(t); return `<div style="width:${W}px" class="${t===T?'now':''} ${isWork(t)?'':'we'} ${dt.getUTCDay()===1?'mon':''}"><small>${WD[dt.getUTCDay()]}</small>${dt.getUTCDate()}</div>`}).join('')}</div>`:'');
+  const head=`<div class="g-lab" style="height:30px"><small>${tx(dayMode?'wk':'wkOf')}</small></div><div class="g-head">${[...Array(nW)].map((_,i)=>{const w=start+i*7*DAY; return `<div style="width:${7*W}px" class="${w===mondayOf(T)?'now':''}">${dayMode?`${tx('wkP')}${isoWeek(w)} · ${new Date(w).toLocaleDateString(LL.locale(),{month:'short',year:'numeric',timeZone:'UTC'})}`:fmtMs(w).slice(0,5)}</div>`}).join('')}</div>`
+    +(dayMode?`<div class="g-lab" style="height:34px"><small>${tx('day')}</small></div><div class="g-days">${[...Array(days)].map((_,i)=>{const t=start+i*DAY, dt=new Date(t); return `<div style="width:${W}px" class="${t===T?'now':''} ${isWork(t)?'':'we'} ${dt.getUTCDay()===1?'mon':''}"><small>${wd(dt.getUTCDay())}</small>${dt.getUTCDate()}</div>`}).join('')}</div>`:'');
   /* "Hide idle equipment" leaves out equipment with no test bar inside the visible period. */
   const eqItems=[...S.equipment].sort(byName).map(b=>({b,items:S.tests.filter(t=>t.equipmentId===b.id&&EQ_STATES.has(t.status)).map(item).filter(Boolean)}));
   const shownEq=S.hideIdle?eqItems.filter(x=>x.items.length):eqItems, hiddenEq=eqItems.length-shownEq.length;
-  const bRows=shownEq.map(({b,items})=>row(eqName(b),`<span class="bstate ${eqStateCls(eqStatus(b))}">${esc(eqStatus(b))}</span> · capacity ${eqCap(b)}`,items,IX.over.has(b.id))).join('');
-  const pRows=[...S.people].sort(byName).map(p=>{const h=personHours(IX,p.id,mondayOf(T)), cap=+p.horasSemana||0; return row(p.nombre,`${esc(p.rol||'')}${APP==='occupancy'&&cap?` · this week ${Math.round(h)}/${cap} h`:''}`,S.tests.filter(t=>t.techId===p.id&&TECH_STATES.has(t.status)).map(item),false,t=>t.status==='Report')}).join('');
+  const bRows=shownEq.map(({b,items})=>row(eqName(b),`<span class="bstate ${eqStateCls(eqStatus(b))}">${esc(eqStName(eqStatus(b)))}</span> · ${esc(tx('capN',eqCap(b)))}`,items,IX.over.has(b.id))).join('');
+  const pRows=[...S.people].sort(byName).map(p=>{const h=personHours(IX,p.id,mondayOf(T)), cap=+p.horasSemana||0; return row(p.nombre,`${esc(p.rol||'')}${APP==='occupancy'&&cap?` · ${esc(tx('pl_thisWk',Math.round(h),cap))}`:''}`,S.tests.filter(t=>t.techId===p.id&&TECH_STATES.has(t.status)).map(item),false,t=>t.status==='Report')}).join('');
   const missing=S.tests.filter(t=>EQ_STATES.has(t.status)&&(!t.start)).length;
-  return `<div class="view-h"><h2>Planning by resource</h2>
-    <div class="zoom" role="group" aria-label="Zoom">${[[10,'Quarter'],[18,'Weeks'],[32,'Days']].map(([z,l])=>`<button data-act="zoom" data-z="${z}" aria-pressed="${S.dayW===z}">${l}</button>`).join('')}</div>
-    <label class="check"><input type="checkbox" id="hide-idle" ${S.hideIdle?'checked':''}> Hide equipment with no tests in this period</label></div>
-  <p class="muted" style="margin:0">Equipment rows show one lane per test running in parallel; a red edge means more tests than the equipment's capacity. End dates marked ~ are start + estimated duration (Hours and Days run 24/7 unless the QTP says working hours). Faded bars have no known end.${missing?` <b>${missing} planned or running test(s) have no start date and are not shown.</b>`:''}</p>
+  return `<div class="view-h"><h2>${tx('pl_h')}</h2>
+    <div class="zoom" role="group" aria-label="${esc(tx('a_zoom'))}">${[[10,'z_q'],[18,'z_w'],[32,'z_d']].map(([z,l])=>`<button data-act="zoom" data-z="${z}" aria-pressed="${S.dayW===z}">${tx(l)}</button>`).join('')}</div>
+    <label class="check"><input type="checkbox" id="hide-idle" ${S.hideIdle?'checked':''}> ${tx('pl_hide')}</label></div>
+  <p class="muted" style="margin:0">${tx('pl_help')}${missing?tx('pl_missing',missing):''}</p>
   <div class="gantt" style="--wk:${7*W}px;--day:${W}px"><div class="g-grid ${dayMode?'days':''}" style="grid-template-columns:${labW}px ${days*W}px">
     ${head}
-    <div class="g-sec"><span>Equipment${hiddenEq?` <small style="text-transform:none;font-weight:400">· ${hiddenEq} without tests hidden</small>`:''}</span></div>${bRows||`<div class="g-sec" style="text-transform:none;font-weight:400"><span>${eqItems.length?'No equipment has tests in this period':'No equipment yet'}</span></div>`}
-    <div class="g-sec"><span>Team</span></div>${pRows||'<div class="g-sec" style="text-transform:none;font-weight:400"><span>No team members yet</span></div>'}
+    <div class="g-sec"><span>${tx('eqs')}${hiddenEq?` <small style="text-transform:none;font-weight:400">· ${tx('pl_hidden',hiddenEq)}</small>`:''}</span></div>${bRows||`<div class="g-sec" style="text-transform:none;font-weight:400"><span>${tx(eqItems.length?'pl_noEqP':'noEq')}</span></div>`}
+    <div class="g-sec"><span>${tx('team')}</span></div>${pRows||`<div class="g-sec" style="text-transform:none;font-weight:400"><span>${tx('noPeople')}</span></div>`}
   </div></div>
-  <div class="legend">${['Planned','In progress','Endurance running','On hold','Report'].map(s=>`<span><i style="background:var(--st-${ST_CLS[s]})"></i>${s}</span>`).join('')}<span><i style="background:var(--crit);width:2px"></i>Today</span></div>`;
+  <div class="legend">${['Planned','In progress','Endurance running','On hold','Report'].map(s=>`<span><i style="background:var(--st-${ST_CLS[s]})"></i>${esc(stName(s))}</span>`).join('')}<span><i style="background:var(--crit);width:2px"></i>${tx('todayC')}</span></div>`;
 }
 
 function vHistory(){
   const all=S.tests.filter(t=>CLOSED.includes(t.status));
-  if(!all.length) return `<div class="view-h"><h2>History</h2></div><div class="empty"><h3>No completed or cancelled tests yet</h3><p>Tests move here when their status becomes Completed or Cancelled, either in this app or through an ARAS import. They never raise alerts.</p></div>`;
+  if(!all.length) return `<div class="view-h"><h2>${tx('history')}</h2></div><div class="empty"><h3>${tx('hi_none_h')}</h3><p>${tx('hi_none_p')}</p></div>`;
   const H=S.hist, list=all.filter(t=>(!H.st||t.status===H.st)&&(!H.res||(H.res==='none'?!t.result:t.result===H.res))&&matchQ(t));
   const techOf=t=>personById(t.techId)?.nombre||t.arasTech||'';
   const G={tech:t=>techOf(t)||null,result:t=>t.result||null,id:t=>baseRef(t),project:t=>t.project||null,test:t=>t.title||null,requester:t=>t.requester||null,
@@ -511,11 +513,11 @@ function vHistory(){
   const comp=all.filter(t=>t.status==='Completed'), pass=comp.filter(t=>t.result==='Pass').length, fail=comp.filter(t=>t.result==='Fail').length;
   const rows=list.map(t=>{const b=eqById(t.equipmentId), tn=techOf(t);
     return `<tr class="click" data-act="edit" data-id="${esc(t.id)}"><td class="tech-cell ${tn?'':'none'}">${esc(tn||'—')}</td><td>${resTag(t.result)||'<span class="muted">—</span>'}</td><td class="ref nowrap">${esc(baseRef(t))}${IX.tag.get(t.id)?`<small>${esc(IX.tag.get(t.id))}</small>`:''}</td><td style="min-width:200px"><span class="chip proj">${esc(projectNo(t))}</span> ${esc(projectName(t))}</td><td><b>${esc(t.title||'')}</b>${t.comments?`<span class="snip" title="${esc(t.comments)}">${esc(t.comments.replace(/\s+/g,' '))}</span>`:''}</td><td>${esc(t.requester||'—')}</td><td>${esc(b?eqName(b):t.arasEquipment||'—')}</td><td class="nowrap">${fmt(t.start)}</td><td class="nowrap">${fmt(t.closedAt)}</td><td>${estPill(t.status)}</td></tr>`}).join('');
-  return `<div class="view-h"><h2>History</h2>${searchBox()}
-    <select class="fsel" id="hist-st" aria-label="Status"><option value="">All statuses</option>${CLOSED.map(s=>`<option ${H.st===s?'selected':''}>${s}</option>`).join('')}</select>
-    <select class="fsel" id="hist-res" aria-label="Result"><option value="">All results</option>${RESULTS.map(r=>`<option ${H.res===r?'selected':''}>${r}</option>`).join('')}<option value="none" ${H.res==='none'?'selected':''}>No result</option></select></div>
-  <p class="muted" style="margin:0">${comp.length} completed · ${all.length-comp.length} cancelled${pass+fail?` · first-time pass rate ${Math.round(pass/(pass+fail)*100)}% (${pass} pass, ${fail} fail)`:''}. Closed tests do not raise alerts. Click a column header to sort; open a test and change its status to bring it back to the board.</p>
-  <section class="panel">${list.length?`<div class="scroll-x"><table class="tbl compact"><thead>${sortHead('hist',[['tech','Technician'],['result','Result'],['id','PLR · QTP'],['project','Project'],['test','Test · comments'],['requester','Requester'],['equipment','Equipment'],['start','Start'],['closed','Closed'],['status','Status']])}</thead><tbody>${rows}</tbody></table></div>`:'<div class="empty-ok">No tests match these filters.</div>'}</section>`;
+  return `<div class="view-h"><h2>${tx('history')}</h2>${searchBox()}
+    <select class="fsel" id="hist-st" aria-label="${esc(tx('col_status'))}"><option value="">${tx('hi_allSt')}</option>${CLOSED.map(s=>`<option value="${s}" ${H.st===s?'selected':''}>${esc(stName(s))}</option>`).join('')}</select>
+    <select class="fsel" id="hist-res" aria-label="${esc(tx('col_result'))}"><option value="">${tx('hi_allRes')}</option>${RESULTS.map(r=>`<option value="${r}" ${H.res===r?'selected':''}>${esc(resName(r))}</option>`).join('')}<option value="none" ${H.res==='none'?'selected':''}>${tx('hi_noRes')}</option></select></div>
+  <p class="muted" style="margin:0">${tx('hi_sum',comp.length,all.length-comp.length,pass,fail)}</p>
+  <section class="panel">${list.length?`<div class="scroll-x"><table class="tbl compact"><thead>${sortHead('hist',[['tech',tx('col_tech')],['result',tx('col_result')],['id','PLR · QTP'],['project',tx('col_project')],['test',tx('col_test')],['requester',tx('col_req')],['equipment',tx('col_eq')],['start',tx('col_startS')],['closed',tx('col_closed')],['status',tx('col_status')]])}</thead><tbody>${rows}</tbody></table></div>`:`<div class="empty-ok">${tx('hi_nomatch')}</div>`}</section>`;
 }
 
 /* ---------- Occupancy (daily) ---------- */
@@ -538,57 +540,58 @@ function vOccupancy(){
   const T=todayMs(), O=S.occ; if(O.start==null) O.start=mondayOf(T);
   const n=O.weeks*7, days=[...Array(n)].map((_,i)=>O.start+i*DAY), end=days[n-1];
   const sel=O.sel, isSel=(type,id,day)=>sel&&sel.type===type&&sel.id===id&&sel.day===day;
-  const head1=`<tr><th class="rh" rowspan="2"><small>${fmtMs(O.start)} – ${fmtMs(end)}</small></th>${[...Array(O.weeks)].map((_,w)=>{const m=O.start+w*7*DAY; return `<th class="wkh" colspan="7">W${isoWeek(m)} · ${new Date(m).toLocaleDateString('en-GB',{day:'numeric',month:'short',timeZone:'UTC'})}</th>`}).join('')}<th class="tot" rowspan="2">Period</th></tr>`;
-  const head2=`<tr>${days.map(t=>{const dt=new Date(t); return `<th class="dh ${t===T?'now':''} ${isWork(t)?'':'we'} ${dt.getUTCDay()===1?'wkst':''}"><small>${WD[dt.getUTCDay()]}</small>${dt.getUTCDate()}</th>`}).join('')}</tr>`;
+  const tagTxt=(tags,j)=>tags.map(x=>tx('ptag')[x]||x).join(j);
+  const head1=`<tr><th class="rh" rowspan="2"><small>${fmtMs(O.start)} – ${fmtMs(end)}</small></th>${[...Array(O.weeks)].map((_,w)=>{const m=O.start+w*7*DAY; return `<th class="wkh" colspan="7">${tx('wkP')}${isoWeek(m)} · ${new Date(m).toLocaleDateString(LL.locale(),{day:'numeric',month:'short',timeZone:'UTC'})}</th>`}).join('')}<th class="tot" rowspan="2">${tx('period')}</th></tr>`;
+  const head2=`<tr>${days.map(t=>{const dt=new Date(t); return `<th class="dh ${t===T?'now':''} ${isWork(t)?'':'we'} ${dt.getUTCDay()===1?'wkst':''}"><small>${wd(dt.getUTCDay())}</small>${dt.getUTCDate()}</th>`}).join('')}</tr>`;
   const queuedFor=pid=>S.tests.filter(t=>t.techId===pid&&t.status==='Queued');
   const pRows=[...S.people].sort(byName).map(p=>{
     const daily=(+p.horasSemana||0)/5; let tot=0,cap=0;
     const cells=days.map(t=>{const r=personDay(IX,p.id,t); tot+=r.h; if(isWork(t)) cap+=daily; const pc=daily?r.h/daily*100:0;
       const unk=r.items.length&&!r.h; const txt=r.h?fmtH(r.h):unk?'?':'';
-      const tip=r.items.length?`${WD[new Date(t).getUTCDay()]} ${fmtMs(t)}: ${fmtH(r.h)} h of ${fmtH(daily)} h\n`+r.items.map(x=>`${baseRef(x.t)} · ${x.t.title||''} (${x.h?fmtH(x.h)+' h'+(x.tags.length&&!x.tags.includes('work')?' '+x.tags.join('+'):''):'hours not set'})`).join('\n'):`${fmtMs(t)}: free`;
+      const tip=r.items.length?`${wd(new Date(t).getUTCDay())} ${fmtMs(t)}: ${tx('hOf',fmtH(r.h),fmtH(daily))}\n`+r.items.map(x=>`${baseRef(x.t)} · ${x.t.title||''} (${x.h?fmtH(x.h)+' h'+(x.tags.length&&!x.tags.includes('work')?' '+tagTxt(x.tags,'+'):''):tx('hNotSet')})`).join('\n'):`${fmtMs(t)}: ${tx('freeD')}`;
       return `<td class="${isWork(t)?'':'we'} ${new Date(t).getUTCDay()===1?'wkst':''}"><button type="button" class="cell ${unk?'unk':lvl(pc)} ${isSel('p',p.id,t)?'sel':''}" data-act="occ-cell" data-type="p" data-id="${esc(p.id)}" data-day="${t}" title="${esc(tip)}">${txt}</button></td>`}).join('');
     const q=queuedFor(p.id), qh=q.reduce((a,t)=>a+effTech(t),0);
-    return `<tr><th class="rh"><b title="${esc(p.nombre)}">${esc(p.nombre)}</b><small>${+p.horasSemana||0} h/week${q.length?` · ${q.length} queued${qh?` (${fmtH(qh)} h)`:''}`:''}</small></th>${cells}<td class="tot"><b>${fmtH(tot)} h</b> / ${fmtH(cap)} h<br><span class="due ${cap&&tot>cap?'crit':''}">${cap?Math.round(tot/cap*100):0}%</span></td></tr>`}).join('');
+    return `<tr><th class="rh"><b title="${esc(p.nombre)}">${esc(p.nombre)}</b><small>${esc(tx('occ_pSub',+p.horasSemana||0,q.length,qh?fmtH(qh):''))}</small></th>${cells}<td class="tot"><b>${fmtH(tot)} h</b> / ${fmtH(cap)} h<br><span class="due ${cap&&tot>cap?'crit':''}">${cap?Math.round(tot/cap*100):0}%</span></td></tr>`}).join('');
   const bRows=[...S.equipment].sort(byName).map(b=>{
     const cap=eqCap(b); let used=0;
     const cells=days.map(t=>{const on=eqDay(IX,b.id,t); used+=on.length; const pc=on.length/cap*100;
-      const tip=on.length?`${WD[new Date(t).getUTCDay()]} ${fmtMs(t)}: ${on.length} of ${cap} slot(s)\n`+on.map(x=>`${baseRef(x)} · ${x.title||''}`).join('\n'):`${fmtMs(t)}: free`;
+      const tip=on.length?`${wd(new Date(t).getUTCDay())} ${fmtMs(t)}: ${tx('slotsOf',on.length,cap)}\n`+on.map(x=>`${baseRef(x)} · ${x.title||''}`).join('\n'):`${fmtMs(t)}: ${tx('freeD')}`;
       return `<td class="${isWork(t)?'':'we'} ${new Date(t).getUTCDay()===1?'wkst':''}"><button type="button" class="cell ${lvl(pc)} ${isSel('e',b.id,t)?'sel':''}" data-act="occ-cell" data-type="e" data-id="${esc(b.id)}" data-day="${t}" title="${esc(tip)}">${on.length?(cap>1?`${on.length}/${cap}`:'●'):''}</button></td>`}).join('');
-    return `<tr><th class="rh"><b title="${esc(eqName(b))}">${esc(eqName(b))}</b><small><span class="bstate ${eqStateCls(eqStatus(b))}">${esc(eqStatus(b))}</span> · capacity ${cap}</small></th>${cells}<td class="tot"><b>${Math.round(used/(n*cap)*100)}%</b><br><span class="muted">${used} slot-days</span></td></tr>`}).join('');
+    return `<tr><th class="rh"><b title="${esc(eqName(b))}">${esc(eqName(b))}</b><small><span class="bstate ${eqStateCls(eqStatus(b))}">${esc(eqStName(eqStatus(b)))}</span> · ${esc(tx('capN',cap))}</small></th>${cells}<td class="tot"><b>${Math.round(used/(n*cap)*100)}%</b><br><span class="muted">${esc(tx('slotDays',used))}</span></td></tr>`}).join('');
   const span=n+2;
-  let detail='<p class="muted" style="margin:0">Click a day to see which tests occupy that technician or piece of equipment.</p>';
+  let detail=`<p class="muted" style="margin:0">${tx('occ_click')}</p>`;
   if(sel){
     if(sel.type==='p'){const p=personById(sel.id); if(p){const r=personDay(IX,p.id,sel.day), daily=(+p.horasSemana||0)/5;
-      detail=`<div class="panel-h" style="margin:0"><h2>${esc(p.nombre)} · ${WD[new Date(sel.day).getUTCDay()]} ${fmtMs(sel.day)}</h2><span class="muted">${fmtH(r.h)} h of ${fmtH(daily)} h available${isWork(sel.day)?'':' · weekend'}</span></div>`+
-      (r.items.length?`<div class="occ-detail">${r.items.map(x=>{const b=eqById(x.t.equipmentId); return `<button type="button" data-act="edit" data-id="${esc(x.t.id)}"><span class="ref">${esc(ref(x.t))}</span><b>${esc(x.t.title||'')}</b>${estPill(x.t.status)}<span class="muted">${b?esc(eqName(b)):'no equipment'}</span><span class="sp"></span><span>${x.h?fmtH(x.h)+' h this day'+(x.tags.length&&!x.tags.includes('work')?` · ${esc(x.tags.join(' + '))}`:''):'<span class="due warn">technician hours not set</span>'}</span></button>`}).join('')}</div>`:'<div class="empty-ok">No tests assigned this day.</div>');}}
+      detail=`<div class="panel-h" style="margin:0"><h2>${esc(p.nombre)} · ${wd(new Date(sel.day).getUTCDay())} ${fmtMs(sel.day)}</h2><span class="muted">${esc(tx('occ_avail',fmtH(r.h),fmtH(daily)))}${isWork(sel.day)?'':` · ${tx('weekend')}`}</span></div>`+
+      (r.items.length?`<div class="occ-detail">${r.items.map(x=>{const b=eqById(x.t.equipmentId); return `<button type="button" data-act="edit" data-id="${esc(x.t.id)}"><span class="ref">${esc(ref(x.t))}</span><b>${esc(x.t.title||'')}</b>${estPill(x.t.status)}<span class="muted">${b?esc(eqName(b)):tx('noEqL')}</span><span class="sp"></span><span>${x.h?esc(tx('hDay',fmtH(x.h)))+(x.tags.length&&!x.tags.includes('work')?` · ${esc(tagTxt(x.tags,' + '))}`:''):`<span class="due warn">${tx('techHNotSet')}</span>`}</span></button>`}).join('')}</div>`:`<div class="empty-ok">${tx('occ_noP')}</div>`);}}
     else {const b=eqById(sel.id); if(b){const on=eqDay(IX,b.id,sel.day);
-      detail=`<div class="panel-h" style="margin:0"><h2>${esc(eqName(b))} · ${WD[new Date(sel.day).getUTCDay()]} ${fmtMs(sel.day)}</h2><span class="muted">${on.length} of ${eqCap(b)} slot(s) in use</span></div>`+
-      (on.length?`<div class="occ-detail">${on.map(t=>{const p=personById(t.techId), ei=IX.END.get(t.id)||{}; return `<button type="button" data-act="edit" data-id="${esc(t.id)}"><span class="ref">${esc(ref(t))}</span><b>${esc(t.title||'')}</b>${estPill(t.status)}<span class="muted">${esc(p?p.nombre:'no technician')}</span><span class="sp"></span><span class="mono">${fmt(t.start)} → ${ei.kind==='open'?'end unknown':(ei.kind==='auto'?'~':'')+fmtMs(ei.end)}</span></button>`}).join('')}</div>`:'<div class="empty-ok">Free this day.</div>');}}
+      detail=`<div class="panel-h" style="margin:0"><h2>${esc(eqName(b))} · ${wd(new Date(sel.day).getUTCDay())} ${fmtMs(sel.day)}</h2><span class="muted">${esc(tx('occ_inUse',on.length,eqCap(b)))}</span></div>`+
+      (on.length?`<div class="occ-detail">${on.map(t=>{const p=personById(t.techId), ei=IX.END.get(t.id)||{}; return `<button type="button" data-act="edit" data-id="${esc(t.id)}"><span class="ref">${esc(ref(t))}</span><b>${esc(t.title||'')}</b>${estPill(t.status)}<span class="muted">${esc(p?p.nombre:tx('noTechL'))}</span><span class="sp"></span><span class="mono">${fmt(t.start)} → ${ei.kind==='open'?tx('endUnknown'):(ei.kind==='auto'?'~':'')+fmtMs(ei.end)}</span></button>`}).join('')}</div>`:`<div class="empty-ok">${tx('occ_free')}</div>`);}}
   }
-  return `<div class="view-h"><h2>Occupancy</h2>
-    <div class="occ-ctl"><button class="btn sm" data-act="occ-nav" data-d="-1" aria-label="Previous week">◀</button><button class="btn sm" data-act="occ-nav" data-d="0">This week</button><button class="btn sm" data-act="occ-nav" data-d="1" aria-label="Next week">▶</button>
-    <div class="zoom" role="group" aria-label="Period">${[2,4,6,8].map(w=>`<button data-act="occ-weeks" data-w="${w}" aria-pressed="${O.weeks===w}">${w} wk</button>`).join('')}</div></div></div>
-  <p class="muted" style="margin:0;max-width:110ch">Technicians: hours per day, from each test's technician hours spread over its working days, against the weekly hours ÷ 5. <b>?</b> = assigned to a test without technician hours. Equipment: tests running that day against its capacity (● = in use when capacity is 1). Only planned, running, on-hold and report tests with a start date count.</p>
+  return `<div class="view-h"><h2>${tx('v_occupancy')}</h2>
+    <div class="occ-ctl"><button class="btn sm" data-act="occ-nav" data-d="-1" aria-label="${esc(tx('a_prevWk'))}">◀</button><button class="btn sm" data-act="occ-nav" data-d="0">${tx('occ_thisWk')}</button><button class="btn sm" data-act="occ-nav" data-d="1" aria-label="${esc(tx('a_nextWk'))}">▶</button>
+    <div class="zoom" role="group" aria-label="${esc(tx('period'))}">${[2,4,6,8].map(w=>`<button data-act="occ-weeks" data-w="${w}" aria-pressed="${O.weeks===w}">${tx('nWk',w)}</button>`).join('')}</div></div></div>
+  <p class="muted" style="margin:0;max-width:110ch">${tx('occ_help')}</p>
   <div class="occ-wrap"><table class="occ"><thead>${head1}${head2}</thead><tbody>
-    <tr class="sec"><th colspan="${span}"><span>Technicians</span></th></tr>${pRows||`<tr><td colspan="${span}" class="muted" style="padding:10px">No team members yet.</td></tr>`}
-    <tr class="sec"><th colspan="${span}"><span>Equipment</span></th></tr>${bRows||`<tr><td colspan="${span}" class="muted" style="padding:10px">No equipment yet.</td></tr>`}
+    <tr class="sec"><th colspan="${span}"><span>${tx('techs')}</span></th></tr>${pRows||`<tr><td colspan="${span}" class="muted" style="padding:10px">${tx('noPeople')}</td></tr>`}
+    <tr class="sec"><th colspan="${span}"><span>${tx('eqs')}</span></th></tr>${bRows||`<tr><td colspan="${span}" class="muted" style="padding:10px">${tx('noEq')}</td></tr>`}
   </tbody></table></div>
-  <div class="legend"><span><i style="background:var(--h1)"></i>≤ 40%</span><span><i style="background:var(--h2)"></i>41–75%</span><span><i style="background:var(--h3)"></i>76–100%</span><span><i style="background:var(--crit)"></i>&gt; 100% overbooked</span><span><i style="background:var(--surface-2)"></i>weekend</span></div>
+  ${heatLegend(`<span><i style="background:var(--surface-2)"></i>${tx('weekend')}</span>`)}
   <section class="panel">${detail}</section>`;
 }
 /* Equipment & team. The load columns (in use, free from, hours and load per week) only show in the occupancy app. */
 function vResources(){
   const T=todayMs(), M=mondayOf(T), load=APP==='occupancy', opt=(on,html)=>on?html:'';
   const bRows=[...S.equipment].sort(byName).map(b=>{const cap=eqCap(b), now=eqCount(IX,b.id,T), fr=freeFrom(IX,b.id), c=b.proximaCalibracion?daysTo(b.proximaCalibracion):null;
-    return `<tr class="click" data-act="edit-b" data-id="${esc(b.id)}"><td><b>${esc(eqName(b))}</b><br><small class="muted">${esc(b.descripcion||'')}${b.nombreAras&&norm(b.nombreAras)!==norm(b.nombre)?` · ARAS: ${esc(b.nombreAras)}`:''}</small></td><td><span class="bstate ${eqStateCls(eqStatus(b))}">${esc(eqStatus(b))}</span></td><td class="num">${cap}</td>${opt(load,`<td class="num"><span class="due ${now>cap?'crit':''}">${now} / ${cap}</span></td><td class="nowrap">${fr==null?'—':fr===T?'today':fmtMs(fr)}</td>`)}<td><div class="chips">${(b.instrumentos||[]).map(fleChip).join('')||'<span class="muted">—</span>'}</div></td><td class="nowrap"><span class="due ${c!=null&&c<0?'crit':c!=null&&c<=30?'warn':''}">${fmt(b.proximaCalibracion)}</span></td></tr>`}).join('');
+    return `<tr class="click" data-act="edit-b" data-id="${esc(b.id)}"><td><b>${esc(eqName(b))}</b><br><small class="muted">${esc(b.descripcion||'')}${b.nombreAras&&norm(b.nombreAras)!==norm(b.nombre)?` · ARAS: ${esc(b.nombreAras)}`:''}</small></td><td><span class="bstate ${eqStateCls(eqStatus(b))}">${esc(eqStName(eqStatus(b)))}</span></td><td class="num">${cap}</td>${opt(load,`<td class="num"><span class="due ${now>cap?'crit':''}">${now} / ${cap}</span></td><td class="nowrap">${fr==null?'—':fr===T?tx('today'):fmtMs(fr)}</td>`)}<td><div class="chips">${(b.instrumentos||[]).map(fleChip).join('')||'<span class="muted">—</span>'}</div></td><td class="nowrap"><span class="due ${c!=null&&c<0?'crit':c!=null&&c<=30?'warn':''}">${fmt(b.proximaCalibracion)}</span></td></tr>`}).join('');
   const pRows=[...S.people].sort(byName).map(p=>{const cap=+p.horasSemana||0, h=personHours(IX,p.id,M), n=S.tests.filter(t=>t.techId===p.id&&TECH_STATES.has(t.status)).length, pc=cap?Math.round(h/cap*100):0;
-    return `<tr class="click" data-act="edit-p" data-id="${esc(p.id)}"><td><b>${esc(p.nombre)}</b><br><small class="muted">${esc(p.rol||'')}</small></td>${opt(load,`<td class="num">${cap||'—'} h</td><td class="num"><span class="due ${pc>100?'crit':pc>85?'warn':''}">${pc}%</span></td>`)}<td class="num">${n}</td><td><div class="chips">${(p.habilitaciones||[]).map(eqById).filter(Boolean).map(b=>`<span class="chip">${esc(eqName(b))}</span>`).join('')||'<span class="muted">not set</span>'}</div></td></tr>`}).join('');
-  return `<div class="view-h"><h2>Equipment & team</h2></div>
-  <section class="panel"><div class="panel-h"><h2>Equipment</h2><span class="muted">Capacity = number of tests the equipment can run at the same time</span>${S.ro||S.noDb?'':'<button class="btn sm" data-act="new-b">+ Add equipment</button>'}</div>
-    ${bRows?`<div class="scroll-x"><table class="tbl"><thead><tr><th>Equipment</th><th>Status</th><th class="num">Capacity</th>${opt(load,'<th class="num">In use today</th><th>Slot free from</th>')}<th>Instruments (FLE)</th><th>Next calibration</th></tr></thead><tbody>${bRows}</tbody></table></div>`:'<div class="empty-ok">No equipment yet. Add it here, or let the ARAS import create it from the Equipment column.</div>'}
+    return `<tr class="click" data-act="edit-p" data-id="${esc(p.id)}"><td><b>${esc(p.nombre)}</b><br><small class="muted">${esc(p.rol||'')}</small></td>${opt(load,`<td class="num">${cap||'—'} h</td><td class="num"><span class="due ${pc>100?'crit':pc>85?'warn':''}">${pc}%</span></td>`)}<td class="num">${n}</td><td><div class="chips">${(p.habilitaciones||[]).map(eqById).filter(Boolean).map(b=>`<span class="chip">${esc(eqName(b))}</span>`).join('')||`<span class="muted">${tx('notSet')}</span>`}</div></td></tr>`}).join('');
+  return `<div class="view-h"><h2>${tx('v_resources')}</h2></div>
+  <section class="panel"><div class="panel-h"><h2>${tx('eqs')}</h2><span class="muted">${tx('rs_capHelp')}</span>${S.ro||S.noDb?'':`<button class="btn sm" data-act="new-b">${tx('rs_addEq')}</button>`}</div>
+    ${bRows?`<div class="scroll-x"><table class="tbl"><thead><tr><th>${tx('col_eq')}</th><th>${tx('col_status')}</th><th class="num">${tx('rs_cap')}</th>${opt(load,`<th class="num">${tx('rs_inUse')}</th><th>${tx('rs_freeFrom')}</th>`)}<th>${tx('fle_h')}</th><th>${tx('rs_nextCal')}</th></tr></thead><tbody>${bRows}</tbody></table></div>`:`<div class="empty-ok">${tx('rs_noEq')}</div>`}
   </section>
-  <section class="panel"><div class="panel-h"><h2>Team</h2>${S.ro||S.noDb?'':'<button class="btn sm" data-act="new-p">+ Add person</button>'}</div>
-    ${pRows?`<div class="scroll-x"><table class="tbl"><thead><tr><th>Person</th>${opt(load,'<th class="num">Hours/week</th><th class="num">Load this week</th>')}<th class="num">Active tests</th><th>Qualified on</th></tr></thead><tbody>${pRows}</tbody></table></div>`:'<div class="empty-ok">No team members yet. The ARAS import creates them from the Lab Resource column.</div>'}
+  <section class="panel"><div class="panel-h"><h2>${tx('team')}</h2>${S.ro||S.noDb?'':`<button class="btn sm" data-act="new-p">${tx('rs_addP')}</button>`}</div>
+    ${pRows?`<div class="scroll-x"><table class="tbl"><thead><tr><th>${tx('rs_person')}</th>${opt(load,`<th class="num">${tx('rs_hWk')}</th><th class="num">${tx('rs_loadWk')}</th>`)}<th class="num">${tx('rs_active')}</th><th>${tx('rs_qual')}</th></tr></thead><tbody>${pRows}</tbody></table></div>`:`<div class="empty-ok">${tx('rs_noP')}</div>`}
   </section>`;
 }
 
@@ -597,15 +600,15 @@ function vLibrary(){
   const use=new Map(); for(const t of S.tests) if(counts(t)&&t.qtp){const k=qid(t.qtp); use.set(k,(use.get(k)||0)+1);}
   const noDur=list.filter(q=>!(+q.durVal>0)).length;
   const rows=list.map(q=>{const b=eqById(q.equipmentId);
-    return `<tr class="click ${+q.durVal>0?'':'miss'}" data-act="edit-q" data-id="${esc(q.id)}"><td class="ref nowrap">${esc(q.code||q.id)}</td><td><b>${esc(q.name||'')}</b>${q.testType||q.standard?`<span class="snip">${esc([q.testType,q.standard].filter(Boolean).join(' · '))}</span>`:''}${q.notes?`<span class="snip">${esc(q.notes)}</span>`:''}</td><td>${esc(b?eqName(b):'—')}</td><td><div class="chips">${(q.instrumentos||[]).map(fleChip).join('')||'<span class="muted">—</span>'}</div></td><td class="nowrap">${+q.durVal>0?`${esc(q.durVal)} ${esc(UNIT_SHORT[q.durUnit]||q.durUnit||'h')}${q.durBasis==='sample'?' <small class="muted">per sample</small>':''}${q.durUnit==='Cycles'&&q.cyclesPerDay?` <small class="muted">(${esc(q.cyclesPerDay)}/day)</small>`:''}`:'<span class="due warn">not set</span>'}</td><td>${q.continuous===false?'Working hours':'24/7'}</td><td>${esc(loadSummary(q))}</td><td class="num">${use.get(q.id)||0}</td></tr>`}).join('');
+    return `<tr class="click ${+q.durVal>0?'':'miss'}" data-act="edit-q" data-id="${esc(q.id)}"><td class="ref nowrap">${esc(q.code||q.id)}</td><td><b>${esc(q.name||'')}</b>${q.testType||q.standard?`<span class="snip">${esc([q.testType,q.standard].filter(Boolean).join(' · '))}</span>`:''}${q.notes?`<span class="snip">${esc(q.notes)}</span>`:''}</td><td>${esc(b?eqName(b):'—')}</td><td><div class="chips">${(q.instrumentos||[]).map(fleChip).join('')||'<span class="muted">—</span>'}</div></td><td class="nowrap">${+q.durVal>0?`${esc(q.durVal)} ${esc(unitS(q.durUnit||'Hours'))}${q.durBasis==='sample'?` <small class="muted">${tx('perSample')}</small>`:''}${q.durUnit==='Cycles'&&q.cyclesPerDay?` <small class="muted">${esc(tx('perDay',q.cyclesPerDay))}</small>`:''}`:`<span class="due warn">${tx('notSet')}</span>`}</td><td>${q.continuous===false?tx('workH'):'24/7'}</td><td>${esc(loadSummary(q))}</td><td class="num">${use.get(q.id)||0}</td></tr>`}).join('');
   const I=S.qimp;
-  return `<div class="view-h"><h2>QTP library</h2>${S.ro||S.noDb?'':'<button class="btn" data-act="new-q">+ Add QTP</button>'}</div>
-  <p class="muted" style="margin:0;max-width:90ch">Estimated duration and technician hours for each test procedure, per test or per sample. They are planning defaults only: every test line uses them unless you set its own duration or hours in the test. A library duration takes precedence over the duration that comes from ARAS, which is only used when the QTP has none; a per-sample library duration is always multiplied by the test's number of pieces.</p>
-  ${S.ro||S.noDb?'':`<section class="panel"><div class="panel-h"><h2>Import QTP list from Excel</h2><span class="muted">Columns such as QTP, test name, estimated duration, unit, technician hours, equipment</span></div>
-    <label class="drop-zone" data-dz="qtp"><input type="file" id="file-qtp" accept=".xlsx,.xls,.csv"><b>Drop the QTP list here</b><span class="muted">or click to choose a file</span></label>
+  return `<div class="view-h"><h2>${tx('v_library')}</h2>${S.ro||S.noDb?'':`<button class="btn" data-act="new-q">${tx('lib_addQ')}</button>`}</div>
+  <p class="muted" style="margin:0;max-width:90ch">${tx('lib_help')}</p>
+  ${S.ro||S.noDb?'':`<section class="panel"><div class="panel-h"><h2>${tx('lib_impH')}</h2><span class="muted">${tx('lib_impSub')}</span></div>
+    <label class="drop-zone" data-dz="qtp"><input type="file" id="file-qtp" accept=".xlsx,.xls,.csv"><b>${tx('lib_drop')}</b><span class="muted">${tx('lib_dropSub')}</span></label>
     ${I?qtpImportPanel(I):''}</section>`}
-  <section class="panel"><div class="panel-h"><h2>Procedures</h2><span class="muted">${list.length} QTPs${noDur?` · <b class="due warn">${noDur} without estimated duration</b>`:''}</span></div>
-    ${list.length?`<div class="scroll-x"><table class="tbl"><thead><tr><th>QTP</th><th>Test name</th><th>Default equipment</th><th>Instruments (FLE)</th><th>Est. duration</th><th>Runs</th><th>Technician load</th><th class="num">Active tests</th></tr></thead><tbody>${rows}</tbody></table></div>`:'<div class="empty-ok">The library is empty. Import your QTP list above; the ARAS import also adds every QTP it finds.</div>'}
+  <section class="panel"><div class="panel-h"><h2>${tx('lib_procs')}</h2><span class="muted">${tx('nQtps',list.length)}${noDur?` · <b class="due warn">${tx('lib_noDur',noDur)}</b>`:''}</span></div>
+    ${list.length?`<div class="scroll-x"><table class="tbl"><thead><tr><th>QTP</th><th>${tx('col_tname')}</th><th>${tx('col_defEq')}</th><th>${tx('fle_h')}</th><th>${tx('col_dur')}</th><th>${tx('col_runs')}</th><th>${tx('col_tload')}</th><th class="num">${tx('rs_active')}</th></tr></thead><tbody>${rows}</tbody></table></div>`:`<div class="empty-ok">${tx('lib_empty')}</div>`}
   </section>`;
 }
 
@@ -622,13 +625,14 @@ function fixSheet(ws){
   out['!ref']=XLSX.utils.encode_range({s:{c:0,r:0},e:{c:mc,r:mr}}); return out;
 }
 async function readSheet(f){
-  if(!window.XLSX) throw new Error('the Excel reader did not load. Reload the page.');
+  if(!window.XLSX) throw new Error(tx('e_xlsx'));
   const buf=await f.arrayBuffer(), isCsv=/\.csv$/i.test(f.name);
   const wb=XLSX.read(buf,{type:'array',raw:isCsv});
   const ws=fixSheet(wb.Sheets[wb.SheetNames[0]]);
   const aoa=XLSX.utils.sheet_to_json(ws,{header:1,defval:'',raw:true});
   const hi=aoa.findIndex(r=>r.filter(c=>String(c).trim()!=='').length>=2);
-  if(hi<0) throw new Error('no header row found.');
+  if(hi<0) throw new Error(tx('e_head'));
+  /* "Column N" names an empty header; it is saved in the column mapping, so it stays in English. */
   const headers=aoa[hi].map((h,i)=>String(h).trim()||`Column ${i+1}`);
   const rows=aoa.slice(hi+1).filter(r=>r.some(c=>String(c).trim()!==''));
   return {fileName:f.name,headers,rows};
@@ -666,7 +670,7 @@ function cellVal(f,v){
 }
 function readRecs(I,fields){const ix=k=>I.map[k]?I.headers.indexOf(I.map[k]):-1; return I.rows.map(r=>{const rec={}; for(const f of fields){const i=ix(f.k); rec[f.k]=cellVal(f,i<0?'':r[i]);} return rec;});}
 function mappingGrid(I,fields,kind){
-  return `<div class="map-grid">${fields.map(f=>`<div class="field ${f.req?'req':''}"><label for="map-${kind}-${f.k}">${f.label}</label><select id="map-${kind}-${f.k}" data-map="${f.k}" data-kind="${kind}"><option value="">— not imported —</option>${I.headers.map(h=>`<option ${I.map[f.k]===h?'selected':''}>${esc(h)}</option>`).join('')}</select></div>`).join('')}</div>`;
+  return `<div class="map-grid">${fields.map(f=>`<div class="field ${f.req?'req':''}"><label for="map-${kind}-${f.k}">${tx((kind==='aras'?'af_':'qf_')+f.k)}</label><select id="map-${kind}-${f.k}" data-map="${f.k}" data-kind="${kind}"><option value="">${tx('notImp')}</option>${I.headers.map(h=>`<option ${I.map[f.k]===h?'selected':''}>${esc(h)}</option>`).join('')}</select></div>`).join('')}</div>`;
 }
 
 /* ---------- ARAS import ---------- */
@@ -736,17 +740,17 @@ function arasPreview(){
 }
 function statusPanel(P){
   const I=S.imp, ch=I.choice||(I.choice={}), list=P.recs.filter(r=>r._conflict);
-  if(!list.length) return I.done?'<section class="panel"><div class="panel-h"><h2>Status differences</h2></div><div class="empty-ok">Every imported test has the same status in the app and in ARAS.</div></section>':'';
+  if(!list.length) return I.done?`<section class="panel"><div class="panel-h"><h2>${tx('sp_h')}</h2></div><div class="empty-ok">${tx('sp_same')}</div></section>`:'';
   const n=list.filter(r=>ch[r._conflict.id]).length;
-  return `<section class="panel"><div class="panel-h"><h2>Status differences · ${list.length}</h2><span class="muted">These tests already exist and ARAS shows a different status. Choose which one to keep.</span>
-    <span class="sp"></span><button class="btn sm ghost" data-act="sc-all" data-v="app">Keep all app</button><button class="btn sm ghost" data-act="sc-all" data-v="aras">Use all ARAS</button></div>
-    <div class="scroll-x"><table class="tbl"><thead><tr><th>PLR · QTP</th><th>Test</th><th>Keep app status</th><th>Use ARAS status</th></tr></thead><tbody>
+  return `<section class="panel"><div class="panel-h"><h2>${tx('sp_h')} · ${list.length}</h2><span class="muted">${tx('sp_sub')}</span>
+    <span class="sp"></span><button class="btn sm ghost" data-act="sc-all" data-v="app">${tx('sp_allApp')}</button><button class="btn sm ghost" data-act="sc-all" data-v="aras">${tx('sp_allAras')}</button></div>
+    <div class="scroll-x"><table class="tbl"><thead><tr><th>PLR · QTP</th><th>${tx('col_testS')}</th><th>${tx('sp_keep')}</th><th>${tx('sp_use')}</th></tr></thead><tbody>
     ${list.map(r=>{const c=r._conflict, v=ch[c.id]; return `<tr><td class="ref nowrap">${esc(r.plr+' · '+r.qtp)}${r.equipmentName?`<br><small class="muted">${esc(r.equipmentName)}</small>`:''}</td><td>${esc(r.title||'')}</td>
-      <td><label class="check"><input type="radio" name="sc-${esc(c.id)}" data-sc="${esc(c.id)}" value="app" ${v==='app'?'checked':''} ${dis()}><span class="pill est st-${ST_CLS[c.from]||''}">${esc(c.from)}</span></label></td>
-      <td><label class="check"><input type="radio" name="sc-${esc(c.id)}" data-sc="${esc(c.id)}" value="aras" ${v==='aras'?'checked':''} ${dis()}><span class="pill est st-${ST_CLS[c.to]||''}">${esc(c.to)}</span>${c.aras!==c.to?` <small class="muted">(${esc(c.aras)})</small>`:''}</label></td></tr>`}).join('')}
+      <td><label class="check"><input type="radio" name="sc-${esc(c.id)}" data-sc="${esc(c.id)}" value="app" ${v==='app'?'checked':''} ${dis()}><span class="pill est st-${ST_CLS[c.from]||''}">${esc(stName(c.from))}</span></label></td>
+      <td><label class="check"><input type="radio" name="sc-${esc(c.id)}" data-sc="${esc(c.id)}" value="aras" ${v==='aras'?'checked':''} ${dis()}><span class="pill est st-${ST_CLS[c.to]||''}">${esc(stName(c.to))}</span>${c.aras!==c.to?` <small class="muted">(${esc(c.aras)})</small>`:''}</label></td></tr>`}).join('')}
     </tbody></table></div>
-    <div class="row" style="margin-top:12px"><button class="btn primary" data-act="sc-apply" ${n&&!S.ro?'':'disabled'}>Apply ${n} of ${list.length} choice${list.length===1?'':'s'}</button></div>
-    <p class="note" style="margin-top:10px">Tests left without a choice keep their app status and are asked again on the next import. When you keep the app status, it is not asked again until ARAS shows another status. Planned counts as In Queue, and Endurance running, On hold and Report count as In Progress.</p></section>`;
+    <div class="row" style="margin-top:12px"><button class="btn primary" data-act="sc-apply" ${n&&!S.ro?'':'disabled'}>${tx('sp_apply',n,list.length)}</button></div>
+    <p class="note" style="margin-top:10px">${tx('sp_note')}</p></section>`;
 }
 async function applyStatusChoices(){
   const I=S.imp; if(!I||!I.P||!db) return; const ch=I.choice||{}, now=nowIso(), T=iso(todayMs()), jobs=[]; let nA=0,nK=0;
@@ -758,35 +762,37 @@ async function applyStatusChoices(){
     if(RUNNING.has(c.to)&&!t.start) patch.start=T;
     jobs.push(db.doc(`${COL.tests}/${t.id}`).update(patch)); nA++;}
   I.choice={};
-  try{await Promise.all(jobs); toast(`Status: ${nA} changed to the ARAS status, ${nK} kept.`);}catch(e){toast(errMsg(e));}
+  try{await Promise.all(jobs); toast(tx('sp_done',nA,nK));}catch(e){toast(errMsg(e));}
   render();
 }
+/* Field names of the import "Changes" column. */
+const chgTxt=a=>(a||[]).map(k=>tx('chg')[k]||k).join(', ');
 function importPanelAras(){
   const I=S.imp, P=arasPreview(); I.P=P;
-  if(I.done) return `<section class="panel"><div class="panel-h"><h2>Imported</h2><span class="muted">${esc(I.fileName)}</span><span class="sp"></span><button class="btn sm ghost" data-act="cancel-import">Close</button></div>
-    <div class="imp-sum"><span class="tag-st new">${I.done.nNew} new</span><span class="tag-st update">${I.done.nUpd} updated</span></div>
+  if(I.done) return `<section class="panel"><div class="panel-h"><h2>${tx('imp_doneH')}</h2><span class="muted">${esc(I.fileName)}</span><span class="sp"></span><button class="btn sm ghost" data-act="cancel-import">${tx('close')}</button></div>
+    <div class="imp-sum"><span class="tag-st new">${tx('nNew',I.done.nNew)}</span><span class="tag-st update">${tx('nUpd',I.done.nUpd)}</span></div>
     ${(n=>n&&!S.ro?`<div class="row" style="margin-top:8px"><span>📦 ${esc(tx('impProp',n))}</span>${APP==='samples'?`<button class="btn sm primary" data-view="samples">${esc(tx('impGo'))}</button>`:`<a class="btn sm primary" href="../muestras/">${esc(tx('impGo'))}</a>`}</div>`:'')(smpProposals().length)}
-    ${I.done.rows.length?`<div class="scroll-x" style="margin-top:8px"><table class="tbl"><thead><tr><th>Result</th><th>PLR · QTP</th><th>Test</th><th>Changes</th></tr></thead><tbody>${I.done.rows.slice(0,250).map(r=>`<tr><td><span class="tag-st ${r.st}">${r.st==='update'?'Updated':r.st==='hist'?'New → History':'New'}</span></td><td class="ref nowrap">${esc(r.ref)}</td><td>${esc(r.title||'')}</td><td><small class="muted">${esc(r.changes||'')}</small></td></tr>`).join('')}</tbody></table></div>`:''}</section>
+    ${I.done.rows.length?`<div class="scroll-x" style="margin-top:8px"><table class="tbl"><thead><tr><th>${tx('imp_res')}</th><th>PLR · QTP</th><th>${tx('col_testS')}</th><th>${tx('imp_chg')}</th></tr></thead><tbody>${I.done.rows.slice(0,250).map(r=>`<tr><td><span class="tag-st ${r.st}">${tx(r.st==='update'?'imp_updated':r.st==='hist'?'imp_newHist':'imp_new')}</span></td><td class="ref nowrap">${esc(r.ref)}</td><td>${esc(r.title||'')}</td><td><small class="muted">${esc(chgTxt(r.changes))}</small></td></tr>`).join('')}</tbody></table></div>`:''}</section>
   ${statusPanel(P)}`;
   const c=k=>P.recs.filter(r=>r._st===k).length, upd=P.recs.filter(r=>r._st==='update'&&!r._quiet).length, stch=P.recs.filter(r=>r._patch&&r._patch.status).length;
-  const label={new:'New',hist:'New → History',update:'Update',same:'No change',skip:'Skipped (closed)',error:'Missing PLR or QTP'};
+  const label=tx('imp_st');
   const show=P.recs.filter(r=>r._st!=='same'||r._quiet).filter(r=>!r._quiet).slice(0,250);
   const eqOpts=[...S.equipment].sort(byName);
-  return `<section class="panel"><div class="panel-h"><h2>Column mapping</h2><span class="muted">${esc(I.fileName)} · ${I.rows.length} rows</span></div>
-    <p class="note" style="margin-bottom:10px">Each column of the export is matched to a field. The mapping is remembered for the next import.</p>
+  return `<section class="panel"><div class="panel-h"><h2>${tx('imp_mapH')}</h2><span class="muted">${esc(I.fileName)} · ${tx('nRows',I.rows.length)}</span></div>
+    <p class="note" style="margin-bottom:10px">${tx('imp_mapNote')}</p>
     ${mappingGrid(I,ARAS_FIELDS,'aras')}</section>
-  ${P.unknownEq.size?`<section class="panel"><div class="panel-h"><h2>ARAS equipment not found in the app</h2><span class="muted">Choose what each name means. The choice is remembered.</span></div>
-    <div class="eqmap">${[...P.unknownEq].map(([n,o])=>`<div class="from">${esc(o.name)} <small>· ${o.count} task(s)</small></div><select class="fsel" data-eqmap="${esc(n)}" aria-label="Equipment for ${esc(o.name)}"><option value="__new" ${P.eqMap[n]==='__new'?'selected':''}>Create new equipment "${esc(o.name)}"</option><option value="__none" ${P.eqMap[n]==='__none'?'selected':''}>Leave tests without equipment</option>${eqOpts.map(b=>`<option value="${esc(b.id)}" ${P.eqMap[n]===b.id?'selected':''}>Use existing: ${esc(eqName(b))}</option>`).join('')}</select>`).join('')}</div></section>`:''}
-  <section class="panel"><div class="panel-h"><h2>Preview</h2>
-    <div class="imp-sum"><span class="tag-st new">${c('new')} new active</span><span class="tag-st hist">${c('hist')} new to History</span><span class="tag-st update">${upd} updated${stch?` (${stch} status change)`:''}</span><span class="tag-st same">${c('same')+P.recs.filter(r=>r._quiet).length} no change</span>${c('skip')?`<span class="tag-st skip">${c('skip')} skipped</span>`:''}${c('error')?`<span class="tag-st error">${c('error')} missing PLR or QTP</span>`:''}</div></div>
-    <label class="check" style="margin-bottom:8px"><input type="checkbox" id="inc-closed" ${S.incClosed?'checked':''}> Also import completed and cancelled tasks as History</label>
-    ${P.newPeople.size||P.newQtps.size?`<p class="note" style="margin-bottom:8px">${P.newPeople.size?`New team members: <b>${esc([...P.newPeople.values()].join(', '))}</b>. `:''}${P.newQtps.size?`New QTPs added to the library: <b>${P.newQtps.size}</b> (${esc([...P.newQtps.values()].map(x=>x.code).join(', '))}).`:''}</p>`:''}
-    ${!I.map.plr||!I.map.qtp?'<p class="form-err">Map both the PLR and the QTP columns: together they identify each test.</p>':''}
-    <div class="scroll-x"><table class="tbl"><thead><tr><th>Result</th><th>PLR · QTP</th><th>Test</th><th>Project</th><th>Requester</th><th>ARAS status</th><th>Changes</th></tr></thead><tbody>
-    ${show.map(r=>`<tr><td><span class="tag-st ${r._st}">${label[r._st]}</span></td><td class="ref nowrap">${esc((r.plr||'—')+' · '+(r.qtp||'—'))}${r.equipmentName?`<br><small class="muted">${esc(r.equipmentName)}</small>`:''}</td><td>${esc(r.title||'')}</td><td>${esc(r.project||'')}</td><td>${esc(r.requester||'')}</td><td class="nowrap">${esc(r.status||'—')}${r._status&&r._st!=='update'&&r._st!=='same'?` → ${esc(r._status)}`:''}</td><td><small class="muted">${r._changes?esc(r._changes.join(', ')):''}</small></td></tr>`).join('')}
-    </tbody></table></div>${show.length===250?'<p class="muted">Showing the first 250 rows.</p>':''}
-    <div class="row" style="margin-top:12px"><button class="btn primary" data-act="do-import" ${!I.map.plr||!I.map.qtp||!(c('new')+c('hist')+upd+P.recs.filter(r=>r._quiet).length)||S.ro?'disabled':''}>Import ${c('new')+c('hist')} new and update ${upd}</button><button class="btn ghost" data-act="cancel-import">Discard file</button></div>
-    <p class="note" style="margin-top:10px">Once the columns and equipment names are set, later files are imported as soon as they are loaded. On re-import, ARAS updates the request data (description, project, requester, comments, due date, result…). Equipment, technician and start date are only filled when empty. A different status is never changed on its own: you choose it after the import.</p>
+  ${P.unknownEq.size?`<section class="panel"><div class="panel-h"><h2>${tx('imp_eqH')}</h2><span class="muted">${tx('imp_eqSub')}</span></div>
+    <div class="eqmap">${[...P.unknownEq].map(([n,o])=>`<div class="from">${esc(o.name)} <small>· ${tx('nTasks',o.count)}</small></div><select class="fsel" data-eqmap="${esc(n)}" aria-label="${esc(tx('a_eqFor',o.name))}"><option value="__new" ${P.eqMap[n]==='__new'?'selected':''}>${esc(tx('eq_new',o.name))}</option><option value="__none" ${P.eqMap[n]==='__none'?'selected':''}>${tx('eq_none')}</option>${eqOpts.map(b=>`<option value="${esc(b.id)}" ${P.eqMap[n]===b.id?'selected':''}>${esc(tx('eq_use',eqName(b)))}</option>`).join('')}</select>`).join('')}</div></section>`:''}
+  <section class="panel"><div class="panel-h"><h2>${tx('imp_prevH')}</h2>
+    <div class="imp-sum"><span class="tag-st new">${tx('imp_nNewAct',c('new'))}</span><span class="tag-st hist">${tx('imp_nNewHist',c('hist'))}</span><span class="tag-st update">${tx('imp_nUpd',upd,stch)}</span><span class="tag-st same">${tx('imp_nSame',c('same')+P.recs.filter(r=>r._quiet).length)}</span>${c('skip')?`<span class="tag-st skip">${tx('imp_nSkip',c('skip'))}</span>`:''}${c('error')?`<span class="tag-st error">${tx('imp_nErr',c('error'))}</span>`:''}</div></div>
+    <label class="check" style="margin-bottom:8px"><input type="checkbox" id="inc-closed" ${S.incClosed?'checked':''}> ${tx('imp_incClosed')}</label>
+    ${P.newPeople.size||P.newQtps.size?`<p class="note" style="margin-bottom:8px">${P.newPeople.size?tx('imp_newP',esc([...P.newPeople.values()].join(', '))):''}${P.newQtps.size?tx('imp_newQ',P.newQtps.size,esc([...P.newQtps.values()].map(x=>x.code).join(', '))):''}</p>`:''}
+    ${!I.map.plr||!I.map.qtp?`<p class="form-err">${tx('imp_needKeys')}</p>`:''}
+    <div class="scroll-x"><table class="tbl"><thead><tr><th>${tx('imp_res')}</th><th>PLR · QTP</th><th>${tx('col_testS')}</th><th>${tx('col_project')}</th><th>${tx('col_req')}</th><th>${tx('imp_arasSt')}</th><th>${tx('imp_chg')}</th></tr></thead><tbody>
+    ${show.map(r=>`<tr><td><span class="tag-st ${r._st}">${label[r._st]}</span></td><td class="ref nowrap">${esc((r.plr||'—')+' · '+(r.qtp||'—'))}${r.equipmentName?`<br><small class="muted">${esc(r.equipmentName)}</small>`:''}</td><td>${esc(r.title||'')}</td><td>${esc(r.project||'')}</td><td>${esc(r.requester||'')}</td><td class="nowrap">${esc(r.status||'—')}${r._status&&r._st!=='update'&&r._st!=='same'?` → ${esc(stName(r._status))}`:''}</td><td><small class="muted">${esc(chgTxt(r._changes))}</small></td></tr>`).join('')}
+    </tbody></table></div>${show.length===250?`<p class="muted">${tx('imp_first250')}</p>`:''}
+    <div class="row" style="margin-top:12px"><button class="btn primary" data-act="do-import" ${!I.map.plr||!I.map.qtp||!(c('new')+c('hist')+upd+P.recs.filter(r=>r._quiet).length)||S.ro?'disabled':''}>${tx('imp_btn',c('new')+c('hist'),upd)}</button><button class="btn ghost" data-act="cancel-import">${tx('imp_discard')}</button></div>
+    <p class="note" style="margin-top:10px">${tx('imp_note')}</p>
   </section>
   ${statusPanel(P)}`;
 }
@@ -798,7 +804,7 @@ function arasReady(){
 }
 async function runArasImport(){
   const I=S.imp; if(!I||!db||!I.P) return; const P=I.P, now=nowIso(), T=iso(todayMs());
-  const btn=$('[data-act="do-import"]'); if(btn){btn.disabled=true; btn.textContent='Importing…';}
+  const btn=$('[data-act="do-import"]'); if(btn){btn.disabled=true; btn.textContent=tx('imp_busy');}
   try{
     /* 1. master data */
     const newEqIds=new Map(), newPIds=new Map(), jobs=[];
@@ -822,14 +828,14 @@ async function runArasImport(){
         jobs.push(()=>db.doc(`${COL.tests}/${id}`).set(data)); nNew++; doneRows.push({st:r._st,ref:`${r.plr} · ${r.qtp}`,title:r.title});
       }else if(r._st==='update'){
         const patch={...r._patch,updated:now,imported:now}; if(patch.equipmentId) patch.equipmentId=resId(patch.equipmentId); if(patch.techId) patch.techId=resId(patch.techId);
-        jobs.push(()=>db.doc(`${COL.tests}/${r._match.id}`).update(patch)); if(!r._quiet){nUpd++; doneRows.push({st:'update',ref:`${r.plr} · ${r.qtp}`,title:r.title,changes:r._changes.join(', ')});}
+        jobs.push(()=>db.doc(`${COL.tests}/${r._match.id}`).update(patch)); if(!r._quiet){nUpd++; doneRows.push({st:'update',ref:`${r.plr} · ${r.qtp}`,title:r.title,changes:r._changes});}
       }
     }
     /* The import queues all writes together so it becomes one commit. */
     const keepEq={...((S.cfg.importAras&&S.cfg.importAras.eqMap)||{}),...P.eqMap};
     jobs.push(()=>db.doc('config/importAras').set({map:I.map,eqMap:keepEq,lastFile:I.fileName,date:now,includeClosed:S.incClosed}));
     await Promise.all(jobs.map(j=>j()));
-    I.done={nNew,nUpd,rows:doneRows}; toast(`Import finished: ${nNew} new, ${nUpd} updated.`); render();
+    I.done={nNew,nUpd,rows:doneRows}; toast(tx('imp_done',nNew,nUpd)); render();
   }catch(e){toast(errMsg(e)); render();}
 }
 
@@ -857,15 +863,15 @@ function qtpPreview(){
   return recs;
 }
 function qtpImportPanel(I){
-  const recs=qtpPreview(); I.recs=recs; const c=k=>recs.filter(r=>r._st===k).length;
+  const recs=qtpPreview(); I.recs=recs; const c=k=>recs.filter(r=>r._st===k).length, label={...tx('imp_st'),error:tx('qi_noCode')};
   return `<div style="display:grid;gap:12px;margin-top:14px">
-    <p class="note">${esc(I.fileName)} · ${I.rows.length} rows. Empty cells never overwrite values already in the library.</p>
+    <p class="note">${esc(I.fileName)} · ${tx('nRows',I.rows.length)}. ${tx('qi_note')}</p>
     ${mappingGrid(I,QTP_FIELDS,'qtp')}
-    <div class="imp-sum"><span class="tag-st new">${c('new')} new</span><span class="tag-st update">${c('update')} updated</span><span class="tag-st same">${c('same')} no change</span>${c('error')?`<span class="tag-st error">${c('error')} without QTP code</span>`:''}</div>
-    <div class="scroll-x"><table class="tbl"><thead><tr><th>Result</th><th>QTP</th><th>Test name</th><th>Est. duration</th><th class="num">Tech hours</th><th>Equipment</th></tr></thead><tbody>
-    ${recs.slice(0,200).map(r=>`<tr><td><span class="tag-st ${r._st}">${{new:'New',update:'Update',same:'No change',error:'No code'}[r._st]}</span></td><td class="ref">${esc(r.code||'—')}</td><td>${esc(r.name||'')}</td><td class="nowrap">${r.durVal!==''?esc(r.durVal+' '+(UNIT_SHORT[r._unit]||''))+(r._basis==='sample'?' <small class="muted">per sample</small>':''):'—'}</td><td class="num">${r.techHours!==''?esc(r.techHours):'—'}</td><td>${esc(r.equipmentName||'')}${r.equipmentName&&!r._eq?' <small class="muted">(not found)</small>':''}</td></tr>`).join('')}
+    <div class="imp-sum"><span class="tag-st new">${tx('nNew',c('new'))}</span><span class="tag-st update">${tx('nUpd',c('update'))}</span><span class="tag-st same">${tx('imp_nSame',c('same'))}</span>${c('error')?`<span class="tag-st error">${tx('qi_nErr',c('error'))}</span>`:''}</div>
+    <div class="scroll-x"><table class="tbl"><thead><tr><th>${tx('imp_res')}</th><th>QTP</th><th>${tx('col_tname')}</th><th>${tx('col_dur')}</th><th class="num">${tx('qi_techH')}</th><th>${tx('col_eq')}</th></tr></thead><tbody>
+    ${recs.slice(0,200).map(r=>`<tr><td><span class="tag-st ${r._st}">${label[r._st]}</span></td><td class="ref">${esc(r.code||'—')}</td><td>${esc(r.name||'')}</td><td class="nowrap">${r.durVal!==''?esc(r.durVal+' '+(r._unit?unitS(r._unit):''))+(r._basis==='sample'?` <small class="muted">${tx('perSample')}</small>`:''):'—'}</td><td class="num">${r.techHours!==''?esc(r.techHours):'—'}</td><td>${esc(r.equipmentName||'')}${r.equipmentName&&!r._eq?` <small class="muted">${tx('qi_notFound')}</small>`:''}</td></tr>`).join('')}
     </tbody></table></div>
-    <div class="row"><button class="btn primary" data-act="do-qimport" ${!I.map.code||!(c('new')+c('update'))||S.ro?'disabled':''}>Import ${c('new')} new and update ${c('update')}</button><button class="btn ghost" data-act="cancel-qimport">Discard file</button></div>
+    <div class="row"><button class="btn primary" data-act="do-qimport" ${!I.map.code||!(c('new')+c('update'))||S.ro?'disabled':''}>${tx('imp_btn',c('new'),c('update'))}</button><button class="btn ghost" data-act="cancel-qimport">${tx('imp_discard')}</button></div>
   </div>`;
 }
 async function runQtpImport(){
@@ -874,13 +880,13 @@ async function runQtpImport(){
     if(r._st==='new') jobs.push(()=>db.doc(`${COL.qtps}/${qid(r.code)}`).set({code:r.code.trim(),name:r.name||'',durVal:r.durVal,durUnit:r._unit,continuous:true,techHours:r.techHours,durBasis:r._basis||'test',techBasis:'test',equipmentId:r._eq||'',testType:r.testType||'',standard:r.standard||'',notes:r.notes||'',actualizado:now}));
     else if(r._st==='update') jobs.push(()=>db.doc(`${COL.qtps}/${r._q.id}`).update({...r._patch,actualizado:now}));
   }
-  try{const n=jobs.length; jobs.push(()=>db.doc('config/importQtp').set({map:I.map,date:now})); await Promise.all(jobs.map(j=>j())); S.qimp=null; toast(`QTP library updated: ${n} procedure(s).`); render();}catch(e){toast(errMsg(e));}
+  try{const n=jobs.length; jobs.push(()=>db.doc('config/importQtp').set({map:I.map,date:now})); await Promise.all(jobs.map(j=>j())); S.qimp=null; toast(tx('qi_done',n)); render();}catch(e){toast(errMsg(e));}
 }
 
 function vImport(){
-  return `<div class="view-h"><h2>Import from ARAS</h2>${S.tests.length?'<button class="btn" data-act="export">Export tests to Excel</button>':''}</div>
-  <ol class="steps"><li>In ARAS, run the lab request search (a_Lab_Dashboard) and export it to Excel.</li><li>Load the file here (.xlsx, .xls or .csv).</li><li>New tasks are created and existing ones updated at once. The first time, or when ARAS brings an unknown equipment name, check the mapping and confirm.</li><li>Choose the status to keep for tests whose status differs from ARAS.</li></ol>
-  ${S.ro||S.noDb?'':`<label class="drop-zone" data-dz="aras"><input type="file" id="file-aras" accept=".xlsx,.xls,.csv"><b>Drop the ARAS export here</b><span class="muted">or click to choose the file</span></label>`}
+  return `<div class="view-h"><h2>${tx('im_h')}</h2>${S.tests.length?`<button class="btn" data-act="export">${tx('im_export')}</button>`:''}</div>
+  <ol class="steps">${tx('im_steps')}</ol>
+  ${S.ro||S.noDb?'':`<label class="drop-zone" data-dz="aras"><input type="file" id="file-aras" accept=".xlsx,.xls,.csv"><b>${tx('im_drop')}</b><span class="muted">${tx('im_dropSub')}</span></label>`}
   ${S.imp?importPanelAras():''}`;
 }
 async function onFile(f,kind){
@@ -891,18 +897,21 @@ async function onFile(f,kind){
     else { sh.map=guessMap(sh.headers,ARAS_FIELDS,S.cfg.importAras&&S.cfg.importAras.map); if(S.cfg.importAras&&S.cfg.importAras.includeClosed===false) S.incClosed=false; S.imp=sh; }
     render();
     if(kind==='aras'&&arasReady()) await runArasImport();
-  }catch(e){toast('Could not read the file: '+(e.message||e));}
+  }catch(e){toast(tx('e_read',e.message||e));}
 }
 
 /* ---------- Export ---------- */
+/* Lab-only spreadsheet (nothing imports it back): headers and display values follow the chosen language. */
 async function exportXlsx(){
   if(!window.XLSX) return;
+  const H=tx('xl_cols');
   const rows=[...S.tests].sort((a,b)=>STATUSES.indexOf(a.status)-STATUSES.indexOf(b.status)||String(a.plr).localeCompare(String(b.plr))).map(t=>{const ei=endInfo(t), x=effDur(t);
-    return {'PLR':t.plr||'','QTP':t.qtp||'','Test':t.title||'','Project':t.project||'','Requester':t.requester||'','Status':t.status||'','ARAS status':t.arasStatus||'','Priority':t.priority||'','Equipment':t.equipmentId?eqName(eqById(t.equipmentId)):'','Technician':personById(t.techId)?.nombre||'','Start':t.start||'','End':ei.end!=null?iso(ei.end):'','End type':ei.kind,'Est. duration':x?x.val:'','Unit':x?x.unit:'','Duration source':x?x.src:'','Technician hours':effTech(t)||'','Progress %':+t.progress||0,'Requested due':t.requestedDue||'','Agreed due':t.agreedDue||'','Due flexible':t.flexible?'Yes':'No','Result':t.result||'','Closed':t.closedAt||'','Pieces':t.pieces??'','Sequence':t.sequence??'','Comments':t.comments||'','Lab notes':t.labNotes||'','Hold reason':t.holdReason||''}});
-  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),'Tests');
+    const v=[t.plr||'',t.qtp||'',t.title||'',t.project||'',t.requester||'',stName(t.status||''),t.arasStatus||'',prioName(t.priority||''),t.equipmentId?eqName(eqById(t.equipmentId)):'',personById(t.techId)?.nombre||'',t.start||'',ei.end!=null?iso(ei.end):'',tx('xl_end')[ei.kind]||ei.kind,x?x.val:'',x?unitName(x.unit):'',x?x.src:'',effTech(t)||'',+t.progress||0,t.requestedDue||'',t.agreedDue||'',tx(t.flexible?'yes':'no'),resName(t.result||''),t.closedAt||'',t.pieces??'',t.sequence??'',t.comments||'',t.labNotes||'',t.holdReason||''];
+    return Object.fromEntries(H.map((h,i)=>[h,v[i]]));});
+  const wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,XLSX.utils.json_to_sheet(rows),tx('xl_sheet'));
   const buf=XLSX.write(wb,{type:'array',bookType:'xlsx'});
   const url=URL.createObjectURL(new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'})), a=document.createElement('a');
-  a.href=url; a.download=`lab_tests_${iso(todayMs())}.xlsx`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),2000);
+  a.href=url; a.download=`${tx('xl_file')}_${iso(todayMs())}.xlsx`; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),2000);
 }
 
 /* ---------- Dialogs ---------- */
@@ -911,55 +920,58 @@ const dis=()=>S.ro?'disabled':'';
 function fld(id,label,inner,cls='',help=''){return `<div class="field ${cls}"><label for="${id}">${label}</label>${inner}${help?`<span class="help" id="${id}-help">${help}</span>`:''}</div>`}
 function inp(name,val,type='text',extra=''){return `<input id="f-${name}" name="${name}" type="${type}" value="${esc(val??'')}" ${extra} ${dis()}>`}
 function sel(name,val,opts,extra=''){return `<select id="f-${name}" name="${name}" ${extra} ${dis()}>${opts.map(o=>{const [v,l]=Array.isArray(o)?o:[o,o]; return `<option value="${esc(v)}" ${String(val??'')===String(v)?'selected':''}>${esc(l)}</option>`}).join('')}</select>`}
+/* Options whose stored value stays in English and whose label follows the language. */
+const optsOf=(list,name)=>list.map(v=>[v,name(v)]);
 function dlgShell(eyebrow,title,body,footerLeft=''){
-  return `<form class="dlg-form" id="dlg-form" novalidate><header class="dlg-h"><div><p class="eyebrow">${eyebrow}</p><h2>${esc(title)}</h2></div><button type="button" class="icon-btn" data-act="close" aria-label="Close">×</button></header>
+  return `<form class="dlg-form" id="dlg-form" novalidate><header class="dlg-h"><div><p class="eyebrow">${eyebrow}</p><h2>${esc(title)}</h2></div><button type="button" class="icon-btn" data-act="close" aria-label="${esc(tx('close'))}">×</button></header>
   <div class="dlg-body">${body}<div id="f-err" class="form-err" hidden></div></div>
-  <footer class="dlg-f">${S.ro?'':footerLeft}<span class="sp"></span><button type="button" class="btn ghost" data-act="close">${S.ro?'Close':'Cancel'}</button>${S.ro?'':'<button class="btn primary" type="submit">Save</button>'}</footer></form>`;
+  <footer class="dlg-f">${S.ro?'':footerLeft}<span class="sp"></span><button type="button" class="btn ghost" data-act="close">${tx(S.ro?'close':'cancel')}</button>${S.ro?'':`<button class="btn primary" type="submit">${tx('save')}</button>`}</footer></form>`;
 }
+const delBtn=()=>`<button type="button" class="btn ghost danger" data-act="del">${tx('delete')}</button>`;
 function openEditor(id){
   const isNew=!id, t=isNew?{status:'Queued',priority:'Medium',source:'Manual'}:S.tests.find(x=>x.id===id);
   if(!t) return;
   dlg.dataset.kind='test'; dlg.dataset.id=id||'';
-  const eqOpts=[['','— none —'],...[...S.equipment].sort(byName).map(b=>[b.id,eqName(b)+(eqStatus(b)!=='Operational'?` (${eqStatus(b)})`:'')+` · cap ${eqCap(b)}`])];
-  if(t.equipmentId&&!eqById(t.equipmentId)) eqOpts.push([t.equipmentId,'(deleted equipment)']);
-  const pOpts=[['','— none —'],...[...S.people].sort(byName).map(p=>[p.id,p.nombre])];
+  const eqOpts=[['',tx('none_o')],...[...S.equipment].sort(byName).map(b=>[b.id,eqName(b)+(eqStatus(b)!=='Operational'?` (${eqStName(eqStatus(b))})`:'')+` · ${tx('capS',eqCap(b))}`])];
+  if(t.equipmentId&&!eqById(t.equipmentId)) eqOpts.push([t.equipmentId,tx('delEq')]);
+  const pOpts=[['',tx('none_o')],...[...S.people].sort(byName).map(p=>[p.id,p.nombre])];
   const fromAras=t.source==='ARAS';
   const sibs=isNew?[]:S.tests.filter(x=>x.id!==t.id&&x.plr&&String(x.plr).toUpperCase()===String(t.plr).toUpperCase()).sort((a,b)=>(a.sequence||99)-(b.sequence||99)||String(a.qtp).localeCompare(String(b.qtp)));
-  const body=`<fieldset><legend>Request${fromAras?' · from ARAS':''}</legend>
-    ${fld('f-plr','Request (PLR)',inp('plr',t.plr,'text','placeholder="PLR000000"'),'req')}
-    ${fld('f-qtp','Task item (QTP)',inp('qtp',t.qtp,'text','list="qtp-list" placeholder="QTP0000"'),'req')}
-    ${fld('f-title','Test description',inp('title',t.title),'span2')}
-    ${fld('f-project','Project',inp('project',t.project,'text','placeholder="25046 - PROJECT NAME"'))}
-    ${fld('f-requester','Request creator',inp('requester',t.requester))}
-    ${fld('f-pieces','Number of pieces (samples)',inp('pieces',t.pieces,'number','min="0" step="1"'),'','<span id="pieces-help"></span>')}
-    ${fld('f-sequence','Test sequence',inp('sequence',t.sequence,'number','min="0" step="1"'))}
-    ${fld('f-requestedDue','Requested due date',inp('requestedDue',t.requestedDue,'date'))}
-    <div class="field"><span class="lbl">Due date flexible?</span><label class="check"><input type="checkbox" id="f-flexible" name="flexible" value="1" ${t.flexible?'checked':''} ${dis()}> Flexible</label></div>
-    ${fld('f-comments','Comments',`<textarea id="f-comments" name="comments" class="tall" ${dis()}>${esc(t.comments||'')}</textarea>`,'span2')}
-    ${t.category?`<div class="field span2"><span class="lbl">Product category</span><span>${esc(t.category)}</span></div>`:''}
-    ${fromAras?`<p class="note span2">ARAS: status <b>${esc(t.arasStatus||'—')}</b> · equipment <b>${esc(t.arasEquipment||'—')}</b> · lab resource <b>${esc(t.arasTech||'—')}</b>${t.arasDurVal?` · duration <b>${esc(t.arasDurVal)} ${esc(t.arasDurUnit||'')}</b>`:''}${t.requestNote?`<br>Request status note: ${esc(t.requestNote)}`:''}<br>The fields in this section are refreshed from ARAS on each import.</p>`:''}
+  const body=`<fieldset><legend>${tx('ed_req')}${fromAras?tx('fromAras'):''}</legend>
+    ${fld('f-plr',tx('ed_plr'),inp('plr',t.plr,'text','placeholder="PLR000000"'),'req')}
+    ${fld('f-qtp',tx('ed_qtp'),inp('qtp',t.qtp,'text','list="qtp-list" placeholder="QTP0000"'),'req')}
+    ${fld('f-title',tx('ed_desc'),inp('title',t.title),'span2')}
+    ${fld('f-project',tx('col_project'),inp('project',t.project,'text',`placeholder="${esc(tx('ph_project'))}"`))}
+    ${fld('f-requester',tx('ed_requester'),inp('requester',t.requester))}
+    ${fld('f-pieces',tx('ed_pieces'),inp('pieces',t.pieces,'number','min="0" step="1"'),'','<span id="pieces-help"></span>')}
+    ${fld('f-sequence',tx('ed_seq'),inp('sequence',t.sequence,'number','min="0" step="1"'))}
+    ${fld('f-requestedDue',tx('ed_reqDue'),inp('requestedDue',t.requestedDue,'date'))}
+    <div class="field"><span class="lbl">${tx('ed_flexQ')}</span><label class="check"><input type="checkbox" id="f-flexible" name="flexible" value="1" ${t.flexible?'checked':''} ${dis()}> ${tx('ed_flex')}</label></div>
+    ${fld('f-comments',tx('ed_com'),`<textarea id="f-comments" name="comments" class="tall" ${dis()}>${esc(t.comments||'')}</textarea>`,'span2')}
+    ${t.category?`<div class="field span2"><span class="lbl">${tx('ed_cat')}</span><span>${esc(t.category)}</span></div>`:''}
+    ${fromAras?`<p class="note span2">${tx('ed_arasNote',esc(t.arasStatus||'—'),esc(t.arasEquipment||'—'),esc(t.arasTech||'—'),t.arasDurVal?`${esc(t.arasDurVal)} ${esc(t.arasDurUnit?unitName(t.arasDurUnit):'')}`:'',t.requestNote?esc(t.requestNote):'')}</p>`:''}
   </fieldset>
-  <fieldset><legend>Lab planning</legend>
-    ${fld('f-status','Status',sel('status',t.status,STATUSES),'','Report = test finished, report being written')}
-    ${fld('f-priority','Priority',sel('priority',t.priority||'Medium',PRIOS))}
-    ${fld('f-equipmentId','Equipment',sel('equipmentId',t.equipmentId||'',eqOpts),'','<span id="eq-sug"></span>')}
-    ${fld('f-techId','Technician',sel('techId',t.techId||'',pOpts))}
-    ${fld('f-start','Start',inp('start',t.start,'date'))}
-    ${fld('f-end','Planned end',inp('end',t.end,'date'),'','<span id="end-help"></span>')}
-    <div class="field"><label for="f-durVal">Estimated duration</label><div class="inline">${inp('durVal',t.durVal,'number','min="0" step="any" style="flex:1"')}${sel('durUnit',t.durUnit||'Hours',UNITS,'style="flex:1"')}</div><span class="help" id="dur-help"></span></div>
-    ${fld('f-continuous','Runs',sel('continuous',t.continuous||'',[['','Default from QTP library'],['yes','Continuous 24/7'],['no','Working hours (8 h/day)']]))}
-    ${fld('f-techHours','Technician hours (total)',inp('techHours',isEndu(t)?'':t.techHours,'number',`min="0" step="0.5" ${isEndu(t)?'readonly':''}`),'','<span id="tech-help"></span>')}
-    ${fld('f-progress','Progress (%)',inp('progress',t.progress,'number','min="0" max="100" step="5"'))}
-    ${fld('f-agreedDue','Agreed due date',inp('agreedDue',t.agreedDue,'date'),'','Overrides the requested date for alerts')}
-    ${fld('f-result','Test result',sel('result',t.result||'',[['','—'],...RESULTS]))}
-    ${fld('f-holdReason','On hold reason',inp('holdReason',t.holdReason,'text','placeholder="Only when on hold"'),'span2')}
-    ${fld('f-labNotes','Lab notes',`<textarea id="f-labNotes" name="labNotes" ${dis()}>${esc(t.labNotes||'')}</textarea>`,'span2')}
+  <fieldset><legend>${tx('ed_plan')}</legend>
+    ${fld('f-status',tx('col_status'),sel('status',t.status,optsOf(STATUSES,stName)),'',tx('ed_reportHelp'))}
+    ${fld('f-priority',tx('ed_prio'),sel('priority',t.priority||'Medium',optsOf(PRIOS,prioName)))}
+    ${fld('f-equipmentId',tx('col_eq'),sel('equipmentId',t.equipmentId||'',eqOpts),'','<span id="eq-sug"></span>')}
+    ${fld('f-techId',tx('col_tech'),sel('techId',t.techId||'',pOpts))}
+    ${fld('f-start',tx('col_startS'),inp('start',t.start,'date'))}
+    ${fld('f-end',tx('ed_end'),inp('end',t.end,'date'),'','<span id="end-help"></span>')}
+    <div class="field"><label for="f-durVal">${tx('ed_dur')}</label><div class="inline">${inp('durVal',t.durVal,'number','min="0" step="any" style="flex:1"')}${sel('durUnit',t.durUnit||'Hours',optsOf(UNITS,unitName),'style="flex:1"')}</div><span class="help" id="dur-help"></span></div>
+    ${fld('f-continuous',tx('col_runs'),sel('continuous',t.continuous||'',[['',tx('run_def')],['yes',tx('run_yes')],['no',tx('run_no')]]))}
+    ${fld('f-techHours',tx('ed_techH'),inp('techHours',isEndu(t)?'':t.techHours,'number',`min="0" step="0.5" ${isEndu(t)?'readonly':''}`),'','<span id="tech-help"></span>')}
+    ${fld('f-progress',tx('ed_prog'),inp('progress',t.progress,'number','min="0" max="100" step="5"'))}
+    ${fld('f-agreedDue',tx('ed_agreed'),inp('agreedDue',t.agreedDue,'date'),'',tx('ed_agreedHelp'))}
+    ${fld('f-result',tx('ed_result'),sel('result',t.result||'',[['','—'],...optsOf(RESULTS,resName)]))}
+    ${fld('f-holdReason',tx('ed_hold'),inp('holdReason',t.holdReason,'text',`placeholder="${esc(tx('ed_holdPh'))}"`),'span2')}
+    ${fld('f-labNotes',tx('ed_notes'),`<textarea id="f-labNotes" name="labNotes" ${dis()}>${esc(t.labNotes||'')}</textarea>`,'span2')}
     <div class="span2 note" id="f-hint"></div>
   </fieldset>
   <div id="f-warn"></div>
-  ${sibs.length?`<div><p class="eyebrow" style="margin-bottom:6px">Other tasks in ${esc(t.plr)}</p><div class="siblings">${sibs.map(x=>`<button type="button" data-act="open-sib" data-id="${esc(x.id)}"><span class="ref">${esc(ref(x))}</span><span>${esc(x.title||'')}</span>${x.sequence?`<span class="chip">seq ${esc(x.sequence)}</span>`:''}<span class="sp"></span>${estPill(x.status)}${resTag(x.result)}</button>`).join('')}</div></div>`:''}
+  ${sibs.length?`<div><p class="eyebrow" style="margin-bottom:6px">${tx('ed_sibs',esc(t.plr))}</p><div class="siblings">${sibs.map(x=>`<button type="button" data-act="open-sib" data-id="${esc(x.id)}"><span class="ref">${esc(ref(x))}</span><span>${esc(x.title||'')}</span>${x.sequence?`<span class="chip">${esc(tx('seqN',x.sequence))}</span>`:''}<span class="sp"></span>${estPill(x.status)}${resTag(x.result)}</button>`).join('')}</div></div>`:''}
   ${isNew||APP==='occupancy'?'':smpEditorBlock(t)}`;
-  dlg.innerHTML=dlgShell(isNew?'New manual test':(fromAras?'ARAS task':'Manual test'),isNew?'New test':`${baseRef(t)} · ${t.title||''}`,body,isNew?'':`<button type="button" class="btn ghost danger" data-act="del">Delete</button>`);
+  dlg.innerHTML=dlgShell(tx(isNew?'ed_eyNew':fromAras?'ed_eyAras':'ed_eyManual'),isNew?tx('ed_new'):`${baseRef(t)} · ${t.title||''}`,body,isNew?'':delBtn());
   if(!dlg.open) dlg.showModal(); liveHints();
 }
 function readForm(){const fd=new FormData($('#dlg-form')), o={}; for(const [k,v] of fd.entries()) o[k]=typeof v==='string'?v.trim():v; return o;}
@@ -971,91 +983,92 @@ function liveHints(){
   if(dlg.dataset.kind!=='test') return;
   const id=dlg.dataset.id, t=draftFromForm(), list=[...S.tests.filter(x=>x.id!==id),t];
   const ix=buildIndex(list), al=testAlerts(t,ix).filter(x=>APP==='occupancy'||!x.occ), L=libOf(t);
-  $('#f-warn').innerHTML=al.length?`<ul class="alerts">${al.map(a=>`<li class="${a.sev}"><span class="sev">${a.sev==='crit'?'Critical':'Warning'}</span><span>${esc(a.text)}</span></li>`).join('')}</ul>`:'';
+  $('#f-warn').innerHTML=al.length?`<ul class="alerts">${al.map(a=>`<li class="${a.sev}"><span class="sev">${tx(a.sev==='crit'?'sev_crit':'sev_warn')}</span><span>${esc(a.text)}</span></li>`).join('')}</ul>`:'';
   const tdef={...t,durVal:''}, def=effDur(tdef);
-  $('#dur-help').textContent=+t.durVal>0?`Overrides ${def?`${durLabel(def)} from ${def.src}`:'the default'}. Clear it to use the default.`:def?`Using ${durLabel(def)} from ${def.src}. Type a value to override it for this test only.`:'No default: set it here or in the QTP library.';
+  $('#dur-help').textContent=+t.durVal>0?tx('h_durOver',def?tx('xFrom',durLabel(def),def.src):tx('theDefault')):def?tx('h_durUse',tx('xFrom',durLabel(def),def.src)):tx('h_durNone');
   $('#f-durVal').placeholder=def?String(def.val):'';
-  const ph=$('#pieces-help'); if(ph){const per=L&&(L.durBasis==='sample'||(L.techBasis==='sample'&&!isEndu(t))); ph.textContent=per?(piecesSet(t)?`The QTP library counts time per sample: × ${samplesOf(t)}.`:'The QTP library counts time per sample: set the pieces (counted as 1 for now).'):'';}
-  const lt=libTech(t), ltNote=L&&L.techBasis==='sample'&&lt?` (${L.techHours} h × ${samplesOf(t)} samples)`:''; if(isEndu(t)){const ti=$('#f-techHours'); ti.readOnly=true; ti.value=''; ti.placeholder=fmtH(effTech(t)); $('#tech-help').textContent=`Endurance profile from the QTP library: ${loadSummary(L).replace('Endurance · ','')}.`;} else {$('#f-techHours').readOnly=false; $('#tech-help').textContent=+t.techHours?(lt?`Overrides ${fmtH(lt)} h from the QTP library${ltNote}.`:''):lt?`Using ${fmtH(lt)} h from the QTP library${ltNote}.`:'Used to compute technician load.';
+  const ph=$('#pieces-help'); if(ph){const per=L&&(L.durBasis==='sample'||(L.techBasis==='sample'&&!isEndu(t))); ph.textContent=per?(piecesSet(t)?tx('h_perS',samplesOf(t)):tx('h_perS0')):'';}
+  const lt=libTech(t), ltNote=L&&L.techBasis==='sample'&&lt?tx('h_ltNote',L.techHours,samplesOf(t)):''; if(isEndu(t)){const ti=$('#f-techHours'); ti.readOnly=true; ti.value=''; ti.placeholder=fmtH(effTech(t)); $('#tech-help').textContent=tx('h_endu',enduBody(L));} else {$('#f-techHours').readOnly=false; $('#tech-help').textContent=+t.techHours?(lt?tx('h_thOver',fmtH(lt),ltNote):''):lt?tx('h_thUse',fmtH(lt),ltNote):tx('h_thNone');
   $('#f-techHours').placeholder=lt?String(lt):'';}
-  const ei=endInfo(t); $('#end-help').textContent=t.end?'Set by hand. Clear it to compute start + duration.':ei.kind==='auto'?`Auto: ${fmtMs(ei.end)} (start + estimated duration)`:t.start?'Unknown: no duration available':'Leave empty to compute it from start + duration';
-  const sug=$('#eq-sug'); if(sug){ const lb=L&&eqById(L.equipmentId); sug.innerHTML=!t.equipmentId&&lb?`QTP default: <button type="button" class="link" data-act="use-eq" data-id="${esc(lb.id)}">${esc(eqName(lb))}</button>`:''; }
-  let hint=''; if(t.status==='Not approved') hint='Not approved: this test is ignored by alerts, planning and occupancy until its status changes. '; else if(APP==='occupancy'&&t.equipmentId){const fr=freeFrom(ix,t.equipmentId,t.id); hint+=`Equipment slot free from <b>${fr==null?'—':fr===todayMs()?'today':fmtMs(fr)}</b> (capacity ${eqCap(eqById(t.equipmentId))}). `;}
-  const s=d(t.start); if(t.status!=='Not approved'&&s!=null&&ei.end!=null&&ei.kind!=='open'){const wd=workdays(s,ei.end); hint+=`${(ei.end-s)/DAY+1} calendar days · ${wd} working days`;
-    if(isEndu(t)){const pl=techPlan(t,s,Math.max(s,ei.end),false), P=pl.parts, Lq=libOf(t); hint+=`. Technician load: setup ${+Lq.setupH||0} h over ${P.setupDays} day(s) · daily check ${+Lq.dailyH||0} h × ${P.dailyDays} day(s) · ${P.reviews} review(s) × ${+Lq.reviewH||0} h · teardown ${+Lq.teardownH||0} h over ${P.teardownDays} day(s) = <b>${fmtH(planTotal(pl))} h</b>`;}
-    else {const th=effTech(t); if(th) hint+=` · ${(th/(wd||1)).toFixed(1)} technician h/day`;} hint+='.';}
+  const ei=endInfo(t); $('#end-help').textContent=t.end?tx('h_endSet'):ei.kind==='auto'?tx('h_endAuto',fmtMs(ei.end)):t.start?tx('h_endUnk'):tx('h_endEmpty');
+  const sug=$('#eq-sug'); if(sug){ const lb=L&&eqById(L.equipmentId); sug.innerHTML=!t.equipmentId&&lb?`${tx('h_qtpDef')} <button type="button" class="link" data-act="use-eq" data-id="${esc(lb.id)}">${esc(eqName(lb))}</button>`:''; }
+  let hint=''; if(t.status==='Not approved') hint=tx('h_noap'); else if(APP==='occupancy'&&t.equipmentId){const fr=freeFrom(ix,t.equipmentId,t.id); hint+=tx('h_free',fr==null?'—':fr===todayMs()?tx('today'):fmtMs(fr),eqCap(eqById(t.equipmentId)));}
+  const s=d(t.start); if(t.status!=='Not approved'&&s!=null&&ei.end!=null&&ei.kind!=='open'){const wdn=workdays(s,ei.end); hint+=tx('h_days',(ei.end-s)/DAY+1,wdn);
+    if(isEndu(t)){const pl=techPlan(t,s,Math.max(s,ei.end),false), P=pl.parts, Lq=libOf(t); hint+=tx('h_enduLoad',+Lq.setupH||0,P.setupDays,+Lq.dailyH||0,P.dailyDays,P.reviews,+Lq.reviewH||0,+Lq.teardownH||0,P.teardownDays,fmtH(planTotal(pl)));}
+    else {const th=effTech(t); if(th) hint+=tx('h_perDay',(th/(wdn||1)).toLocaleString(LL.locale(),{minimumFractionDigits:1,maximumFractionDigits:1}));} hint+='.';}
   $('#f-hint').innerHTML=hint;
 }
 function openPerson(id){
-  const p=id?personById(id):{nombre:'',rol:'Lab technician',horasSemana:40,habilitaciones:[]}; if(!p) return;
+  const p=id?personById(id):{nombre:'',rol:tx('pe_rolDef'),horasSemana:40,habilitaciones:[]}; if(!p) return;
   dlg.dataset.kind='person'; dlg.dataset.id=id||'';
-  const body=`<fieldset><legend>Person</legend>
-    ${fld('f-nombre','Name',inp('nombre',p.nombre,'text','required'),'req')}
-    ${fld('f-rol','Role',inp('rol',p.rol))}
-    ${fld('f-horasSemana','Hours per week available for tests',inp('horasSemana',p.horasSemana,'number','min="0" max="60" step="1"'))}
-    <div class="field span2"><span class="lbl">Qualified on (leave empty to skip the qualification check)</span><div class="checks">${[...S.equipment].sort(byName).map(b=>`<label><input type="checkbox" name="hab" value="${esc(b.id)}" ${(p.habilitaciones||[]).includes(b.id)?'checked':''} ${dis()}>${esc(eqName(b))}</label>`).join('')||'<span class="muted">Add equipment first.</span>'}</div></div>
-    <p class="note span2">The name must match the ARAS Lab Resource name (accents and capitals are ignored) so imported tasks are assigned automatically.</p>
+  const body=`<fieldset><legend>${tx('rs_person')}</legend>
+    ${fld('f-nombre',tx('pe_name'),inp('nombre',p.nombre,'text','required'),'req')}
+    ${fld('f-rol',tx('pe_rol'),inp('rol',p.rol))}
+    ${fld('f-horasSemana',tx('pe_hours'),inp('horasSemana',p.horasSemana,'number','min="0" max="60" step="1"'))}
+    <div class="field span2"><span class="lbl">${tx('pe_qual')}</span><div class="checks">${[...S.equipment].sort(byName).map(b=>`<label><input type="checkbox" name="hab" value="${esc(b.id)}" ${(p.habilitaciones||[]).includes(b.id)?'checked':''} ${dis()}>${esc(eqName(b))}</label>`).join('')||`<span class="muted">${tx('pe_addEq')}</span>`}</div></div>
+    <p class="note span2">${tx('pe_note')}</p>
   </fieldset>`;
-  dlg.innerHTML=dlgShell(id?'Edit person':'New person',id?p.nombre:'New person',body,id?'<button type="button" class="btn ghost danger" data-act="del">Delete</button>':'');
-  dlg.showModal();
+  dlg.innerHTML=dlgShell(tx(id?'pe_edit':'pe_new'),id?p.nombre:tx('pe_new'),body,id?delBtn():'');
+  if(!dlg.open) dlg.showModal();
 }
 function openEquipment(id){
   const b=id?eqById(id):{nombre:'',nombreAras:'',descripcion:'',estado:'Operational',capacidad:1,proximaCalibracion:''}; if(!b) return;
   dlg.dataset.kind='equipment'; dlg.dataset.id=id||'';
-  const body=`<fieldset><legend>Equipment</legend>
-    ${fld('f-nombre','Name',inp('nombre',b.nombre,'text','required'),'req')}
-    ${fld('f-nombreAras','Name in ARAS (Equipment column)',inp('nombreAras',b.nombreAras,'text','placeholder="Same as name"'),'','Several names: separate them with ;')}
-    ${fld('f-capacidad','Simultaneous tests (capacity)',inp('capacidad',eqCap(b),'number','min="1" max="200" step="1"'),'','How many tests can run on it at the same time')}
-    ${fld('f-estado','Status',sel('estado',eqStatus(b),EQ_STATUS))}
-    ${fld('f-proximaCalibracion','Next calibration',inp('proximaCalibracion',b.proximaCalibracion,'date'))}
-    ${fld('f-descripcion','Lab / description',inp('descripcion',b.descripcion),'span2')}
+  const body=`<fieldset><legend>${tx('col_eq')}</legend>
+    ${fld('f-nombre',tx('pe_name'),inp('nombre',b.nombre,'text','required'),'req')}
+    ${fld('f-nombreAras',tx('eq_aras'),inp('nombreAras',b.nombreAras,'text',`placeholder="${esc(tx('eq_arasPh'))}"`),'',tx('eq_arasHelp'))}
+    ${fld('f-capacidad',tx('eq_cap'),inp('capacidad',eqCap(b),'number','min="1" max="200" step="1"'),'',tx('eq_capHelp'))}
+    ${fld('f-estado',tx('col_status'),sel('estado',eqStatus(b),optsOf(EQ_STATUS,eqStName)))}
+    ${fld('f-proximaCalibracion',tx('rs_nextCal'),inp('proximaCalibracion',b.proximaCalibracion,'date'))}
+    ${fld('f-descripcion',tx('eq_desc'),inp('descripcion',b.descripcion),'span2')}
   </fieldset>
-  <fieldset><legend>Instruments (FLE)</legend>${flePicker(b.instrumentos||[])}</fieldset>`;
-  dlg.innerHTML=dlgShell(id?'Edit equipment':'New equipment',id?eqName(b):'New equipment',body,id?'<button type="button" class="btn ghost danger" data-act="del">Delete</button>':'');
-  dlg.showModal();
+  <fieldset><legend>${tx('fle_h')}</legend>${flePicker(b.instrumentos||[])}</fieldset>`;
+  dlg.innerHTML=dlgShell(tx(id?'eq_edit':'eq_newT'),id?eqName(b):tx('eq_newT'),body,id?delBtn():'');
+  if(!dlg.open) dlg.showModal();
 }
-function flePicker(ids,what='this equipment'){
+function flePicker(ids,what='fle_thisEq'){
   const picked=new Set(ids);
-  if(!CAL.eq) return `<p class="note span2">${CAL.err?'The calibration plan could not be read':'The calibration plan is loading'}. Connect GitHub with an account that can read <span class="mono">${REPO.owner}/${REPO.repo}</span> to assign instruments.${ids.length?' Assigned now:':''}</p>${ids.length?`<div class="chips span2">${ids.map(fleChip).join('')}</div>`:''}`;
+  if(!CAL.eq) return `<p class="note span2">${tx('fle_conn',CAL.err?tx('fle_loadErr'):tx('fle_loading'),`${REPO.owner}/${REPO.repo}`,ids.length>0)}</p>${ids.length?`<div class="chips span2">${ids.map(fleChip).join('')}</div>`:''}`;
   const all=Object.entries(CAL.eq).map(([id,e])=>({...e,id})).filter(e=>picked.has(e.id)||!['Reserved','Retired'].includes(e.state));
   ids.filter(id=>!CAL.eq[id]).forEach(id=>all.push({id,code:String(id).replace(/^eq-/,''),group:'',missing:true}));
   const grp=e=>e.group==='Test equipment'?0:e.group==='Auxiliary equipment'?1:2;
   all.sort((a,b)=>grp(a)-grp(b)||String(a.code).localeCompare(String(b.code),'en',{numeric:true})||a.id.localeCompare(b.id));
-  let last=null; const rows=all.map(e=>{const s=fleState(e.missing?null:e), g=grp(e), h=g!==last?`<h4>${['Test equipment','Auxiliary equipment','Other'][g]}</h4>`:''; last=g;
-    return `${h}<label data-s="${esc(norm([e.code,e.description,e.brand,e.model,e.serial].join(' ')))}"><input type="checkbox" name="fle" value="${esc(e.id)}" ${picked.has(e.id)?'checked':''} ${dis()}><span class="mono">${esc(e.code)}</span><span>${esc(e.missing?'(deleted from the calibration plan)':fleLabel(e))}</span><span class="due ${s.cls==='off'?'':s.cls}">${esc(s.text)}</span></label>`}).join('');
-  return `<p class="note span2">Instruments from the calibration plan that are usually used on ${what}.</p>
-    <div class="field span2"><input id="fle-q" type="search" placeholder="Filter by code, description, brand or model" autocomplete="off" aria-label="Filter instruments">
+  let last=null; const rows=all.map(e=>{const s=fleState(e.missing?null:e), g=grp(e), h=g!==last?`<h4>${tx('fle_grp')[g]}</h4>`:''; last=g;
+    return `${h}<label data-s="${esc(norm([e.code,e.description,e.brand,e.model,e.serial].join(' ')))}"><input type="checkbox" name="fle" value="${esc(e.id)}" ${picked.has(e.id)?'checked':''} ${dis()}><span class="mono">${esc(e.code)}</span><span>${esc(e.missing?tx('fle_del'):fleLabel(e))}</span><span class="due ${s.cls==='off'?'':s.cls}">${esc(s.text)}</span></label>`}).join('');
+  return `<p class="note span2">${tx('fle_note',tx(what))}</p>
+    <div class="field span2"><input id="fle-q" type="search" placeholder="${esc(tx('fle_ph'))}" autocomplete="off" aria-label="${esc(tx('fle_a'))}">
     <div class="fle-list" id="fle-list">${rows}</div><div class="chips" id="fle-sel">${fleSel(ids)}</div></div>`;
 }
-const fleSel=ids=>ids.length?`<span class="muted">${ids.length} assigned:</span> ${ids.map(fleChip).join('')}`:'<span class="muted">None assigned.</span>';
+const fleSel=ids=>ids.length?`<span class="muted">${tx('fle_n',ids.length)}</span> ${ids.map(fleChip).join('')}`:`<span class="muted">${tx('fle_none0')}</span>`;
 function openQtp(id){
   const q=id?S.qtps.find(x=>x.id===id):{code:'',name:'',durVal:'',durUnit:'Hours',continuous:true,cyclesPerDay:'',techHours:'',equipmentId:'',notes:''}; if(!q) return;
   dlg.dataset.kind='qtp'; dlg.dataset.id=id||'';
-  const eqOpts=[['','— none —'],...[...S.equipment].sort(byName).map(b=>[b.id,eqName(b)])];
-  const body=`<fieldset><legend>Test procedure</legend>
-    ${fld('f-code','QTP code',inp('code',q.code||q.id,'text',id?'readonly':'placeholder="QTP0000"'),'req')}
-    ${fld('f-name','Test name',inp('name',q.name),'span2')}
-    ${fld('f-testType','Test type',inp('testType',q.testType))}
-    ${fld('f-standard','Standard',inp('standard',q.standard,'text','placeholder="e.g. IEC 60068"'))}
-    <div class="field span2"><label for="f-durVal">Estimated duration</label><div class="inline">${inp('durVal',q.durVal,'number','min="0" step="any" style="flex:1"')}${sel('durUnit',q.durUnit||'Hours',UNITS,'style="flex:1"')}${sel('durBasis',q.durBasis==='sample'?'sample':'test',[['test','per test'],['sample','per sample']],'style="flex:1.2" aria-label="Duration basis"')}</div><span class="help">Per sample: multiplied by the number of pieces of each test</span></div>
-    ${fld('f-continuous','Runs',sel('continuous',q.continuous===false?'no':'yes',[['yes','Continuous 24/7'],['no','Working hours (8 h/day)']]))}
-    ${fld('f-cyclesPerDay','Cycles per day',inp('cyclesPerDay',q.cyclesPerDay,'number','min="0" step="any"'),'','Only for durations in cycles')}
-    ${fld('f-equipmentId','Default equipment',sel('equipmentId',q.equipmentId||'',eqOpts))}
-    ${fld('f-profile','Technician load profile',sel('profile',q.profile==='endurance'?'endurance':'even',[['even','Even: total hours spread over the working days'],['endurance','Endurance: setup + daily check + reviews + teardown']]),'span2')}
-    <div class="field span2" id="even-fields" ${q.profile==='endurance'?'hidden':''}><label for="f-techHours">Technician hours</label><div class="inline" style="max-width:420px">${inp('techHours',q.techHours,'number','min="0" step="0.5" style="flex:1"')}${sel('techBasis',q.techBasis==='sample'?'sample':'test',[['test','per test'],['sample','per sample']],'style="flex:1.2" aria-label="Technician hours basis"')}</div><span class="help">Per sample: multiplied by the number of pieces of each test</span></div>
+  const eqOpts=[['',tx('none_o')],...[...S.equipment].sort(byName).map(b=>[b.id,eqName(b)])];
+  const basis=[['test',tx('perTest')],['sample',tx('perSample')]], runs=[['yes',tx('run_yes')],['no',tx('run_no')]];
+  const body=`<fieldset><legend>${tx('qt_leg')}</legend>
+    ${fld('f-code',tx('qf_code'),inp('code',q.code||q.id,'text',id?'readonly':'placeholder="QTP0000"'),'req')}
+    ${fld('f-name',tx('col_tname'),inp('name',q.name),'span2')}
+    ${fld('f-testType',tx('qf_testType'),inp('testType',q.testType))}
+    ${fld('f-standard',tx('qf_standard'),inp('standard',q.standard,'text',`placeholder="${esc(tx('qt_stdPh'))}"`))}
+    <div class="field span2"><label for="f-durVal">${tx('ed_dur')}</label><div class="inline">${inp('durVal',q.durVal,'number','min="0" step="any" style="flex:1"')}${sel('durUnit',q.durUnit||'Hours',optsOf(UNITS,unitName),'style="flex:1"')}${sel('durBasis',q.durBasis==='sample'?'sample':'test',basis,`style="flex:1.2" aria-label="${esc(tx('qt_durBasis'))}"`)}</div><span class="help">${tx('qt_perSHelp')}</span></div>
+    ${fld('f-continuous',tx('col_runs'),sel('continuous',q.continuous===false?'no':'yes',runs))}
+    ${fld('f-cyclesPerDay',tx('qt_cpd'),inp('cyclesPerDay',q.cyclesPerDay,'number','min="0" step="any"'),'',tx('qt_cpdHelp'))}
+    ${fld('f-equipmentId',tx('col_defEq'),sel('equipmentId',q.equipmentId||'',eqOpts))}
+    ${fld('f-profile',tx('qt_prof'),sel('profile',q.profile==='endurance'?'endurance':'even',[['even',tx('qt_profEven')],['endurance',tx('qt_profEndu')]]),'span2')}
+    <div class="field span2" id="even-fields" ${q.profile==='endurance'?'hidden':''}><label for="f-techHours">${tx('qf_techHours')}</label><div class="inline" style="max-width:420px">${inp('techHours',q.techHours,'number','min="0" step="0.5" style="flex:1"')}${sel('techBasis',q.techBasis==='sample'?'sample':'test',basis,`style="flex:1.2" aria-label="${esc(tx('qt_techBasis'))}"`)}</div><span class="help">${tx('qt_perSHelp')}</span></div>
     <div class="span2" id="endu-fields" ${q.profile==='endurance'?'':'hidden'}><div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:10px">
-      ${fld('f-setupH','Setup hours',inp('setupH',q.setupH,'number','min="0" step="0.5"'),'',`In blocks of ${LOAD_DAY} h per working day from the start`)}
-      ${fld('f-dailyH','Daily check hours',inp('dailyH',q.dailyH,'number','min="0" step="0.25"'),'','Every working day between setup and teardown')}
-      <div class="field"><label for="f-reviewEvery">Review every</label><div class="inline">${inp('reviewEvery',q.reviewEvery,'number','min="0" step="any" style="flex:1"')}${sel('reviewUnit',q.reviewUnit||'Hours',['Hours','Days','Weeks'],'style="flex:1"')}</div><span class="help">Counted from the start; weekend reviews move to Monday</span></div>
-      ${fld('f-reviewH','Hours per review',inp('reviewH',q.reviewH,'number','min="0" step="0.5"'))}
-      ${fld('f-teardownH','Teardown hours',inp('teardownH',q.teardownH,'number','min="0" step="0.5"'),'',`In blocks of ${LOAD_DAY} h per working day, ending on the end date`)}
+      ${fld('f-setupH',tx('qt_setupH'),inp('setupH',q.setupH,'number','min="0" step="0.5"'),'',tx('qt_setupHelp',LOAD_DAY))}
+      ${fld('f-dailyH',tx('qt_dailyH'),inp('dailyH',q.dailyH,'number','min="0" step="0.25"'),'',tx('qt_dailyHelp'))}
+      <div class="field"><label for="f-reviewEvery">${tx('qt_revEvery')}</label><div class="inline">${inp('reviewEvery',q.reviewEvery,'number','min="0" step="any" style="flex:1"')}${sel('reviewUnit',q.reviewUnit||'Hours',optsOf(['Hours','Days','Weeks'],unitName),'style="flex:1"')}</div><span class="help">${tx('qt_revHelp')}</span></div>
+      ${fld('f-reviewH',tx('qt_revH'),inp('reviewH',q.reviewH,'number','min="0" step="0.5"'))}
+      ${fld('f-teardownH',tx('qt_tearH'),inp('teardownH',q.teardownH,'number','min="0" step="0.5"'),'',tx('qt_tearHelp',LOAD_DAY))}
     </div></div>
-    ${fld('f-notes','Notes',`<textarea id="f-notes" name="notes" ${dis()}>${esc(q.notes||'')}</textarea>`,'span2')}
-    <p class="note span2">These values are planning defaults. Each test can override duration and running mode; with the even profile it can also override the total technician hours. Weekends never carry technician hours.</p>
+    ${fld('f-notes',tx('qf_notes'),`<textarea id="f-notes" name="notes" ${dis()}>${esc(q.notes||'')}</textarea>`,'span2')}
+    <p class="note span2">${tx('qt_note')}</p>
   </fieldset>
-  <fieldset><legend>Instruments (FLE)</legend>${flePicker(q.instrumentos||[],'this test procedure')}</fieldset>`;
-  dlg.innerHTML=dlgShell(id?'Edit QTP':'New QTP',id?`${q.code||q.id} · ${q.name||''}`:'New QTP',body,id?'<button type="button" class="btn ghost danger" data-act="del">Delete</button>':'');
-  dlg.showModal();
+  <fieldset><legend>${tx('fle_h')}</legend>${flePicker(q.instrumentos||[],'fle_thisQtp')}</fieldset>`;
+  dlg.innerHTML=dlgShell(tx(id?'qt_edit':'qt_new'),id?`${q.code||q.id} · ${q.name||''}`:tx('qt_new'),body,id?delBtn():'');
+  if(!dlg.open) dlg.showModal();
 }
 const num=v=>v===''||v==null||isNaN(+v)?'':+v;
 function formErr(m){const el=$('#f-err'); el.textContent=m; el.hidden=!m; return null;}
@@ -1068,9 +1081,9 @@ async function saveDialog(){
   const kind=dlg.dataset.kind, id=dlg.dataset.id, f=readForm(), now=nowIso(), T=iso(todayMs());
   try{
     if(kind==='test'){
-      if(!f.plr&&!f.qtp) return formErr('Enter the PLR and the QTP: together they identify the test.');
-      if(!f.qtp) return formErr('Enter the QTP code.');
-      if(f.start&&f.end&&d(f.end)<d(f.start)) return formErr('The planned end cannot be before the start.');
+      if(!f.plr&&!f.qtp) return formErr(tx('e_plrQtp'));
+      if(!f.qtp) return formErr(tx('e_qtp'));
+      if(f.start&&f.end&&d(f.end)<d(f.start)) return formErr(tx('e_endStart'));
       const prev=id?S.tests.find(x=>x.id===id):null;
       const data={plr:f.plr,qtp:f.qtp.toUpperCase(),title:f.title,project:f.project,requester:f.requester,comments:f.comments,pieces:f.pieces===''?'':+f.pieces,sequence:f.sequence===''?'':+f.sequence,requestedDue:f.requestedDue,flexible:!!f.flexible,
         status:f.status,priority:f.priority,equipmentId:f.equipmentId,techId:f.techId,start:f.start,end:f.end,durVal:f.durVal===''?'':+f.durVal,durUnit:f.durUnit,continuous:f.continuous,techHours:f.techHours===''?'':+f.techHours,
@@ -1084,29 +1097,29 @@ async function saveDialog(){
       else await db.collection(COL.tests).add({...data,source:'Manual',created:now});
       if(data.qtp&&!S.qtps.some(q=>q.id===qid(data.qtp))) await db.doc(`${COL.qtps}/${qid(data.qtp)}`).set({code:data.qtp,name:data.title||'',durVal:'',durUnit:'Hours',continuous:true,techHours:'',equipmentId:'',notes:'',actualizado:now});
     }else if(kind==='person'){
-      if(!f.nombre) return formErr('The name is required.');
+      if(!f.nombre) return formErr(tx('e_name'));
       const data={nombre:f.nombre,rol:f.rol||'',horasSemana:+f.horasSemana||0,habilitaciones:[...dlg.querySelectorAll('input[name="hab"]:checked')].map(x=>x.value),actualizado:now};
       if(id) await db.doc(`${COL.people}/${id}`).update(data); else await db.collection(COL.people).add(data);
     }else if(kind==='equipment'){
-      if(!f.nombre) return formErr('The name is required.');
+      if(!f.nombre) return formErr(tx('e_name'));
       const data={nombre:f.nombre,nombreAras:f.nombreAras||'',descripcion:f.descripcion||'',estado:f.estado||'Operational',capacidad:Math.max(1,parseInt(f.capacidad)||1),proximaCalibracion:f.proximaCalibracion||'',actualizado:now};
       if(CAL.eq) data.instrumentos=[...dlg.querySelectorAll('input[name="fle"]:checked')].map(x=>x.value); else if(!id) data.instrumentos=[];
       if(id) await db.doc(`${COL.equipment}/${id}`).update(data); else await db.collection(COL.equipment).add(data);
     }else if(kind==='qtp'){
-      const code=(f.code||'').trim(); if(!code) return formErr('The QTP code is required.');
-      if(!id&&S.qtps.some(q=>q.id===qid(code))) return formErr(`${code} is already in the library.`);
+      const code=(f.code||'').trim(); if(!code) return formErr(tx('e_code'));
+      if(!id&&S.qtps.some(q=>q.id===qid(code))) return formErr(tx('e_codeDup',code));
       const data={code:id?(S.qtps.find(q=>q.id===id).code||code):code.toUpperCase(),name:f.name||'',durVal:f.durVal===''?'':+f.durVal,durUnit:f.durUnit||'Hours',continuous:f.continuous!=='no',cyclesPerDay:f.cyclesPerDay===''?'':+f.cyclesPerDay,techHours:f.techHours===''?'':+f.techHours,durBasis:f.durBasis==='sample'?'sample':'test',techBasis:f.techBasis==='sample'?'sample':'test',equipmentId:f.equipmentId||'',testType:f.testType||'',standard:f.standard||'',notes:f.notes||'',profile:f.profile==='endurance'?'endurance':'even',
         setupH:num(f.setupH),dailyH:num(f.dailyH),reviewEvery:num(f.reviewEvery),reviewUnit:f.reviewUnit||'Hours',reviewH:num(f.reviewH),teardownH:num(f.teardownH),actualizado:now};
       if(CAL.eq) data.instrumentos=[...dlg.querySelectorAll('input[name="fle"]:checked')].map(x=>x.value); else if(!id) data.instrumentos=[];
       if(id) await db.doc(`${COL.qtps}/${id}`).update(data); else await db.doc(`${COL.qtps}/${qid(code)}`).set(data);
     }
-    dlg.close(); toast('Saved.');
+    dlg.close(); toast(tx('savedT'));
   }catch(e){formErr(errMsg(e));}
 }
 async function deleteFromDialog(btn){
-  if(!btn.classList.contains('armed')){btn.classList.add('armed'); btn.textContent='Confirm delete'; return;}
+  if(!btn.classList.contains('armed')){btn.classList.add('armed'); btn.textContent=tx('delConfirm'); return;}
   const kind=dlg.dataset.kind, id=dlg.dataset.id, col={test:COL.tests,person:COL.people,equipment:COL.equipment,qtp:COL.qtps}[kind];
-  try{await db.doc(`${col}/${id}`).delete(); dlg.close(); toast('Deleted.');}catch(e){formErr(errMsg(e));}
+  try{await db.doc(`${col}/${id}`).delete(); dlg.close(); toast(tx('deletedT'));}catch(e){formErr(errMsg(e));}
 }
 
 /* ---------- Status changes ---------- */
@@ -1116,7 +1129,7 @@ async function setStatus(id,status,{openHold=true}={}){
   if(RUNNING.has(status)&&!t.start) patch.start=T;
   if(CLOSED.includes(status)) patch.closedAt=t.closedAt||T; else if(t.closedAt) patch.closedAt='';
   if(status==='Completed') patch.progress=100;
-  try{await db.doc(`${COL.tests}/${id}`).update(patch); toast(`${baseRef(t)} → ${status}${CLOSED.includes(status)?' (moved to History)':''}`); if(openHold&&status==='On hold'&&!t.holdReason) openEditor(id);}catch(err){toast(errMsg(err)); render();}
+  try{await db.doc(`${COL.tests}/${id}`).update(patch); toast(`${baseRef(t)} → ${stName(status)}${CLOSED.includes(status)?tx('toHist'):''}`); if(openHold&&status==='On hold'&&!t.holdReason) openEditor(id);}catch(err){toast(errMsg(err)); render();}
 }
 
 async function setDate(id,field,value){
@@ -1124,23 +1137,23 @@ async function setDate(id,field,value){
   const patch={updated:nowIso()}; let msg='';
   if(field==='start'){
     if((t.start||'')===value) return;
-    if(value&&t.end&&d(t.end)<d(value)){toast('The start date cannot be after the end date.'); render(); return;}
-    patch.start=value; msg=value?`start ${fmt(value)}`:'start date cleared';
-    if(value&&t.status==='Queued'){patch.status='Planned'; msg+=' · moved to Planned';}
+    if(value&&t.end&&d(t.end)<d(value)){toast(tx('e_startAfter')); render(); return;}
+    patch.start=value; msg=value?tx('m_start',fmt(value)):tx('m_startClr');
+    if(value&&t.status==='Queued'){patch.status='Planned'; msg+=tx('m_toPlanned');}
   }else{
     const ei=endInfo(t), auto=ei.kind==='auto'?iso(ei.end):'';
-    if(!value){ if(!t.end) {render(); return;} patch.end=''; msg='end date back to automatic'; }
+    if(!value){ if(!t.end) {render(); return;} patch.end=''; msg=tx('m_endAuto'); }
     else{
-      if(t.start&&d(value)<d(t.start)){toast('The end date cannot be before the start date.'); render(); return;}
+      if(t.start&&d(value)<d(t.start)){toast(tx('e_endBefore')); render(); return;}
       if(value===(t.end||'')||(!t.end&&value===auto)) return;
-      patch.end=value; msg=`end ${fmt(value)}`;
+      patch.end=value; msg=tx('m_end',fmt(value));
     }
   }
   try{await db.doc(`${COL.tests}/${id}`).update(patch); toast(`${baseRef(t)}: ${msg}`);}catch(e){toast(errMsg(e)); render();}
 }
 async function setTech(id,techId){
   const t=S.tests.find(x=>x.id===id); if(!t||!db||(t.techId||'')===techId) return;
-  try{await db.doc(`${COL.tests}/${id}`).update({techId,updated:nowIso()}); const p=personById(techId); toast(`${baseRef(t)} → ${p?p.nombre:'Unassigned'}`);}catch(e){toast(errMsg(e)); render();}
+  try{await db.doc(`${COL.tests}/${id}`).update({techId,updated:nowIso()}); const p=personById(techId); toast(`${baseRef(t)} → ${p?p.nombre:tx('unassigned')}`);}catch(e){toast(errMsg(e)); render();}
 }
 
 /* ---------- Samples (muestras) ----------
@@ -1148,7 +1161,7 @@ async function setTech(id,techId){
    one suffix per physical unit (-1, -2…), which keeps its number when it is withdrawn. A reception is linked to one or
    more PLRs; its tests are the ARAS tests (PLR · QTP) of those PLRs, so an ARAS import updates them here too.
    Units whose codes come from an ARAS request start as "expected" and count as received once someone receives them.
-   This tab is in Spanish with an English switch: all its texts go through tx(). */
+   All its texts go through tx(). */
 const SMP=['expected','received','waiting','testing','tested','stored','returned','scrapped'];
 const SMP_CLS={expected:'exp',received:'plan',waiting:'cola',testing:'curso',tested:'inf',stored:'cerr',returned:'endu',scrapped:'canc'};
 const SMP_DEFAULT=['expected','received','waiting','testing','tested','stored'];
@@ -1160,10 +1173,11 @@ const SMP_PHASES=['Feasibility','MSL','ESL','Pilot','Production','N/A'];
    Sizes in mm: qr = side of the QR (about 0.35 mm per module at 14 mm with error correction L); id, l2 (PLR · QTP),
    ds (description) and ft (footer) = font sizes. */
 const SMP_LABELS={
-  '99012':{w:89,h:36,n:'99012 Large Address · 36 × 89 mm',qr:22,id:6.4,l2:3.6,ds:4,ft:3.2},
-  '99010':{w:89,h:28,n:'99010 Standard Address · 28 × 89 mm',qr:18,id:5.6,l2:3.2,ds:3.4,ft:2.8},
-  '11354':{w:57,h:32,n:'11354 Multi-purpose · 32 × 57 mm',qr:15,id:4.8,l2:2.6,ds:3.3,ft:2.6},
-  '11352':{w:54,h:25,n:'11352 Return Address · 25 × 54 mm',qr:14,id:4.5,l2:2.5,ds:3,ft:2.4}};
+  /* Font sizes in mm: id = QTS code, plr / qtp = the PLR and QTP lines, ds = description, ft = date. */
+  '99012':{w:89,h:36,n:'99012 Large Address · 36 × 89 mm',qr:22,id:6.4,plr:5.4,qtp:4.8,ds:3.6,ft:3},
+  '99010':{w:89,h:28,n:'99010 Standard Address · 28 × 89 mm',qr:18,id:5.2,plr:4.4,qtp:3.8,ds:3,ft:2.6},
+  '11354':{w:57,h:32,n:'11354 Multi-purpose · 32 × 57 mm',qr:15,id:4.8,plr:4.8,qtp:4.2,ds:3,ft:2.6},
+  '11352':{w:54,h:25,n:'11352 Return Address · 25 × 54 mm',qr:14,id:4.5,plr:4.2,qtp:3.6,ds:2.6,ft:2.4}};
 const SMP_CODE_RE=/QTS-\d{5}(?:-\d+)?/i;
 const SMP_I18N={
 es:{
@@ -1182,7 +1196,7 @@ es:{
   au_e_save:'Tu sesión ha caducado y el cambio no se ha guardado. Vuelve a entrar y repítelo.', au_e_perm:'No puedes cambiar datos: tu cuenta no tiene permiso de edición en esta app. Pídeselo a un administrador.',
   tab:'Muestras', title:'Muestras',
   search:'Buscar o escanear: QTS, PLR, QTP, proyecto, nº serie…',
-  byPlr:'Por PLR', list:'Lista', lang:'Idioma',
+  byPlr:'Por PLR', list:'Lista',
   receive:'+ Recibir muestras', labels:n=>`Etiquetas${n?` · ${n} por imprimir`:''}`,
   k_inlab:'En el laboratorio', k_inlab_s:'unidades recibidas, sin devolver',
   k_wait:'En espera', k_wait_s:'recibidas, sin empezar ensayo',
@@ -1199,7 +1213,7 @@ es:{
   alsoIn:p=>`también en ${p}`, noLots:'Aún no ha llegado ninguna muestra.', hiddenN:n=>`${n} recepción${n===1?'':'es'} oculta${n===1?'':'s'} por el filtro`,
   by:'por', units:n=>`${n} ud${n===1?'':'s'}.`, notPrinted:'sin etiqueta', receiveFor:'+ Recibir',
   noMatch:'Ninguna muestra cumple el filtro.', noPlr:'Ningún PLR cumple el filtro.',
-  empty_h:'Aún no hay muestras ni ensayos', empty_p:'Importa el Excel de ARAS en Import ARAS: cada PLR aparecerá aquí, listo para recibir sus muestras. También puedes recibir muestras de un PLR escribiéndolo a mano.',
+  empty_h:'Aún no hay muestras ni ensayos', empty_p:'Importa el Excel de ARAS en Importar ARAS: cada PLR aparecerá aquí, listo para recibir sus muestras. También puedes recibir muestras de un PLR escribiéndolo a mano.',
   c_sample:'Muestra', c_plr:'PLR · QTP', c_desc:'Descripción', c_proj:'Proyecto', c_phase:'Fase proyecto', c_state:'Estado', c_pn:'Part number', c_sn:'Nº serie', c_loc:'Ubicación', c_recv:'Recepción', c_com:'Comentarios',
   several:'varios', expandAll:'Desplegar todo', collapseAll:'Contraer todo', listHelp:'Cada recepción (QTS-xxxxx) agrupa sus unidades (-1, -2…). El estado de cada unidad se cambia en la tabla; el resto, abriendo la recepción.',
   selN:n=>`${n} unidad${n===1?'':'es'} seleccionada${n===1?'':'s'}`, setState:'Cambiar estado a…', printSel:'Imprimir etiquetas', clearSel:'Quitar selección',
@@ -1224,7 +1238,7 @@ es:{
   log_recv:n=>`Recibida (${n} ud${n===1?'':'s'}.)`, log_state:(c,a,b)=>`${c}: ${a} → ${b}`, log_add:c=>`${c} añadida`, log_rm:c=>`${c} retirada`, log_back:c=>`${c} recuperada`, log_edit:'Datos de la recepción editados', log_print:n=>`${n} etiqueta${n===1?'':'s'} impresa${n===1?'':'s'}`,
   lb_eyebrow:'Etiquetas · DYMO LabelWriter 550', lb_title:n=>`Imprimir ${n} etiqueta${n===1?'':'s'}`, lb_units:'Unidades', lb_all:'Todas', lb_noneSel:'Ninguna',
   lb_size:'Etiqueta', lb_rot:'Giro al imprimir', lb_rot90:'90° a la derecha', lb_rot270:'90° a la izquierda', lb_rot0:'Sin giro (horizontal)', lb_rot180:'180°', lb_code:'Código', qr:'QR (abre los ensayos del PLR en Control de ensayos)', bar:'Código de barras (Code 128)', noCode:'Sin código',
-  lb_show:'Contenido', lb_plr:'PLR · QTP', lb_desc:'Descripción', lb_proj:'Proyecto', lb_phase:'Fase del proyecto', lb_date:'Fecha de recepción',
+  lb_show:'Contenido', lb_plr:'PLR · QTP', lb_desc:'Descripción', lb_date:'Fecha de recepción',
   lb_preview:'Vista previa a tamaño real',
   lb_how:'<b>Una vez por equipo:</b> en Windows, Preferencias de impresión de la <b>DYMO LabelWriter 550</b> → tamaño de papel el de la etiqueta y orientación <b>vertical</b>; el navegador usa ese papel, no el de la app.<br><b>En el cuadro de impresión:</b> impresora <b>DYMO LabelWriter 550</b>, tamaño de papel el de la etiqueta (p. ej. <i>11354 Multi-Purpose</i>), orientación <b>vertical</b> (u <b>horizontal</b> si eliges giro 0° o 180°), márgenes <b>ninguno</b>, escala <b>100 %</b> y sin encabezados ni pies de página. Sale una etiqueta por página.',
   lb_print:'Imprimir', lb_done:n=>`${n} etiqueta${n===1?'':'s'} enviada${n===1?'':'s'} a la impresora.`, lb_empty:'Marca al menos una unidad.', lb_noLib:'No se ha podido cargar la librería del código. Revisa la conexión.',
@@ -1258,7 +1272,7 @@ en:{
   au_e_save:'Your session has expired and the change was not saved. Sign in again and repeat it.', au_e_perm:'You cannot change data: your account does not have edit access to this app. Ask an administrator.',
   tab:'Samples', title:'Samples',
   search:'Search or scan: QTS, PLR, QTP, project, serial no.…',
-  byPlr:'By PLR', list:'List', lang:'Language',
+  byPlr:'By PLR', list:'List',
   receive:'+ Receive samples', labels:n=>`Labels${n?` · ${n} to print`:''}`,
   k_inlab:'In the lab', k_inlab_s:'units received, not returned',
   k_wait:'Waiting', k_wait_s:'received, test not started',
@@ -1300,7 +1314,7 @@ en:{
   log_recv:n=>`Received (${n} unit${n===1?'':'s'})`, log_state:(c,a,b)=>`${c}: ${a} → ${b}`, log_add:c=>`${c} added`, log_rm:c=>`${c} withdrawn`, log_back:c=>`${c} restored`, log_edit:'Reception details edited', log_print:n=>`${n} label${n===1?'':'s'} printed`,
   lb_eyebrow:'Labels · DYMO LabelWriter 550', lb_title:n=>`Print ${n} label${n===1?'':'s'}`, lb_units:'Units', lb_all:'All', lb_noneSel:'None',
   lb_size:'Label', lb_rot:'Print rotation', lb_rot90:'90° clockwise', lb_rot270:'90° counter-clockwise', lb_rot0:'No rotation (landscape)', lb_rot180:'180°', lb_code:'Code', qr:'QR (opens the PLR tests in Control de ensayos)', bar:'Barcode (Code 128)', noCode:'No code',
-  lb_show:'Content', lb_plr:'PLR · QTP', lb_desc:'Description', lb_proj:'Project', lb_phase:'Project phase', lb_date:'Reception date',
+  lb_show:'Content', lb_plr:'PLR · QTP', lb_desc:'Description', lb_date:'Reception date',
   lb_preview:'Preview at real size',
   lb_how:'<b>Once per computer:</b> in Windows, <b>DYMO LabelWriter 550</b> Printing Preferences → paper size of the label and <b>portrait</b> orientation; the browser uses that paper, not the app\'s.<br><b>In the print dialog:</b> printer <b>DYMO LabelWriter 550</b>, paper size of the label (e.g. <i>11354 Multi-Purpose</i>), orientation <b>portrait</b> (or <b>landscape</b> with a 0° or 180° turn), margins <b>none</b>, scale <b>100%</b> and no headers or footers. One label per page.',
   lb_print:'Print', lb_done:n=>`${n} label${n===1?'':'s'} sent to the printer.`, lb_empty:'Tick at least one unit.', lb_noLib:'Could not load the code library. Check the connection.',
@@ -1318,10 +1332,331 @@ en:{
   log_gen:n=>`Codes created from ARAS (${n} unit${n===1?'':'s'})`,
   ed_title:p=>`Samples of ${p}`, ed_none:'No samples of this PLR have been received yet.', chip:(r,p)=>p?`Samples ${r}/${p}`:`Samples ${r}`, notFound:c=>`There is no sample ${c}.`
 }};
-let SMP_LANG='es'; try{SMP_LANG=localStorage.getItem('tl.lang')==='en'?'en':'es';}catch(e){}
-const tx=(k,...a)=>{const v=SMP_I18N[SMP_LANG][k]??SMP_I18N.es[k]??k; return typeof v==='function'?v(...a):v;};
-/* Sign-in texts: Spanish (or English) in Muestras with tx(), English in Control de ensayos and Ocupación. */
-const ta=(k,...a)=>{if(APP==='samples') return tx(k,...a); const v=SMP_I18N.en[k]??k; return typeof v==='function'?v(...a):v;};
+/* Texts of Control de ensayos and Ocupación (and the parts Muestras shares with them), as key:[es,en]. Values written to
+   the data (statuses, priorities, units, results…) stay in English: the display maps below only change how they are shown. */
+const CE_I18N={
+  /* Display maps of stored values */
+  stl:[{'Not approved':'No aprobado','Queued':'En cola','Planned':'Planificado','In progress':'En curso','Endurance running':'Endurance en curso','On hold':'Bloqueado','Report':'Informe','Completed':'Completado','Cancelled':'Cancelado'},{}],
+  prio:[{Urgent:'Urgente',High:'Alta',Medium:'Media',Low:'Baja'},{}],
+  res:[{Pass:'Apto',Fail:'No apto','N/A':'N/A'},{}],
+  unit:[{Hours:'Horas',Days:'Días',Weeks:'Semanas',Cycles:'Ciclos'},{}],
+  unitS:[{Hours:'h',Days:'d',Weeks:'sem',Cycles:'ciclos'},{Hours:'h',Days:'d',Weeks:'wk',Cycles:'cycles'}],
+  eqst:[{'Operational':'Operativo','Maintenance':'Mantenimiento','Calibration':'Calibración','Out of service':'Fuera de servicio'},{}],
+  fleSt:[{'Out of service':'Fuera de servicio','Retired':'Retirado','Reserved':'Reservado'},{}],
+  ptag:[{setup:'montaje',daily:'control diario',review:'revisión',teardown:'desmontaje'},{}],
+  wd:[['Do','Lu','Ma','Mi','Ju','Vi','Sá'],['Su','Mo','Tu','We','Th','Fr','Sa']],
+  chg:[{title:'descripción',project:'proyecto',requester:'solicitante',comments:'comentarios',pieces:'piezas',requestedDue:'fecha solicitada',flexible:'fecha flexible',sequence:'secuencia',category:'categoría',requestNote:'nota de la petición',result:'resultado',duration:'duración',equipment:'banco',technician:'técnico',start:'inicio'},
+    {title:'description',requestedDue:'requested due date',flexible:'due date flexible',requestNote:'request note'}],
+
+  /* Page header and tabs */
+  doc_tests:['Test Lab Control','Test Lab Control'], doc_occupancy:['Ocupación del laboratorio','Lab Occupancy'], doc_samples:['Muestras','Samples'],
+  tag_tests:['LAB I+D','R&D LAB'], tag_occupancy:['BANCOS Y EQUIPO','EQUIPMENT & TEAM'], tag_samples:['MUESTRAS','SAMPLES'],
+  newTest:['+ Nuevo ensayo','+ New test'], inst:['⤓ Instalar app','⤓ Install app'], a_views:['Vistas','Views'],
+  loading:['Cargando datos del laboratorio…','Loading lab data…'],
+  v_overview:['Resumen','Overview'], v_board:['Tablero','Board'], v_queue:['Cola','Queue'], v_planning:['Planificación','Planning'], v_history:['Historial','History'],
+  v_resources:['Bancos y equipo','Equipment & team'], v_library:['Biblioteca de QTP','QTP library'], v_import:['Importar ARAS','Import ARAS'],
+  v_occupancy:['Ocupación','Occupancy'], v_samples:['Muestras','Samples'],
+
+  /* Common words */
+  today:['hoy','today'], todayC:['Hoy','Today'], delete:['Eliminar','Delete'], none_o:['— ninguno —','— none —'], notSet:['sin definir','not set'],
+  unassigned:['Sin asignar','Unassigned'], unnamed:['(sin nombre)','(unnamed)'], delEq:['(banco eliminado)','(deleted equipment)'], delPerson:['(persona eliminada)','(deleted person)'],
+  noDesc:['(sin descripción)','(no description)'], eqs:['Bancos','Equipment'], team:['Equipo','Team'], techs:['Técnicos','Technicians'],
+  noEq:['Aún no hay bancos.','No equipment yet.'], noPeople:['Aún no hay nadie en el equipo.','No team members yet.'],
+  noEqL:['sin banco','no equipment'], noTechL:['sin técnico','no technician'], endUnknown:['fin desconocido','end unknown'],
+  capN:[n=>`capacidad ${n}`,n=>`capacity ${n}`], capS:[n=>`cap. ${n}`,n=>`cap ${n}`], ofN:[n=>`de ${n}`,n=>`of ${n}`],
+  hOf:[(a,b)=>`${a} h de ${b} h`,(a,b)=>`${a} h of ${b} h`], perSample:['por muestra','per sample'], perTest:['por ensayo','per test'],
+  perDay:[n=>`(${n}/día)`,n=>`(${n}/day)`], workH:['Horario laboral','Working hours'], prof_endu:['Endurance','Endurance'],
+  nTests:[n=>`${n} ensayo${n===1?'':'s'}`,n=>`${n} test${n===1?'':'s'}`], nQtps:[n=>`${n} QTP`,n=>`${n} QTPs`],
+  nRows:[n=>`${n} fila${n===1?'':'s'}`,n=>`${n} row${n===1?'':'s'}`], nTasks:[n=>`${n} tarea${n===1?'':'s'}`,n=>`${n} task${n===1?'':'s'}`],
+  nNew:[n=>`${n} nuevo${n===1?'':'s'}`,n=>`${n} new`], nUpd:[n=>`${n} actualizado${n===1?'':'s'}`,n=>`${n} updated`],
+  nWk:[n=>`${n} sem`,n=>`${n} wk`], wkP:['S','W'], wk:['Semana','Week'], wkOf:['Semana del','Week of'], day:['Día','Day'], period:['Periodo','Period'],
+  thisWk:['Esta sem.','This wk'], weekend:['fin de semana','weekend'], yes:['Sí','Yes'], no:['No','No'],
+  sev_crit:['Crítica','Critical'], sev_warn:['Aviso','Warning'], lg_over:['sobrecarga','overbooked'],
+  flex:['flex.','flex'], flexP:[' (flexible)',' (flexible)'], agreedP:[' (acordada)',' (agreed)'],
+  src_test:['este ensayo','this test'], src_lib:['biblioteca de QTP','QTP library'],
+  src_libS:[(v,u,n,set)=>`biblioteca de QTP · ${v} ${u} × ${n}${set?'':' (piezas sin indicar)'}`,(v,u,n,set)=>`QTP library · ${v} ${u} × ${n}${set?'':' (pieces not set)'}`],
+  ld_endu:[(s,d,r,t)=>`montaje ${s} h · diario ${d} h${r?` · revisión ${r[0]} h cada ${r[1]} ${r[2]}`:''} · desmontaje ${t} h`,(s,d,r,t)=>`setup ${s} h · daily ${d} h${r?` · review ${r[0]} h every ${r[1]} ${r[2]}`:''} · teardown ${t} h`],
+  ld_even:[(h,ps)=>`${h} h ${ps?'por muestra':'en total'}, repartidas por igual`,(h,ps)=>`${h} h ${ps?'per sample':'total'}, spread evenly`],
+
+  /* Instruments (FLE) from the calibration plan */
+  fle_h:['Instrumentos (FLE)','Instruments (FLE)'], fle_none:['no está en el plan de calibración','not in the calibration plan'],
+  fle_nreq:['no necesita calibración','no calibration required'], fle_before:['se comprueba antes de usarlo','checked before use'],
+  fle_nodates:['faltan las fechas de calibración','calibration dates missing'], fle_over:[m=>`calibración vencida desde ${m}`,m=>`calibration overdue since ${m}`],
+  fle_due:[m=>`calibración en ${m}`,m=>`calibration due ${m}`], fle_ok:[m=>`calibrado hasta ${m}`,m=>`calibrated until ${m}`],
+  fle_noplan:['plan de calibración sin cargar','calibration plan not loaded'], fle_loadErr:['No se ha podido leer el plan de calibración','The calibration plan could not be read'],
+  fle_loading:['El plan de calibración se está cargando','The calibration plan is loading'],
+  fle_conn:[(a,repo,has)=>`${a}. Conecta GitHub con una cuenta que pueda leer <span class="mono">${repo}</span> para asignar instrumentos.${has?' Asignados ahora:':''}`,(a,repo,has)=>`${a}. Connect GitHub with an account that can read <span class="mono">${repo}</span> to assign instruments.${has?' Assigned now:':''}`],
+  fle_grp:[['Equipos de ensayo','Equipos auxiliares','Otros'],['Test equipment','Auxiliary equipment','Other']],
+  fle_del:['(eliminado del plan de calibración)','(deleted from the calibration plan)'],
+  fle_note:[w=>`Instrumentos del plan de calibración que se suelen usar en ${w}.`,w=>`Instruments from the calibration plan that are usually used on ${w}.`],
+  fle_thisEq:['este banco','this equipment'], fle_thisQtp:['este procedimiento','this test procedure'],
+  fle_ph:['Filtrar por código, descripción, marca o modelo','Filter by code, description, brand or model'], fle_a:['Filtrar instrumentos','Filter instruments'],
+  fle_n:[n=>`${n} asignado${n===1?'':'s'}:`,n=>`${n} assigned:`], fle_none0:['Ninguno asignado.','None assigned.'],
+
+  /* Alerts: short label (al_x) and text (al_x_t) */
+  al_noStart:['Sin fecha de inicio','No start date'], al_noStart_t:[(r,s)=>`${r}: ${s} sin fecha de inicio.`,(r,s)=>`${r}: ${s} without a start date.`],
+  al_noDur:['Sin duración','No duration'], al_noDur_t:[r=>`${r}: sin duración estimada en el ensayo ni en la biblioteca de QTP, así que no se sabe cuándo termina.`,r=>`${r}: no estimated duration on the test or in the QTP library, so the end date is unknown.`],
+  al_dates:['Fechas incoherentes','Dates inconsistent'], al_dates_t:[r=>`${r}: el fin previsto es anterior al inicio.`,r=>`${r}: the planned end is before the start.`],
+  al_cap:['Capacidad superada','Over capacity'], al_cap_t:[(b,n,f,c)=>`${b}: ${n} ensayos a la vez desde el ${f} (capacidad ${c}).`,(b,n,f,c)=>`${b}: ${n} tests at the same time from ${f} (capacity ${c}).`],
+  al_eqOff:['Banco no operativo','Equipment not operational'], al_eqOff_t:[(r,b,s)=>`${r}: ${b} está en estado «${s}».`,(r,b,s)=>`${r}: ${b} is in status "${s}".`],
+  al_calx:['Calibración caducada','Calibration expired'], al_calx_t:[(b,d,r)=>`${b}: calibración caducada el ${d} (lo usa ${r}).`,(b,d,r)=>`${b}: calibration expired on ${d} (used by ${r}).`],
+  al_cald:['Calibración próxima','Calibration due'], al_cald_t:[(b,d,r,e)=>`${b}: calibración el ${d}, antes de que termine ${r} (${e}).`,(b,d,r,e)=>`${b}: calibration due on ${d}, before ${r} ends (${e}).`],
+  al_qual:['Sin habilitación','Not qualified'], al_qual_t:[(p,b,r)=>`${p} no tiene habilitación en ${b} (${r}).`,(p,b,r)=>`${p} is not qualified on ${b} (${r}).`],
+  al_late:['Termina después de la fecha','Ends after due date'], al_late_t:[(r,e,ag,d,fl)=>`${r}: el fin previsto ${e} es posterior a la fecha ${ag?'acordada':'solicitada'} ${d}${fl}.`,(r,e,ag,d,fl)=>`${r}: planned end ${e} is after the ${ag?'agreed':'requested'} date ${d}${fl}.`],
+  al_over:['Fuera de plazo','Overdue'], al_over_t:[(r,n,ag,d,fl)=>`${r}: ${n} días después de la fecha ${ag?'acordada':'solicitada'} ${d}${fl}.`,(r,n,ag,d,fl)=>`${r}: ${n} days past the ${ag?'agreed':'requested'} date ${d}${fl}.`],
+  al_soon:['Vence pronto','Due soon'], al_soon_t:[(r,d)=>`${r}: sigue en cola y vence el ${d}.`,(r,d)=>`${r}: still queued and due on ${d}.`],
+  al_past:['Fin previsto superado','Past planned end'], al_past_t:[(r,e,s)=>`${r}: el fin previsto era el ${e} y sigue ${s}.`,(r,e,s)=>`${r}: planned end was ${e} and it is still ${s}.`],
+  al_hold:['Bloqueado','On hold'], al_hold_t:[(r,why)=>`${r} está bloqueado${why?': '+why:' (sin motivo)'}.`,(r,why)=>`${r} is on hold${why?': '+why:' (no reason given)'}.`],
+  al_tech:['Técnico sobrecargado','Technician overloaded'], al_tech_t:[(p,pc,w)=>`${p} llega al ${pc} % de su capacidad la semana del ${w}.`,(p,pc,w)=>`${p} reaches ${pc}% of capacity in the week of ${w}.`],
+  al_techG:[(p,h,w,c,pc)=>`${p}: ${h} h asignadas la semana del ${w} (capacidad ${c} h, ${pc} %).`,(p,h,w,c,pc)=>`${p}: ${h} h assigned in the week of ${w} (capacity ${c} h, ${pc}%).`],
+  al_calxG:[(b,d)=>`${b}: calibración caducada el ${d}.`,(b,d)=>`${b}: calibration expired on ${d}.`],
+  al_caldG:[(b,d,n)=>`${b}: calibración el ${d} (dentro de ${n} días).`,(b,d,n)=>`${b}: calibration due on ${d} (in ${n} days).`],
+  alerts:['Alertas','Alerts'], alerts_sub:[n=>`${n} activa${n===1?'':'s'} · los ensayos completados, cancelados y no aprobados nunca generan alertas`,n=>`${n} active · completed, cancelled and not approved tests never raise alerts`],
+  al_none:['Ningún ensayo fuera de fecha y ningún ensayo bloqueado o incoherente.','No tests past their dates and no blocked or inconsistent tests.'],
+  al_none_occ:['Sin conflictos: ningún banco por encima de su capacidad y ningún técnico sobrecargado.','No conflicts: no equipment over capacity and no overloaded technicians.'],
+
+  /* Banners */
+  b_noRead:[(l,repo)=>`<b>Tu cuenta ${l} no puede ver los datos del laboratorio.</b> Pide al propietario que te añada al repositorio privado <span class="mono">${repo}</span>.`,(l,repo)=>`<b>Your account ${l} cannot see the lab data.</b> Ask the owner to add you to the private repository <span class="mono">${repo}</span>.`],
+  b_private:[pv=>`<b>Los datos del laboratorio son privados.</b> Pulsa Conectar GitHub con una cuenta que tenga acceso para verlos${pv}.`,pv=>`<b>The lab data is private.</b> Press Connect GitHub with an account that has access to see it${pv}.`],
+  b_noLoad:[pv=>`<b>No se han podido cargar los datos del laboratorio desde GitHub.</b> Revisa la conexión y recarga la página${pv}.`,pv=>`<b>Could not load the lab data from GitHub.</b> Check your connection and reload the page${pv}.`],
+  b_pvTry:[', o <button class="link" data-pv="demo-on">prueba la vista previa con datos de ejemplo</button>',', or <button class="link" data-pv="demo-on">try the preview with example data</button>'],
+  b_demo:['<b>Vista previa con datos de ejemplo.</b> Los datos son inventados y los cambios se guardan solo en este navegador; no se lee ni se envía nada a GitHub. También puedes importar un Excel de ARAS para probarlo. <button class="link" data-pv="demo-reset">Restablecer los datos de ejemplo</button> · <button class="link" data-pv="demo-off">Usar los datos reales</button>',
+    '<b>Preview with example data.</b> The data is invented and changes are kept only in this browser; nothing is read from or sent to GitHub. You can also import an ARAS export to try it. <button class="link" data-pv="demo-reset">Reset the example data</button> · <button class="link" data-pv="demo-off">Use the real data</button>'],
+  b_pvReal:['<b>Versión de vista previa.</b> Muestra los datos reales de <span class="mono">lab-data</span>, pero los cambios no se guardan en GitHub: se quedan en esta página hasta que la recargues.','<b>Preview version.</b> It shows the real data from <span class="mono">lab-data</span>, but changes are not saved to GitHub: they stay in this page until you reload it.'],
+  b_invalid:['Tu clave de GitHub ya no es válida o ha caducado. <button class="link" data-act="gh">Conecta GitHub</button> y pega una nueva.','Your GitHub key is no longer valid or has expired. <button class="link" data-act="gh">Connect GitHub</button> and paste a new one.'],
+  b_noPush:[l=>`Tu cuenta de GitHub <b>${l}</b> no puede editar este repositorio. Pide que te añadan como colaborador con el rol Write.`,l=>`Your GitHub account <b>${l}</b> cannot edit this repository. Ask to be added as a collaborator with the Write role.`],
+  b_ro:['Solo lectura. Para crear o cambiar ensayos, <button class="link" data-act="gh">conecta GitHub</button> con una cuenta con permiso de escritura en el repositorio.','Read-only. To create or change tests, <button class="link" data-act="gh">connect GitHub</button> with an account that has write access to the repository.'],
+
+  /* Empty states */
+  nt_eyebrow:['Aún no hay ensayos','No tests yet'], nt_occ_h:['Aún no hay nada que planificar','Nothing to plan yet'],
+  nt_occ_p:['Los ensayos se crean en <a href="../control-ensayos/">Control de ensayos</a>, a mano o desde el Excel de ARAS. Aparecen aquí en cuanto se guardan.','Tests are created in <a href="../control-ensayos/">Control de ensayos</a>, by hand or from the ARAS export. They appear here as soon as they are saved.'],
+  nt_h:['Importa el Excel de ARAS para empezar','Import your ARAS export to get started'],
+  nt_p:['Exporta a Excel la búsqueda de peticiones del laboratorio en ARAS y cárgala en <b>Importar ARAS</b>. Cada fila se convierte en un ensayo identificado por su PLR y su QTP. También puedes crear ensayos a mano con <b>+ Nuevo ensayo</b>.','Export the lab request search from ARAS to Excel and load it in <b>Import ARAS</b>. Each row becomes one test identified by its PLR and QTP. You can also create tests by hand with <b>+ New test</b>.'],
+  nt_imp:['Importar desde ARAS','Import from ARAS'], nt_res:['Revisar bancos y equipo','Check equipment & team'], nt_lib:['Abrir la biblioteca de QTP','Open QTP library'],
+  search_ph:['Buscar PLR, QTP, proyecto, solicitante…','Search PLR, QTP, project, requester…'], a_search:['Buscar','Search'],
+
+  /* Overview */
+  ov_h:['Resumen del laboratorio','Lab overview'], ov_planned:[n=>`${n} planificado${n===1?'':'s'}`,n=>`${n} planned`], ov_endu:['ensayos de larga duración','long-running tests'],
+  ov_queued:['pendientes de planificar','waiting to be planned'], ov_report:['ensayos terminados, informe en redacción','tests finished, report in writing'],
+  ov_hold:['ensayos bloqueados','blocked tests'], ov_overdue:['Fuera de plazo','Overdue'], ov_overdue_s:['pasada la fecha solicitada o acordada','past requested or agreed date'],
+  ovo_h:['Resumen de ocupación','Occupancy overview'], ovo_team:['Carga del equipo esta semana','Team load this week'], ovo_overP:['Técnicos sobrecargados','Overloaded technicians'],
+  ovo_thisWk:['esta semana','this week'], ovo_inUse:['Bancos en uso hoy','Equipment in use today'], ovo_over_s:['bancos con más ensayos que su capacidad','equipment double-booked'],
+  ovo_next:[n=>`Ocupación, próximas ${n} semanas`,n=>`Occupancy, next ${n} weeks`], ovo_teamH:['Equipo · horas asignadas / capacidad semanal','Team · assigned hours / weekly capacity'],
+  ovo_eqH:['Bancos · puestos-día usados / disponibles (capacidad × 7)','Equipment · slot-days used / available (capacity × 7)'],
+  slotPct:[(p,c)=>`${p} % de ${c} puesto(s)`,(p,c)=>`${p}% of ${c} slot(s)`],
+
+  /* Board and queue */
+  c_eq:['Banco','Equipment'], c_tech:['Técnico','Technician'], c_planL:['Plan','Plan'], c_due:['Fecha límite','Due'],
+  pl_ns:[d=>d?`sin planificar · est. ${d}`:'sin planificar',d=>d?`not scheduled · est. ${d}`:'not scheduled'],
+  bd_h:['Tablero de ensayos','Test board'], bd_help:['Arrastra una tarjeta para cambiar su estado, o ábrela para editarla. Informe = ensayo terminado, informe en redacción.','Drag a card to change its status, or open it to edit. Report = test finished, report being written.'],
+  bd_done:['Suelta aquí para marcarlo como <b>Completado</b> y pasarlo al Historial','Drop here to mark as <b>Completed</b> and move it to History'],
+  bd_canc:['Suelta aquí para marcarlo como <b>Cancelado</b> y pasarlo al Historial','Drop here to mark as <b>Cancelled</b> and move it to History'],
+  q_h:['Cola de ensayos','Test queue'], a_stShown:['Estados mostrados','Statuses shown'],
+  q_help:['Pulsa la cabecera de una columna para ordenar. El técnico, el estado y las fechas de inicio y fin se cambian directamente en la tabla. Al poner fecha de inicio a un ensayo en cola pasa a Planificado.','Click a column header to sort. Technician, status, start and end dates can be changed directly in the table. Setting a start date on a queued test moves it to Planned.'],
+  q_none:['No hay ensayos con los estados elegidos.','No tests with the selected statuses.'],
+  d_over:[n=>`${n} d de retraso`,n=>`${n} d overdue`], d_in:[n=>`dentro de ${n} d`,n=>`in ${n} d`], freeFrom:[x=>`libre ${x}`,x=>`free ${x}`],
+  a_techOf:[r=>`Técnico de ${r}`,r=>`Technician of ${r}`], a_stOf:[r=>`Estado de ${r}`,r=>`Status of ${r}`],
+  a_startOf:[r=>`Fecha de inicio de ${r}`,r=>`Start date of ${r}`], a_endOf:[r=>`Fecha de fin de ${r}`,r=>`End date of ${r}`],
+  end_manual:['manual','manual'], end_auto:['auto','auto'], end_nodur:['sin duración','no duration'],
+  end_t_clear:['Borra la fecha para calcularla con inicio + duración','Clear the date to compute it from start + duration'], end_t_first:['Pon antes una fecha de inicio','Set a start date first'],
+  end_t_manual:['Puesta a mano. Borra la fecha para volver a inicio + duración estimada.','Set by hand. Clear the date to go back to start + estimated duration.'], end_t_auto:['Inicio + duración estimada','Start + estimated duration'],
+  noEst:['sin estimación','no estimate'],
+  col_tech:['Técnico','Technician'], col_status:['Estado','Status'], col_project:['Proyecto','Project'], col_test:['Ensayo · comentarios','Test · comments'], col_testS:['Ensayo','Test'],
+  col_start:['Fecha de inicio','Start date'], col_end:['Fecha de fin','End date'], col_dur:['Duración est.','Est. duration'], col_due:['Fecha límite','Due'], col_req:['Solicitante','Requester'],
+  col_result:['Resultado','Result'], col_eq:['Banco','Equipment'], col_startS:['Inicio','Start'], col_closed:['Cierre','Closed'],
+  col_tname:['Nombre del ensayo','Test name'], col_defEq:['Banco por defecto','Default equipment'], col_runs:['Régimen','Runs'], col_tload:['Carga de técnico','Technician load'],
+
+  /* Planning */
+  pl_h:['Planificación por recurso','Planning by resource'], a_zoom:['Zoom','Zoom'], z_q:['Trimestre','Quarter'], z_w:['Semanas','Weeks'], z_d:['Días','Days'],
+  pl_hide:['Ocultar bancos sin ensayos en este periodo','Hide equipment with no tests in this period'],
+  pl_help:['Cada fila de banco muestra un carril por ensayo en paralelo; un borde rojo indica más ensayos que la capacidad del banco. Las fechas de fin con ~ son inicio + duración estimada (Horas y Días cuentan 24/7 salvo que el QTP diga horario laboral). Las barras atenuadas no tienen fin conocido.',"Equipment rows show one lane per test running in parallel; a red edge means more tests than the equipment's capacity. End dates marked ~ are start + estimated duration (Hours and Days run 24/7 unless the QTP says working hours). Faded bars have no known end."],
+  pl_missing:[n=>` <b>${n} ensayo(s) planificados o en curso no tienen fecha de inicio y no se muestran.</b>`,n=>` <b>${n} planned or running test(s) have no start date and are not shown.</b>`],
+  pl_hidden:[n=>`${n} sin ensayos ocultos`,n=>`${n} without tests hidden`], pl_noEqP:['Ningún banco tiene ensayos en este periodo','No equipment has tests in this period'],
+  pl_thisWk:[(h,c)=>`esta semana ${h}/${c} h`,(h,c)=>`this week ${h}/${c} h`],
+
+  /* History */
+  hi_none_h:['Aún no hay ensayos completados ni cancelados','No completed or cancelled tests yet'],
+  hi_none_p:['Los ensayos pasan aquí cuando su estado es Completado o Cancelado, en esta app o con una importación de ARAS. Nunca generan alertas.','Tests move here when their status becomes Completed or Cancelled, either in this app or through an ARAS import. They never raise alerts.'],
+  hi_allSt:['Todos los estados','All statuses'], hi_allRes:['Todos los resultados','All results'], hi_noRes:['Sin resultado','No result'],
+  hi_sum:[(c,x,p,f)=>`${c} completado${c===1?'':'s'} · ${x} cancelado${x===1?'':'s'}${p+f?` · aptos a la primera ${Math.round(p/(p+f)*100)} % (${p} aptos, ${f} no aptos)`:''}. Los ensayos cerrados no generan alertas. Pulsa una cabecera para ordenar; abre un ensayo y cambia su estado para devolverlo al tablero.`,
+    (c,x,p,f)=>`${c} completed · ${x} cancelled${p+f?` · first-time pass rate ${Math.round(p/(p+f)*100)}% (${p} pass, ${f} fail)`:''}. Closed tests do not raise alerts. Click a column header to sort; open a test and change its status to bring it back to the board.`],
+  hi_nomatch:['Ningún ensayo cumple estos filtros.','No tests match these filters.'],
+
+  /* Occupancy */
+  hNotSet:['horas sin definir','hours not set'], freeD:['libre','free'], slotsOf:[(n,c)=>`${n} de ${c} puesto(s)`,(n,c)=>`${n} of ${c} slot(s)`], slotDays:[n=>`${n} puestos-día`,n=>`${n} slot-days`],
+  occ_pSub:[(h,n,qh)=>`${h} h/semana${n?` · ${n} en cola${qh?` (${qh} h)`:''}`:''}`,(h,n,qh)=>`${h} h/week${n?` · ${n} queued${qh?` (${qh} h)`:''}`:''}`],
+  occ_click:['Pulsa un día para ver qué ensayos ocupan a ese técnico o ese banco.','Click a day to see which tests occupy that technician or piece of equipment.'],
+  occ_avail:[(h,d)=>`${h} h de ${d} h disponibles`,(h,d)=>`${h} h of ${d} h available`], hDay:[h=>`${h} h este día`,h=>`${h} h this day`],
+  techHNotSet:['horas de técnico sin definir','technician hours not set'], occ_noP:['Ningún ensayo asignado este día.','No tests assigned this day.'],
+  occ_inUse:[(n,c)=>`${n} de ${c} puesto(s) en uso`,(n,c)=>`${n} of ${c} slot(s) in use`], occ_free:['Libre este día.','Free this day.'],
+  a_prevWk:['Semana anterior','Previous week'], a_nextWk:['Semana siguiente','Next week'], occ_thisWk:['Esta semana','This week'],
+  occ_help:['Técnicos: horas por día, a partir de las horas de técnico de cada ensayo repartidas en sus días laborables, frente a las horas semanales ÷ 5. <b>?</b> = asignado a un ensayo sin horas de técnico. Bancos: ensayos en marcha ese día frente a su capacidad (● = en uso si la capacidad es 1). Solo cuentan los ensayos planificados, en curso, bloqueados y en informe con fecha de inicio.',
+    "Technicians: hours per day, from each test's technician hours spread over its working days, against the weekly hours ÷ 5. <b>?</b> = assigned to a test without technician hours. Equipment: tests running that day against its capacity (● = in use when capacity is 1). Only planned, running, on-hold and report tests with a start date count."],
+
+  /* Equipment & team */
+  rs_capHelp:['Capacidad = número de ensayos que el banco puede llevar a la vez','Capacity = number of tests the equipment can run at the same time'],
+  rs_addEq:['+ Añadir banco','+ Add equipment'], rs_cap:['Capacidad','Capacity'], rs_inUse:['En uso hoy','In use today'], rs_freeFrom:['Puesto libre desde','Slot free from'], rs_nextCal:['Próxima calibración','Next calibration'],
+  rs_noEq:['Aún no hay bancos. Añádelos aquí, o deja que la importación de ARAS los cree desde la columna Equipment.','No equipment yet. Add it here, or let the ARAS import create it from the Equipment column.'],
+  rs_addP:['+ Añadir persona','+ Add person'], rs_person:['Persona','Person'], rs_hWk:['Horas/semana','Hours/week'], rs_loadWk:['Carga esta semana','Load this week'], rs_active:['Ensayos activos','Active tests'], rs_qual:['Habilitado en','Qualified on'],
+  rs_noP:['Aún no hay nadie en el equipo. La importación de ARAS crea a las personas desde la columna Lab Resource.','No team members yet. The ARAS import creates them from the Lab Resource column.'],
+
+  /* QTP library */
+  lib_addQ:['+ Añadir QTP','+ Add QTP'],
+  lib_help:['Duración estimada y horas de técnico de cada procedimiento de ensayo, por ensayo o por muestra. Son solo valores por defecto para planificar: cada línea de ensayo los usa salvo que le pongas su propia duración u horas. La duración de la biblioteca manda sobre la que viene de ARAS, que solo se usa cuando el QTP no tiene; una duración por muestra se multiplica siempre por el número de piezas del ensayo.',
+    "Estimated duration and technician hours for each test procedure, per test or per sample. They are planning defaults only: every test line uses them unless you set its own duration or hours in the test. A library duration takes precedence over the duration that comes from ARAS, which is only used when the QTP has none; a per-sample library duration is always multiplied by the test's number of pieces."],
+  lib_impH:['Importar la lista de QTP desde Excel','Import QTP list from Excel'], lib_impSub:['Columnas como QTP, nombre del ensayo, duración estimada, unidad, horas de técnico, banco','Columns such as QTP, test name, estimated duration, unit, technician hours, equipment'],
+  lib_drop:['Suelta aquí la lista de QTP','Drop the QTP list here'], lib_dropSub:['o pulsa para elegir un archivo','or click to choose a file'], lib_procs:['Procedimientos','Procedures'],
+  lib_noDur:[n=>`${n} sin duración estimada`,n=>`${n} without estimated duration`],
+  lib_empty:['La biblioteca está vacía. Importa arriba tu lista de QTP; la importación de ARAS también añade cada QTP que encuentra.','The library is empty. Import your QTP list above; the ARAS import also adds every QTP it finds.'],
+
+  /* Import (ARAS and QTP list). af_/qf_ = field names of the column mapping (the header matching itself uses ARAS_FIELDS.syn) */
+  af_plr:['Petición (PLR)','Request number (PLR)'], af_qtp:['Tarea (QTP)','Task item (QTP)'], af_title:['Descripción del ensayo','Test description'], af_project:['Proyecto','Project'],
+  af_requester:['Creador de la petición','Request creator'], af_comments:['Comentarios','Comments'], af_status:['Estado de la tarea','Task status'], af_techName:['Recurso del laboratorio (técnico)','Lab resource (technician)'],
+  af_equipmentName:['Banco','Equipment'], af_start:['Fecha de inicio del trabajo','Start work date'], af_requestedDue:['Fecha solicitada','Requested due date'], af_flexible:['¿Fecha flexible?','Due date flexible?'],
+  af_durVal:['Duración','Duration'], af_durUnit:['Unidades de duración','Duration units'], af_pieces:['Número de piezas','Number of pieces'], af_sequence:['Secuencia del ensayo','Test sequence'],
+  af_result:['Resultado del ensayo','Test result'], af_category:['Categoría de producto','Product category'], af_requestNote:['Nota de estado de la petición','Request status note'],
+  qf_code:['Código QTP','QTP code'], qf_name:['Nombre del ensayo','Test name'], qf_durVal:['Duración estimada','Estimated duration'], qf_durUnit:['Unidad de duración','Duration unit'],
+  qf_techHours:['Horas de técnico','Technician hours'], qf_equipmentName:['Banco por defecto','Default equipment'], qf_durBasis:['Base de la duración (por ensayo / por muestra)','Duration basis (per test / per sample)'],
+  qf_testType:['Tipo de ensayo','Test type'], qf_standard:['Norma','Standard'], qf_notes:['Notas','Notes'],
+  notImp:['— no se importa —','— not imported —'],
+  e_xlsx:['no se ha cargado el lector de Excel. Recarga la página.','the Excel reader did not load. Reload the page.'], e_head:['no se encuentra la fila de cabeceras.','no header row found.'],
+  e_read:[m=>`No se ha podido leer el archivo: ${m}`,m=>`Could not read the file: ${m}`],
+  sp_h:['Diferencias de estado','Status differences'], sp_same:['Todos los ensayos importados tienen el mismo estado en la app y en ARAS.','Every imported test has the same status in the app and in ARAS.'],
+  sp_sub:['Estos ensayos ya existen y ARAS muestra otro estado. Elige cuál conservar.','These tests already exist and ARAS shows a different status. Choose which one to keep.'],
+  sp_allApp:['Conservar todos los de la app','Keep all app'], sp_allAras:['Usar todos los de ARAS','Use all ARAS'], sp_keep:['Conservar el estado de la app','Keep app status'], sp_use:['Usar el estado de ARAS','Use ARAS status'],
+  sp_apply:[(n,m)=>`Aplicar ${n} de ${m} elección${m===1?'':'es'}`,(n,m)=>`Apply ${n} of ${m} choice${m===1?'':'s'}`],
+  sp_note:['Los ensayos sin elección conservan el estado de la app y se vuelven a preguntar en la próxima importación. Si conservas el estado de la app, no se vuelve a preguntar hasta que ARAS muestre otro estado. Planificado cuenta como In Queue, y Endurance en curso, Bloqueado e Informe cuentan como In Progress.',
+    'Tests left without a choice keep their app status and are asked again on the next import. When you keep the app status, it is not asked again until ARAS shows another status. Planned counts as In Queue, and Endurance running, On hold and Report count as In Progress.'],
+  sp_done:[(a,k)=>`Estado: ${a} cambiado${a===1?'':'s'} al de ARAS, ${k} conservado${k===1?'':'s'}.`,(a,k)=>`Status: ${a} changed to the ARAS status, ${k} kept.`],
+  imp_doneH:['Importado','Imported'], imp_res:['Resultado','Result'], imp_chg:['Cambios','Changes'],
+  imp_updated:['Actualizado','Updated'], imp_newHist:['Nuevo → Historial','New → History'], imp_new:['Nuevo','New'],
+  imp_st:[{new:'Nuevo',hist:'Nuevo → Historial',update:'Actualizar',same:'Sin cambios',skip:'Omitido (cerrado)',error:'Falta PLR o QTP'},{new:'New',hist:'New → History',update:'Update',same:'No change',skip:'Skipped (closed)',error:'Missing PLR or QTP'}],
+  imp_mapH:['Correspondencia de columnas','Column mapping'], imp_mapNote:['Cada columna del Excel se asigna a un campo. La asignación se recuerda para la próxima importación.','Each column of the export is matched to a field. The mapping is remembered for the next import.'],
+  imp_eqH:['Bancos de ARAS que no están en la app','ARAS equipment not found in the app'], imp_eqSub:['Elige a qué corresponde cada nombre. La elección se recuerda.','Choose what each name means. The choice is remembered.'],
+  a_eqFor:[n=>`Banco para ${n}`,n=>`Equipment for ${n}`], eq_new:[n=>`Crear el banco nuevo «${n}»`,n=>`Create new equipment "${n}"`], eq_none:['Dejar los ensayos sin banco','Leave tests without equipment'],
+  eq_use:[n=>`Usar el existente: ${n}`,n=>`Use existing: ${n}`], imp_prevH:['Vista previa','Preview'],
+  imp_nNewAct:[n=>`${n} nuevo${n===1?'':'s'} activo${n===1?'':'s'}`,n=>`${n} new active`], imp_nNewHist:[n=>`${n} nuevo${n===1?'':'s'} al Historial`,n=>`${n} new to History`],
+  imp_nUpd:[(n,s)=>`${n} actualizado${n===1?'':'s'}${s?` (${s} con cambio de estado)`:''}`,(n,s)=>`${n} updated${s?` (${s} status change)`:''}`],
+  imp_nSame:[n=>`${n} sin cambios`,n=>`${n} no change`], imp_nSkip:[n=>`${n} omitido${n===1?'':'s'}`,n=>`${n} skipped`], imp_nErr:[n=>`${n} sin PLR o QTP`,n=>`${n} missing PLR or QTP`],
+  imp_incClosed:['Importar también las tareas completadas y canceladas como Historial','Also import completed and cancelled tasks as History'],
+  imp_newP:[x=>`Personas nuevas en el equipo: <b>${x}</b>. `,x=>`New team members: <b>${x}</b>. `],
+  imp_newQ:[(n,c)=>`QTP nuevos que se añaden a la biblioteca: <b>${n}</b> (${c}).`,(n,c)=>`New QTPs added to the library: <b>${n}</b> (${c}).`],
+  imp_needKeys:['Asigna las columnas de PLR y de QTP: juntas identifican cada ensayo.','Map both the PLR and the QTP columns: together they identify each test.'],
+  imp_arasSt:['Estado en ARAS','ARAS status'], imp_first250:['Se muestran las primeras 250 filas.','Showing the first 250 rows.'],
+  imp_btn:[(a,b)=>`Importar ${a} nuevo${a===1?'':'s'} y actualizar ${b}`,(a,b)=>`Import ${a} new and update ${b}`], imp_discard:['Descartar el archivo','Discard file'],
+  imp_note:['Una vez fijadas las columnas y los nombres de bancos, los archivos siguientes se importan en cuanto se cargan. Al volver a importar, ARAS actualiza los datos de la petición (descripción, proyecto, solicitante, comentarios, fecha, resultado…). El banco, el técnico y la fecha de inicio solo se rellenan si están vacíos. Un estado distinto nunca se cambia solo: lo eliges después de importar.',
+    'Once the columns and equipment names are set, later files are imported as soon as they are loaded. On re-import, ARAS updates the request data (description, project, requester, comments, due date, result…). Equipment, technician and start date are only filled when empty. A different status is never changed on its own: you choose it after the import.'],
+  imp_busy:['Importando…','Importing…'], imp_done:[(a,b)=>`Importación terminada: ${a} nuevo${a===1?'':'s'}, ${b} actualizado${b===1?'':'s'}.`,(a,b)=>`Import finished: ${a} new, ${b} updated.`],
+  qi_note:['Las celdas vacías nunca sobrescriben valores que ya están en la biblioteca.','Empty cells never overwrite values already in the library.'],
+  qi_nErr:[n=>`${n} sin código QTP`,n=>`${n} without QTP code`], qi_noCode:['Sin código','No code'], qi_techH:['Horas técnico','Tech hours'], qi_notFound:['(no encontrado)','(not found)'],
+  qi_done:[n=>`Biblioteca de QTP actualizada: ${n} procedimiento${n===1?'':'s'}.`,n=>`QTP library updated: ${n} procedure(s).`],
+  im_h:['Importar desde ARAS','Import from ARAS'], im_export:['Exportar ensayos a Excel','Export tests to Excel'],
+  im_steps:['<li>En ARAS, lanza la búsqueda de peticiones del laboratorio (a_Lab_Dashboard) y expórtala a Excel.</li><li>Carga aquí el archivo (.xlsx, .xls o .csv).</li><li>Las tareas nuevas se crean y las existentes se actualizan a la vez. La primera vez, o cuando ARAS trae un banco desconocido, revisa la correspondencia y confirma.</li><li>Elige qué estado conservar en los ensayos cuyo estado no coincide con ARAS.</li>',
+    '<li>In ARAS, run the lab request search (a_Lab_Dashboard) and export it to Excel.</li><li>Load the file here (.xlsx, .xls or .csv).</li><li>New tasks are created and existing ones updated at once. The first time, or when ARAS brings an unknown equipment name, check the mapping and confirm.</li><li>Choose the status to keep for tests whose status differs from ARAS.</li>'],
+  im_drop:['Suelta aquí el Excel de ARAS','Drop the ARAS export here'], im_dropSub:['o pulsa para elegir el archivo','or click to choose the file'],
+
+  /* Excel export (read by people only) */
+  xl_cols:[['PLR','QTP','Ensayo','Proyecto','Solicitante','Estado','Estado en ARAS','Prioridad','Banco','Técnico','Inicio','Fin','Tipo de fin','Duración est.','Unidad','Origen de la duración','Horas de técnico','Progreso %','Fecha solicitada','Fecha acordada','Fecha flexible','Resultado','Cierre','Piezas','Secuencia','Comentarios','Notas del laboratorio','Motivo del bloqueo'],
+    ['PLR','QTP','Test','Project','Requester','Status','ARAS status','Priority','Equipment','Technician','Start','End','End type','Est. duration','Unit','Duration source','Technician hours','Progress %','Requested due','Agreed due','Due flexible','Result','Closed','Pieces','Sequence','Comments','Lab notes','Hold reason']],
+  xl_end:[{set:'manual',auto:'auto',open:'abierto',none:'sin fecha'},{}], xl_sheet:['Ensayos','Tests'], xl_file:['ensayos_laboratorio','lab_tests'],
+
+  /* Test editor */
+  ed_req:['Petición','Request'], fromAras:[' · desde ARAS',' · from ARAS'], ed_plr:['Petición (PLR)','Request (PLR)'], ed_qtp:['Tarea (QTP)','Task item (QTP)'], ed_desc:['Descripción del ensayo','Test description'],
+  ph_project:['25046 - NOMBRE DEL PROYECTO','25046 - PROJECT NAME'], ed_requester:['Creador de la petición','Request creator'], ed_pieces:['Número de piezas (muestras)','Number of pieces (samples)'],
+  ed_seq:['Secuencia del ensayo','Test sequence'], ed_reqDue:['Fecha solicitada','Requested due date'], ed_flexQ:['¿Fecha flexible?','Due date flexible?'], ed_flex:['Flexible','Flexible'],
+  ed_com:['Comentarios','Comments'], ed_cat:['Categoría de producto','Product category'],
+  ed_arasNote:[(st,eq,te,du,rn)=>`ARAS: estado <b>${st}</b> · banco <b>${eq}</b> · recurso del laboratorio <b>${te}</b>${du?` · duración <b>${du}</b>`:''}${rn?`<br>Nota de estado de la petición: ${rn}`:''}<br>Los campos de esta sección se actualizan desde ARAS en cada importación.`,
+    (st,eq,te,du,rn)=>`ARAS: status <b>${st}</b> · equipment <b>${eq}</b> · lab resource <b>${te}</b>${du?` · duration <b>${du}</b>`:''}${rn?`<br>Request status note: ${rn}`:''}<br>The fields in this section are refreshed from ARAS on each import.`],
+  ed_plan:['Planificación del laboratorio','Lab planning'], ed_reportHelp:['Informe = ensayo terminado, informe en redacción','Report = test finished, report being written'], ed_prio:['Prioridad','Priority'],
+  ed_end:['Fin previsto','Planned end'], ed_dur:['Duración estimada','Estimated duration'],
+  run_def:['Según la biblioteca de QTP','Default from QTP library'], run_yes:['Continuo 24/7','Continuous 24/7'], run_no:['Horario laboral (8 h/día)','Working hours (8 h/day)'],
+  ed_techH:['Horas de técnico (total)','Technician hours (total)'], ed_prog:['Progreso (%)','Progress (%)'], ed_agreed:['Fecha acordada','Agreed due date'],
+  ed_agreedHelp:['Sustituye a la fecha solicitada en las alertas','Overrides the requested date for alerts'], ed_result:['Resultado del ensayo','Test result'],
+  ed_hold:['Motivo del bloqueo','On hold reason'], ed_holdPh:['Solo si está bloqueado','Only when on hold'], ed_notes:['Notas del laboratorio','Lab notes'],
+  ed_sibs:[p=>`Otras tareas de ${p}`,p=>`Other tasks in ${p}`], seqN:[n=>`sec. ${n}`,n=>`seq ${n}`],
+  ed_eyNew:['Ensayo manual nuevo','New manual test'], ed_eyAras:['Tarea de ARAS','ARAS task'], ed_eyManual:['Ensayo manual','Manual test'], ed_new:['Nuevo ensayo','New test'],
+  xFrom:[(a,b)=>`${a} (${b})`,(a,b)=>`${a} from ${b}`], theDefault:['el valor por defecto','the default'],
+  h_durOver:[x=>`Sustituye a ${x}. Bórralo para usar el valor por defecto.`,x=>`Overrides ${x}. Clear it to use the default.`],
+  h_durUse:[x=>`Se usa ${x}. Escribe un valor para cambiarlo solo en este ensayo.`,x=>`Using ${x}. Type a value to override it for this test only.`],
+  h_durNone:['Sin valor por defecto: ponlo aquí o en la biblioteca de QTP.','No default: set it here or in the QTP library.'],
+  h_perS:[n=>`La biblioteca de QTP cuenta el tiempo por muestra: × ${n}.`,n=>`The QTP library counts time per sample: × ${n}.`],
+  h_perS0:['La biblioteca de QTP cuenta el tiempo por muestra: indica las piezas (de momento cuenta 1).','The QTP library counts time per sample: set the pieces (counted as 1 for now).'],
+  h_ltNote:[(h,n)=>` (${h} h × ${n} muestras)`,(h,n)=>` (${h} h × ${n} samples)`],
+  h_endu:[b=>`Perfil endurance de la biblioteca de QTP: ${b}.`,b=>`Endurance profile from the QTP library: ${b}.`],
+  h_thOver:[(h,n)=>`Sustituye a ${h} h de la biblioteca de QTP${n}.`,(h,n)=>`Overrides ${h} h from the QTP library${n}.`],
+  h_thUse:[(h,n)=>`Se usan ${h} h de la biblioteca de QTP${n}.`,(h,n)=>`Using ${h} h from the QTP library${n}.`],
+  h_thNone:['Sirve para calcular la carga del técnico.','Used to compute technician load.'],
+  h_endSet:['Puesto a mano. Bórralo para calcular inicio + duración.','Set by hand. Clear it to compute start + duration.'],
+  h_endAuto:[d=>`Auto: ${d} (inicio + duración estimada)`,d=>`Auto: ${d} (start + estimated duration)`],
+  h_endUnk:['Desconocido: no hay duración','Unknown: no duration available'], h_endEmpty:['Déjalo vacío para calcularlo con inicio + duración','Leave empty to compute it from start + duration'],
+  h_qtpDef:['Banco por defecto del QTP:','QTP default:'],
+  h_noap:['No aprobado: las alertas, la planificación y la ocupación ignoran este ensayo hasta que cambie su estado. ','Not approved: this test is ignored by alerts, planning and occupancy until its status changes. '],
+  h_free:[(x,c)=>`Puesto del banco libre desde <b>${x}</b> (capacidad ${c}). `,(x,c)=>`Equipment slot free from <b>${x}</b> (capacity ${c}). `],
+  h_days:[(n,w)=>`${n} días naturales · ${w} días laborables`,(n,w)=>`${n} calendar days · ${w} working days`],
+  h_enduLoad:[(a,b,c,d,e,f,g,h,t)=>`. Carga del técnico: montaje ${a} h en ${b} día(s) · control diario ${c} h × ${d} día(s) · ${e} revisión(es) × ${f} h · desmontaje ${g} h en ${h} día(s) = <b>${t} h</b>`,
+    (a,b,c,d,e,f,g,h,t)=>`. Technician load: setup ${a} h over ${b} day(s) · daily check ${c} h × ${d} day(s) · ${e} review(s) × ${f} h · teardown ${g} h over ${h} day(s) = <b>${t} h</b>`],
+  h_perDay:[x=>` · ${x} h de técnico/día`,x=>` · ${x} technician h/day`],
+
+  /* Person, equipment and QTP dialogs */
+  pe_name:['Nombre','Name'], pe_rol:['Puesto','Role'], pe_rolDef:['Técnico de laboratorio','Lab technician'], pe_hours:['Horas por semana disponibles para ensayos','Hours per week available for tests'],
+  pe_qual:['Habilitado en (déjalo vacío para no comprobar habilitaciones)','Qualified on (leave empty to skip the qualification check)'], pe_addEq:['Añade primero los bancos.','Add equipment first.'],
+  pe_note:['El nombre tiene que coincidir con el de Lab Resource en ARAS (no importan tildes ni mayúsculas) para que las tareas importadas se asignen solas.','The name must match the ARAS Lab Resource name (accents and capitals are ignored) so imported tasks are assigned automatically.'],
+  pe_edit:['Editar persona','Edit person'], pe_new:['Persona nueva','New person'],
+  eq_aras:['Nombre en ARAS (columna Equipment)','Name in ARAS (Equipment column)'], eq_arasPh:['Igual que el nombre','Same as name'], eq_arasHelp:['Varios nombres: sepáralos con ;','Several names: separate them with ;'],
+  eq_cap:['Ensayos simultáneos (capacidad)','Simultaneous tests (capacity)'], eq_capHelp:['Cuántos ensayos pueden ir a la vez en él','How many tests can run on it at the same time'],
+  eq_desc:['Laboratorio / descripción','Lab / description'], eq_edit:['Editar banco','Edit equipment'], eq_newT:['Banco nuevo','New equipment'],
+  qt_leg:['Procedimiento de ensayo','Test procedure'], qt_stdPh:['p. ej. IEC 60068','e.g. IEC 60068'], qt_durBasis:['Base de la duración','Duration basis'], qt_techBasis:['Base de las horas de técnico','Technician hours basis'],
+  qt_perSHelp:['Por muestra: se multiplica por el número de piezas de cada ensayo','Per sample: multiplied by the number of pieces of each test'],
+  qt_cpd:['Ciclos por día','Cycles per day'], qt_cpdHelp:['Solo para duraciones en ciclos','Only for durations in cycles'], qt_prof:['Perfil de carga del técnico','Technician load profile'],
+  qt_profEven:['Uniforme: horas totales repartidas en los días laborables','Even: total hours spread over the working days'], qt_profEndu:['Endurance: montaje + control diario + revisiones + desmontaje','Endurance: setup + daily check + reviews + teardown'],
+  qt_setupH:['Horas de montaje','Setup hours'], qt_setupHelp:[n=>`En bloques de ${n} h por día laborable desde el inicio`,n=>`In blocks of ${n} h per working day from the start`],
+  qt_dailyH:['Horas de control diario','Daily check hours'], qt_dailyHelp:['Cada día laborable entre montaje y desmontaje','Every working day between setup and teardown'],
+  qt_revEvery:['Revisión cada','Review every'], qt_revHelp:['Cuenta desde el inicio; las revisiones en fin de semana pasan al lunes','Counted from the start; weekend reviews move to Monday'],
+  qt_revH:['Horas por revisión','Hours per review'], qt_tearH:['Horas de desmontaje','Teardown hours'], qt_tearHelp:[n=>`En bloques de ${n} h por día laborable, terminando en la fecha de fin`,n=>`In blocks of ${n} h per working day, ending on the end date`],
+  qt_note:['Son valores por defecto para planificar. Cada ensayo puede cambiar la duración y el régimen; con el perfil uniforme también las horas totales de técnico. Los fines de semana nunca llevan horas de técnico.','These values are planning defaults. Each test can override duration and running mode; with the even profile it can also override the total technician hours. Weekends never carry technician hours.'],
+  qt_edit:['Editar QTP','Edit QTP'], qt_new:['QTP nuevo','New QTP'],
+
+  /* Saving, errors and messages */
+  e_perm:['No puedes cambiar datos: conecta GitHub con una cuenta con permiso de escritura en el repositorio.','You cannot change data: connect GitHub with an account that has write access to the repository.'],
+  e_auth:['Tu clave de GitHub ya no es válida. Vuelve a conectar GitHub con una clave nueva.','Your GitHub key is no longer valid. Connect GitHub again with a new key.'],
+  e_conflict:['Otra persona ha guardado a la vez. Tu cambio no se ha guardado; vuelve a probar.','Someone else saved at the same time. Your change was not saved; try again.'],
+  e_rate:['GitHub está limitando las peticiones ahora mismo. Espera un minuto y vuelve a probar.','GitHub is limiting requests right now. Wait a minute and try again.'],
+  e_net:['No se ha podido conectar con GitHub. Revisa la conexión y vuelve a probar.','Could not reach GitHub. Check your connection and try again.'],
+  e_save:[m=>`No se ha podido guardar: ${m}`,m=>`Could not save: ${m}`],
+  e_plrQtp:['Escribe el PLR y el QTP: juntos identifican el ensayo.','Enter the PLR and the QTP: together they identify the test.'], e_qtp:['Escribe el código QTP.','Enter the QTP code.'],
+  e_endStart:['El fin previsto no puede ser anterior al inicio.','The planned end cannot be before the start.'], e_name:['El nombre es obligatorio.','The name is required.'],
+  e_code:['El código QTP es obligatorio.','The QTP code is required.'], e_codeDup:[c=>`${c} ya está en la biblioteca.`,c=>`${c} is already in the library.`],
+  savedT:['Guardado.','Saved.'], delConfirm:['Confirmar eliminación','Confirm delete'], deletedT:['Eliminado.','Deleted.'], toHist:[' (pasa al Historial)',' (moved to History)'],
+  e_startAfter:['La fecha de inicio no puede ser posterior a la de fin.','The start date cannot be after the end date.'], e_endBefore:['La fecha de fin no puede ser anterior a la de inicio.','The end date cannot be before the start date.'],
+  m_start:[d=>`inicio ${d}`,d=>`start ${d}`], m_startClr:['fecha de inicio borrada','start date cleared'], m_toPlanned:[' · pasa a Planificado',' · moved to Planned'],
+  m_endAuto:['fecha de fin de nuevo automática','end date back to automatic'], m_end:[d=>`fin ${d}`,d=>`end ${d}`],
+
+  /* GitHub key and preview */
+  gh_connect:['Conectar GitHub','Connect GitHub'], gh_connectBtn:['Conectar','Connect'], gh_disc:['Desconectar','Disconnect'], gh_eyebrow:['Acceso de edición','Editing access'],
+  gh_expired:['Clave de GitHub caducada','GitHub key expired'], gh_off:['Desconectado de GitHub. Este navegador ya no tiene la clave.','Disconnected from GitHub. This browser no longer has the key.'],
+  gh_t_push:['Conectado con permiso de escritura. Los cambios se guardan como commits.','Connected with write access. Changes are saved as commits.'],
+  gh_t_nopush:['Conectado, pero esta cuenta no puede editar el repositorio.','Connected, but this account cannot edit the repository.'], gh_t:['Conecta GitHub para crear y cambiar ensayos','Connect GitHub to create and change tests'],
+  gh_as:[(l,p)=>`Conectado como <b>${l}</b>${p?' con permiso de escritura.':', pero esta cuenta no puede editar el repositorio.'}`,(l,p)=>`Connected as <b>${l}</b>${p?' with write access.':', but this account cannot edit the repository.'}`],
+  gh_steps:['<li>Crea una clave de acceso en GitHub: <a href="https://github.com/settings/tokens/new?scopes=repo&amp;description=Laboratorio%20Polinya" target="_blank" rel="noopener">abre el formulario</a>. El permiso <span class="mono">repo</span> ya viene marcado (hace falta porque los datos del laboratorio son privados); elige una caducidad y pulsa <i>Generate token</i>.</li><li>Copia la clave y pégala aquí.</li>',
+    '<li>Create an access key in GitHub: <a href="https://github.com/settings/tokens/new?scopes=repo&amp;description=Laboratorio%20Polinya" target="_blank" rel="noopener">open the form</a>. The <span class="mono">repo</span> permission is already ticked (needed because the lab data is private); choose an expiry and press <i>Generate token</i>.</li><li>Copy the key and paste it here.</li>'],
+  gh_keyL:['Clave de acceso (token)','Access key (token)'],
+  gh_keyNote:[r=>`La clave se guarda solo en este navegador y la comparte la app de la piscina de durabilidad. Tu cuenta de GitHub necesita acceso al repositorio de datos <span class="mono">${r}</span>: Read para consultar, Write para editar. Cada cambio se guarda como un commit, así que el historial muestra quién cambió qué.`,
+    r=>`The key is kept only in this browser and is shared with the durability pool app. Your GitHub account must have access to the data repository <span class="mono">${r}</span>: Read to view, Write to edit. Every change is saved as a commit, so the history shows who changed what.`],
+  gh_e_paste:['Pega la clave de acceso.','Paste the access key.'], gh_e_auth:['Esa clave no es válida o ha caducado.','That key is not valid or has expired.'],
+  gh_e_repo:['Esa clave no puede ver el repositorio.','That key cannot see the repository.'], gh_e_net:['No se ha podido conectar con GitHub. Revisa la conexión.','Could not reach GitHub. Check your connection.'],
+  gh_ok:[(l,p)=>p?`Conectado como ${l}. Ya puedes editar.`:`Conectado como ${l}, pero esta cuenta no puede editar el repositorio.`,(l,p)=>p?`Connected as ${l}. You can now edit.`:`Connected as ${l}, but this account cannot edit the repository.`],
+  pv_btn:['Datos de ejemplo','Example data'], pv_btn_t:['Vista previa con datos de ejemplo: no se lee ni se envía nada a GitHub.','Preview with example data: nothing is read from or sent to GitHub.'],
+  pv_t:['Vista previa: los datos se leen de GitHub y los cambios no se guardan.','Preview: the data is read from GitHub, changes are not saved.'],
+  pv_reset:['Datos de ejemplo restablecidos.','Example data reset.'], pv_on:['Vista previa con datos de ejemplo.','Preview with example data.'], pv_off:['Datos de ejemplo cerrados.','Example data closed.'],
+};
+/* One dictionary for the three apps; the language is the shared one of acceso/lab-lang.js. */
+const I18N={es:{...SMP_I18N.es},en:{...SMP_I18N.en}};
+for(const [k,[es,en]] of Object.entries(CE_I18N)){I18N.es[k]=es; I18N.en[k]=en;}
+const LL=window.LabLang||{lang:'en',t:(D,k,...a)=>{const v=D.en[k]??k; return typeof v==='function'?v(...a):v;},apply(){},onChange(){},locale:()=>'en-GB'};
+const tx=(k,...a)=>LL.t(I18N,k,...a);
+/* Sign-in texts (au_*), shared with the email access. */
+const ta=tx;
+const stName=s=>tx('stl')[s]||s, prioName=p=>tx('prio')[p]||p, resName=r=>tx('res')[r]||r, unitName=u=>tx('unit')[u]||u, unitS=u=>tx('unitS')[u]||u, eqStName=s=>tx('eqst')[s]||s;
 const smpSt=s=>tx('st')[s]||s;
 S.samples=[];
 S.smp={sv:'plr',sst:new Set(SMP_DEFAULT),phase:'',onlyMissing:false,collapsed:new Set(),sel:new Set(),edit:null,rc:null,lb:null,prop:{}};
@@ -1485,13 +1820,12 @@ function vSamples(){
   $('#smp-plr-list').innerHTML=[...new Map(S.tests.filter(x=>x.plr).map(x=>[smpPlrKey(x.plr),x])).values()].map(x=>`<option value="${esc(smpPlrKey(x.plr))}">${esc(projectNo(x))} · ${esc(x.title||'')}</option>`).join('');
   $('#smp-loc-list').innerHTML=[...new Set(S.samples.flatMap(l=>[l.loc,...(l.units||[]).map(u=>u.loc)]).filter(Boolean))].sort().map(v=>`<option value="${esc(v)}">`).join('');
   if(!S.tests.length&&!S.samples.length) return `<div class="empty"><p class="eyebrow">${esc(tx('title'))}</p><h3>${esc(tx('empty_h'))}</h3><p>${esc(tx('empty_p'))}</p>
-    <div class="row">${S.ro||S.noDb?'':`<button class="btn primary" data-view="import">Import ARAS</button><button class="btn" data-sa="receive">${esc(tx('receive'))}</button>`}${smpLangSeg()}</div></div>`;
+    <div class="row">${S.ro||S.noDb?'':`<button class="btn primary" data-view="import">${esc(tx('v_import'))}</button><button class="btn" data-sa="receive">${esc(tx('receive'))}</button>`}</div></div>`;
   const kpi=(act,lab,val,sub,cls='')=>`<button class="kpi ${cls}" data-sa="kpi" data-k="${act}"><span class="eyebrow">${esc(lab)}</span><b>${val}</b><span class="muted">${esc(sub)}</span></button>`;
   const chips=SMP.map(s=>`<button type="button" class="chipbtn st-${SMP_CLS[s]}" data-sa="sst" data-s="${s}" aria-pressed="${V.sst.has(s)}">${esc(smpSt(s))}</button>`).join('');
   return `<div class="view-h smp-h"><h2>${esc(tx('title'))}</h2>
     <input class="search" id="q" type="search" placeholder="${esc(tx('search'))}" value="${esc(S.q)}" aria-label="${esc(tx('search'))}">
     <div class="seg" role="group" aria-label="${esc(tx('title'))}"><button data-sa="sv" data-v="plr" aria-pressed="${V.sv==='plr'}">${esc(tx('byPlr'))}</button><button data-sa="sv" data-v="list" aria-pressed="${V.sv==='list'}">${esc(tx('list'))}</button></div>
-    ${smpLangSeg()}
     <button class="btn" data-sa="labels-pending">🏷 ${esc(tx('labels',k.lbl))}</button>
     ${S.ro?'':`<button class="btn primary" data-sa="receive">${esc(tx('receive'))}</button>`}</div>
   ${smpPropPanel()}
@@ -1508,7 +1842,6 @@ function vSamples(){
     ${V.sv==='plr'?`<label class="check" style="font-size:13px"><input type="checkbox" id="smp-only-missing" ${V.onlyMissing?'checked':''}> ${esc(tx('onlyMissing'))}</label>`:''}</div>
   ${V.sv==='plr'?smpByPlr():smpList()}`;
 }
-const smpLangSeg=()=>`<div class="seg" role="group" aria-label="${esc(tx('lang'))}"><button data-sa="lang" data-l="es" aria-pressed="${SMP_LANG==='es'}">ES</button><button data-sa="lang" data-l="en" aria-pressed="${SMP_LANG==='en'}">EN</button></div>`;
 const smpDefaultStates=()=>S.smp.sst.size===SMP_DEFAULT.length&&SMP_DEFAULT.every(s=>S.smp.sst.has(s));
 function smpByPlr(){
   const q=S.q, V=S.smp;
@@ -1598,7 +1931,7 @@ function smpOpenReceive(plr){
       ${fld('f-desc',esc(tx('f_desc')),inp('desc',''),'req span2')}
       ${fld('f-pn',esc(tx('f_pn')),inp('pn',''))}
       ${fld('f-phase',esc(tx('f_phase')),sel('phase','',[['',''],...SMP_PHASES]))}
-      ${fld('f-project',esc(tx('f_project')),inp('project','','text','placeholder="25046 - PROJECT NAME"'))}
+      ${fld('f-project',esc(tx('f_project')),inp('project','','text',`placeholder="${esc(tx('ph_project'))}"`))}
       ${fld('f-received',esc(tx('f_date')),inp('received',iso(todayMs()),'date'))}
       ${fld('f-by',esc(tx('f_by')),sel('by','',smpPeople()))}
       ${fld('f-loc',esc(tx('f_loc')),inp('loc','','text',`list="smp-loc-list" placeholder="${esc(tx('f_loc_ph'))}"`))}
@@ -1724,7 +2057,7 @@ async function smpSetStates(keys,state){
 
 /* ---------- Labels (DYMO LabelWriter 550) ----------
    The browser prints them with @page set to the label size, one label per page: nothing to install. */
-const smpLblCfg=()=>{let c={}; try{c=JSON.parse(localStorage.getItem('tl.lbl')||'{}')||{};}catch(e){} return {size:'99012',code:'qr',rot:'90',plr:true,desc:true,proj:true,phase:true,date:true,...c};};
+const smpLblCfg=()=>{let c={}; try{c=JSON.parse(localStorage.getItem('tl.lbl')||'{}')||{};}catch(e){} return {size:'99012',code:'qr',rot:'90',plr:true,desc:true,date:true,...c};};
 function smpQr(text){
   if(typeof qrcode!=='function') return `<div class="noqr">QR</div>`;
   const q=qrcode(0,'L'); q.addData(text); q.make(); const n=q.getModuleCount(); let p='';
@@ -1747,13 +2080,15 @@ const smpQrUrl=(l,code)=>{const p=(l.plrs||[]).find(x=>!smpLegacy(x)); return p?
 function smpLabel(k,c){
   const x=smpByKey(k); if(!x) return ''; const {l,u}=x, code=smpCode(l,u), sz=SMP_LABELS[c.size]||SMP_LABELS['99012'];
   const qtps=smpLotTests(l).map(y=>y.qtp);
-  const l2=[(l.plrs||[]).join(' · '),qtps.length?qtps[0]+(qtps.length>1?` +${qtps.length-1}`:''):''].filter(Boolean).join(' · ');
-  const ft=[c.proj&&projectNo(l),c.phase&&l.phase,c.date&&l.received&&fmt(l.received)].filter(Boolean).join(' · ');
-  /* The code shrinks only if it would not fit the text column next to the QR (the barcode takes a strip at the bottom instead). */
-  const textW=sz.w-4.4-(c.code==='qr'?sz.qr+2:0), kfit=Math.min(1,textW/(code.length*.62)/sz.id), f=v=>(v*kfit).toFixed(2)+'mm';
-  return `<div class="dlbl ${c.code==='bar'?'wbar':''} ${sz.h<=28?'sm':''}" style="width:${sz.w}mm;height:${sz.h}mm;--qr:${sz.qr}mm;--fs:${f(sz.id)};--fs-l2:${f(sz.l2)};--fs-ds:${f(sz.ds)};--fs-ft:${f(sz.ft)}">
+  const plr=(l.plrs||[]).join(' · '), qtp=qtps.length?qtps[0]+(qtps.length>1?` +${qtps.length-1}`:''):'';
+  const date=c.date&&l.received?fmt(l.received):'';
+  /* Each monospaced line shrinks only if it would not fit the text column next to the QR (the barcode takes a strip at
+     the bottom instead, so everything is a little smaller with it). */
+  const textW=sz.w-4.4-(c.code==='qr'?sz.qr+2:0), kb=c.code==='bar'?.8:1;
+  const f=(txt,v)=>(Math.min(v*kb,textW/(Math.max(1,txt.length)*.62))).toFixed(2)+'mm';
+  return `<div class="dlbl ${c.code==='bar'?'wbar':''} ${sz.h<=28?'sm':''}" style="width:${sz.w}mm;height:${sz.h}mm;--qr:${sz.qr}mm;--fs:${f(code,sz.id)};--fs-plr:${f(plr,sz.plr)};--fs-qtp:${f(qtp,sz.qtp)};--fs-ds:${(sz.ds*kb).toFixed(2)}mm;--fs-ft:${(sz.ft*kb).toFixed(2)}mm">
     ${c.code==='qr'?`<div class="qr">${smpQr(smpQrUrl(l,code))}</div>`:''}
-    <div class="tx"><b class="id">${esc(code)}</b>${c.plr&&l2?`<span class="l2">${esc(l2)}</span>`:''}${c.desc?`<span class="ds">${esc(l.desc)}</span>`:''}${ft?`<span class="ft">${esc(ft)}</span>`:''}</div>
+    <div class="tx"><b class="id">${esc(code)}</b>${c.plr&&plr?`<b class="plr">${esc(plr)}</b>`:''}${c.plr&&qtp?`<b class="qtp">${esc(qtp)}</b>`:''}${c.desc&&l.desc?`<span class="ds">${esc(l.desc)}</span>`:''}${date?`<span class="ft">${esc(date)}</span>`:''}</div>
     ${c.code==='bar'?`<svg class="bc" data-bc="${esc(code)}"></svg>`:''}</div>`;
 }
 function smpOpenLabels(keys){
@@ -1769,7 +2104,7 @@ function smpLbSide(){
     ${fld('smp-lb-size',esc(tx('lb_size')),`<select id="smp-lb-size">${Object.entries(SMP_LABELS).map(([k,v])=>`<option value="${k}" ${c.size===k?'selected':''}>${esc(v.n)}</option>`).join('')}</select>`)}
     <div class="field"><span class="lbl">${esc(tx('lb_code'))}</span><div class="checks" style="flex-direction:column;align-items:flex-start">${[['qr',tx('qr')],['bar',tx('bar')],['none',tx('noCode')]].map(([v,lab])=>`<label><input type="radio" name="smp-lb-code" value="${v}" ${c.code===v?'checked':''}> ${esc(lab)}</label>`).join('')}</div></div>
     ${fld('smp-lb-rot',esc(tx('lb_rot')),`<select id="smp-lb-rot">${['90','270','0','180'].map(v=>`<option value="${v}" ${c.rot===v?'selected':''}>${esc(tx('lb_rot'+v))}</option>`).join('')}</select>`)}
-    <div class="field"><span class="lbl">${esc(tx('lb_show'))}</span><div class="checks" style="flex-direction:column;align-items:flex-start">${ck('plr',tx('lb_plr'))}${ck('desc',tx('lb_desc'))}${ck('proj',tx('lb_proj'))}${ck('phase',tx('lb_phase'))}${ck('date',tx('lb_date'))}</div></div>`;
+    <div class="field"><span class="lbl">${esc(tx('lb_show'))}</span><div class="checks" style="flex-direction:column;align-items:flex-start">${ck('plr',tx('lb_plr'))}${ck('desc',tx('lb_desc'))}${ck('date',tx('lb_date'))}</div></div>`;
 }
 function smpLbPreview(){
   const c=smpLblCfg(), keys=S.smp.lb.keys.filter(k=>S.smp.lb.checked.has(k)), p=$('#smp-lb-prev');
@@ -1821,7 +2156,6 @@ document.addEventListener('click',ev=>{
   else if(a==='tog'){ev.stopPropagation(); const id=el.dataset.id; V.collapsed.has(id)?V.collapsed.delete(id):V.collapsed.add(id); render();}
   else if(a==='tog-all'){ if(V.collapsed.size) V.collapsed.clear(); else S.samples.forEach(l=>V.collapsed.add(l.id)); render();}
   else if(a==='sv'){V.sv=el.dataset.v; try{localStorage.setItem('tl.smp.view',V.sv);}catch(e){} render();}
-  else if(a==='lang'){SMP_LANG=el.dataset.l; try{localStorage.setItem('tl.lang',SMP_LANG);}catch(e){} render();}
   else if(a==='sst'){const s=el.dataset.s; V.sst.has(s)?V.sst.delete(s):V.sst.add(s); render();}
   else if(a==='kpi'){const k=el.dataset.k;
     if(k==='lbl') return smpOpenLabels(smpPending());
@@ -1940,7 +2274,7 @@ document.addEventListener('change',ev=>{
 });
 document.addEventListener('submit',ev=>{ if(ev.target.id!=='dlg-form') return; ev.preventDefault();
   const b=ev.target.querySelector('button[type="submit"]'), label=b&&b.textContent; if(b&&b.disabled) return;
-  if(b&&dlg.dataset.kind!=='gh'){b.disabled=true; b.textContent='Saving…';}
+  if(b&&dlg.dataset.kind!=='gh'){b.disabled=true; b.textContent=tx('au_saving');}
   Promise.resolve(saveDialog()).finally(()=>{ if(b&&dlg.open&&dlg.dataset.kind!=='gh'){b.disabled=false; b.textContent=label;} }); });
 /* file drag and drop */
 const dzOf=ev=>ev.target.closest&&ev.target.closest('[data-dz]');
@@ -1997,7 +2331,7 @@ function demoSave(){try{localStorage.setItem(DEMO_DATA_KEY,JSON.stringify(remote
 async function setDemo(on,reset){
   DEMO=!!on&&!!window.CE_DEMO; try{localStorage.setItem(DEMO_KEY,DEMO?'1':'0'); if(reset||!DEMO) localStorage.removeItem(DEMO_DATA_KEY);}catch(e){}
   Object.assign(remote,{data:null,sha:null,etag:null}); S.imp=null; S.qimp=null; S.ro=true; if(dlg.open) dlg.close();
-  await refresh(); render(); toast(DEMO?(reset?'Example data reset.':'Preview with example data.'):'Example data closed.');
+  await refresh(); render(); toast(tx(DEMO?(reset?'pv_reset':'pv_on'):'pv_off'));
 }
 document.addEventListener('click',ev=>{const b=ev.target.closest('[data-pv]'); if(!b) return; const a=b.dataset.pv;
   if(a==='demo-on') setDemo(true); else if(a==='demo-reset') setDemo(true,true); else if(a==='demo-off'){ setDemo(false); if(!GH.token) openGh(); }});
@@ -2168,7 +2502,7 @@ async function mailSwitch(email){
   try{await connectMail(email);}catch(err){ if(err.code==='auth') mailExpired(); }
   remote.etag=null; await refresh(); render(); loadCal();
 }
-function disconnectGh(){Object.assign(GH,{token:'',login:null,push:false,invalid:false,modo:null}); S.ro=true; try{localStorage.removeItem(TOKEN_KEY);}catch(e){} remote.etag=null; render(); toast('Disconnected from GitHub. This browser no longer has the key.');}
+function disconnectGh(){Object.assign(GH,{token:'',login:null,push:false,invalid:false,modo:null}); S.ro=true; try{localStorage.removeItem(TOKEN_KEY);}catch(e){} remote.etag=null; render(); toast(tx('gh_off'));}
 function renderGh(){
   const b=$('#btn-gh'); if(!b) return;
   if(LA&&GH.modo!=='clave'){
@@ -2178,27 +2512,24 @@ function renderGh(){
     return;
   }
   b.className='gh '+(GH.invalid?'bad':GH.saving?'busy':GH.login&&GH.push?'on':'');
-  b.querySelector('span').textContent=GH.invalid?'GitHub key expired':GH.saving?'Saving…':GH.login?GH.login:'Connect GitHub';
-  b.title=GH.login?(GH.push?'Connected with write access. Changes are saved as commits.':'Connected, but this account cannot edit the repository.'):'Connect GitHub to create and change tests';
-  if(PREVIEW&&DEMO){b.className='gh on'; b.querySelector('span').textContent='Example data'; b.title='Preview with example data: nothing is read from or sent to GitHub.';}
-  else if(PREVIEW&&GH.login){b.className='gh busy'; b.title='Preview: the data is read from GitHub, changes are not saved.';}
+  b.querySelector('span').textContent=GH.invalid?tx('gh_expired'):GH.saving?tx('au_saving'):GH.login?GH.login:tx('gh_connect');
+  b.title=GH.login?tx(GH.push?'gh_t_push':'gh_t_nopush'):tx('gh_t');
+  if(PREVIEW&&DEMO){b.className='gh on'; b.querySelector('span').textContent=tx('pv_btn'); b.title=tx('pv_btn_t');}
+  else if(PREVIEW&&GH.login){b.className='gh busy'; b.title=tx('pv_t');}
 }
 function openGh(){
   dlg.dataset.kind='gh'; dlg.dataset.id='';
   if(LA) return openMail();
-  const body=`${GH.login?`<p class="note">Connected as <b>${esc(GH.login)}</b>${GH.push?' with write access.':', but this account cannot edit the repository.'}</p>`:''}
-  <ol class="steps-plain">
-    <li>Create an access key in GitHub: <a href="https://github.com/settings/tokens/new?scopes=repo&amp;description=Laboratorio%20Polinya" target="_blank" rel="noopener">open the form</a>. The <span class="mono">repo</span> permission is already ticked (needed because the lab data is private); choose an expiry and press <i>Generate token</i>.</li>
-    <li>Copy the key and paste it here.</li>
-  </ol>
+  const body=`${GH.login?`<p class="note">${tx('gh_as',esc(GH.login),GH.push)}</p>`:''}
+  <ol class="steps-plain">${tx('gh_steps')}</ol>
   ${keyFields()}`;
-  dlg.innerHTML=`<form class="dlg-form" id="dlg-form" novalidate><header class="dlg-h"><div><p class="eyebrow">Editing access</p><h2>Connect GitHub</h2></div><button type="button" class="icon-btn" data-act="close" aria-label="Close">×</button></header>
+  dlg.innerHTML=`<form class="dlg-form" id="dlg-form" novalidate><header class="dlg-h"><div><p class="eyebrow">${tx('gh_eyebrow')}</p><h2>${tx('gh_connect')}</h2></div><button type="button" class="icon-btn" data-act="close" aria-label="${esc(tx('close'))}">×</button></header>
   <div class="dlg-body">${body}<div id="f-err" class="form-err" hidden></div></div>
-  <footer class="dlg-f">${GH.token?'<button type="button" class="btn ghost danger" data-act="gh-off">Disconnect</button>':''}<span class="sp"></span><button type="button" class="btn ghost" data-act="close">Cancel</button><button class="btn primary" type="submit">Connect</button></footer></form>`;
+  <footer class="dlg-f">${GH.token?`<button type="button" class="btn ghost danger" data-act="gh-off">${tx('gh_disc')}</button>`:''}<span class="sp"></span><button type="button" class="btn ghost" data-act="close">${tx('cancel')}</button><button class="btn primary" type="submit">${tx('gh_connectBtn')}</button></footer></form>`;
   if(!dlg.open) dlg.showModal(); $('#gh-token').focus();
 }
-const keyFields=()=>`<div class="field"><label for="gh-token">Access key (token)</label><input id="gh-token" type="password" placeholder="ghp_…" autocomplete="off" spellcheck="false"></div>
-  <p class="note">The key is kept only in this browser and is shared with the durability pool app. Your GitHub account must have access to the data repository <span class="mono">${REPO.owner}/${REPO.repo}</span>: Read to view, Write to edit. Every change is saved as a commit, so the history shows who changed what.</p>`;
+const keyFields=()=>`<div class="field"><label for="gh-token">${tx('gh_keyL')}</label><input id="gh-token" type="password" placeholder="ghp_…" autocomplete="off" spellcheck="false"></div>
+  <p class="note">${tx('gh_keyNote',`${REPO.owner}/${REPO.repo}`)}</p>`;
 /* With email sign-in configured: "Sign in with your email" first (email + password, one step), "Use a GitHub key" below. */
 function openMail(){
   const signed=byMail()&&GH.login&&!GH.expired, keyOn=GH.modo==='clave'&&GH.login;
@@ -2209,11 +2540,11 @@ function openMail(){
     <div class="field"><label for="gh-pass">${ta('au_pass')}</label><input id="gh-pass" type="password" autocomplete="current-password" spellcheck="false"></div>
     <p class="note">${ta('au_forgot')}</p></section>`;
   const key=signed?'':`<details class="gh-key" ${keyOn?'open':''}><summary>${ta('au_key')}</summary>
-    ${keyOn?`<p class="note">Connected as <b>${esc(GH.login)}</b>${GH.push?' with write access.':', but this account cannot edit the repository.'}</p>`:''}
-    <ol class="steps-plain"><li>Create an access key in GitHub: <a href="https://github.com/settings/tokens/new?scopes=repo&amp;description=Laboratorio%20Polinya" target="_blank" rel="noopener">open the form</a>. The <span class="mono">repo</span> permission is already ticked (needed because the lab data is private); choose an expiry and press <i>Generate token</i>.</li><li>Copy the key and paste it here.</li></ol>
-    ${keyFields()}<p>${keyOn?'<button type="button" class="btn ghost danger" data-act="gh-off">Disconnect</button> ':''}<button type="button" class="btn" data-act="gh-key">Connect</button></p></details>`;
+    ${keyOn?`<p class="note">${tx('gh_as',esc(GH.login),GH.push)}</p>`:''}
+    <ol class="steps-plain">${tx('gh_steps')}</ol>
+    ${keyFields()}<p>${keyOn?`<button type="button" class="btn ghost danger" data-act="gh-off">${tx('gh_disc')}</button> `:''}<button type="button" class="btn" data-act="gh-key">${tx('gh_connectBtn')}</button></p></details>`;
   const main=signed?'':`<button class="btn primary" type="submit">${ta('au_enter')}</button>`;
-  dlg.innerHTML=`<form class="dlg-form" id="dlg-form" novalidate><header class="dlg-h"><div><p class="eyebrow">${ta('au_eyebrow')}</p><h2>${ta('au_btn')}</h2></div><button type="button" class="icon-btn" data-act="close" aria-label="Close">×</button></header>
+  dlg.innerHTML=`<form class="dlg-form" id="dlg-form" novalidate><header class="dlg-h"><div><p class="eyebrow">${ta('au_eyebrow')}</p><h2>${ta('au_btn')}</h2></div><button type="button" class="icon-btn" data-act="close" aria-label="${esc(tx('close'))}">×</button></header>
   <div class="dlg-body">${mail}${key}<div id="f-err" class="form-err" hidden></div></div>
   <footer class="dlg-f">${signed?`<button type="button" class="btn ghost danger" data-act="gh-out">${ta('au_signout')}</button>`:''}<span class="sp"></span><button type="button" class="btn ghost" data-act="close">${ta(signed?'au_close':'au_cancel')}</button>${main}</footer></form>`;
   if(!dlg.open) dlg.showModal(); const m=$('#gh-mail'); if(m) (m.value?$('#gh-pass'):m).focus();
@@ -2249,22 +2580,45 @@ async function saveMail(){
 }
 function saveGh(){ return LA&&document.activeElement!==$('#gh-token')?saveMail():saveKey(); }
 async function saveKey(){
-  const t=($('#gh-token').value||'').trim(); if(!t) return formErr('Paste the access key.');
-  const btn=LA?dlg.querySelector('[data-act="gh-key"]'):dlg.querySelector('button[type="submit"]'); btn.disabled=true; btn.textContent='Checking…';
+  const t=($('#gh-token').value||'').trim(); if(!t) return formErr(tx('gh_e_paste'));
+  const btn=LA?dlg.querySelector('[data-act="gh-key"]'):dlg.querySelector('button[type="submit"]'); btn.disabled=true; btn.textContent=tx('au_wait');
   try{
     await connectGh(t); try{localStorage.setItem(TOKEN_KEY,t);}catch(e){}
     if(LA){ dlg.dataset.verified=''; if(await LA.sesion()){mailBusy=true; try{await LA.salir();}catch(e){} mailBusy=false;} }
     if(PREVIEW&&DEMO){DEMO=false; try{localStorage.setItem(DEMO_KEY,'0');}catch(e){} remote.data=null;}
     remote.etag=null; await refresh(); dlg.close(); render(); loadCal();
-    toast(GH.push?`Connected as ${GH.login}. You can now edit.`:`Connected as ${GH.login}, but this account cannot edit the repository.`);
-  }catch(err){ btn.disabled=false; btn.textContent='Connect'; formErr(err.code==='auth'?'That key is not valid or has expired.':err.code==='forbidden'?'That key cannot see the repository.':'Could not reach GitHub. Check your connection.'); }
+    toast(tx('gh_ok',GH.login,GH.push));
+  }catch(err){ btn.disabled=false; btn.textContent=tx('gh_connectBtn'); formErr(tx(err.code==='auth'?'gh_e_auth':err.code==='forbidden'?'gh_e_repo':'gh_e_net')); }
 }
 window.addEventListener('beforeunload',e=>{ if(pendingOps.length||flushing){e.preventDefault(); e.returnValue='';} });
+
+/* ---------- Language (ES / EN switch of acceso/lab-lang.js) ----------
+   Redraws the page and an open dialog in the new language, keeping what was typed in it. */
+const fkey=el=>el.type==='checkbox'||el.type==='radio'?(el.name||el.id?`${el.name||el.id}=${el.value}`:''):el.id;
+function relang(){
+  LL.apply(I18N); document.title=`${tx('doc_'+APP)} · Laboratorio Polinyà`;
+  render();
+  if(!dlg.open) return;
+  const k=dlg.dataset.kind, id=dlg.dataset.id||null, V=S.smp, keep={rc:V.rc,edit:V.edit,lb:V.lb}, snap=new Map();
+  dlg.querySelectorAll('input,select,textarea').forEach(el=>{const key=fkey(el); if(key) snap.set(key,{v:el.value,c:el.checked});});
+  const put=()=>dlg.querySelectorAll('input,select,textarea').forEach(el=>{const s=snap.get(fkey(el)); if(!s) return;
+    if(el.type==='checkbox'||el.type==='radio') el.checked=s.c; else if(el.type!=='file') el.value=s.v;});
+  if(k==='test') openEditor(id); else if(k==='person') openPerson(id); else if(k==='equipment') openEquipment(id); else if(k==='qtp') openQtp(id);
+  else if(k==='gh') openGh();
+  else if(k==='smp-rc'){smpOpenReceive(''); V.rc=keep.rc; put(); smpRcPlr(); smpRcUnits();}
+  else if(k==='smp-lot'){smpOpenLot(id); V.edit=keep.edit; smpLotUnits();}
+  else if(k==='smp-lb'){smpOpenLabels(keep.lb.keys); V.lb=keep.lb; smpLbSide(); smpLbPreview();}
+  else if(k==='smp-gen') smpGenRender();
+  put();
+  if(k==='qtp'){const en=$('#f-profile').value==='endurance'; $('#endu-fields').hidden=!en; $('#even-fields').hidden=en;}
+  if(k==='test') liveHints();
+}
+LL.onChange(relang);
 
 /* ---------- Boot ---------- */
 S.ro=true;
 dl={};
-render();
+relang();
 (async()=>{
   let pending=false; const later=()=>{ if(pending) return; pending=true; requestAnimationFrame(()=>{pending=false; render(); if(dlg.open) liveHints();}); };
   const sub=(col,key)=>db.collection(col).onSnapshot(snap=>{S[key]=snap.docs.map(x=>({id:x.id,...x.data()})); S.loaded.add(key); later();});
