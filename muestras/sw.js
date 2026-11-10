@@ -1,7 +1,7 @@
 /* Service worker of the Muestras desktop app. It keeps the app files (and the libraries from the CDN) so the app opens
    without connection, and refreshes them in the background. It never caches lab data (GitHub API and raw files, the lab's Supabase function, any request with a session). */
-const CACHE='muestras-v20261115';
-const SHELL=['./','index.html','../acceso/config.js','../acceso/lab-lang.js?v=20261115','../acceso/lab-auth.js?v=20261115','../control-ensayos/app.js?v=20261115','../control-ensayos/app.css?v=20261115','manifest.webmanifest','icons/icon.svg','icons/icon-192.png','icons/icon-512.png'];
+const CACHE='muestras-v20261116';
+const SHELL=['./','index.html','../acceso/config.js','../acceso/lab-lang.js?v=20261116','../acceso/lab-auth.js?v=20261116','../control-ensayos/app.js?v=20261116','../control-ensayos/app.css?v=20261116','manifest.webmanifest','icons/icon.svg','icons/icon-192.png','icons/icon-512.png'];
 self.addEventListener('install',e=>{e.waitUntil(caches.open(CACHE).then(c=>c.addAll(SHELL)).then(()=>self.skipWaiting()));});
 self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(ks=>Promise.all(ks.filter(k=>k!==CACHE).map(k=>caches.delete(k)))).then(()=>self.clients.claim()));});
 self.addEventListener('fetch',e=>{
@@ -10,6 +10,8 @@ self.addEventListener('fetch',e=>{
   e.respondWith(caches.open(CACHE).then(async c=>{
     const hit=await c.match(r);
     const net=fetch(r).then(res=>{if(res.ok||res.type==='opaque') c.put(r,res.clone()); return res;}).catch(()=>hit);
-    return hit||net;
+    /* The page itself comes from the network when there is one, so a new version shows on the next opening;
+       its files carry ?v= and can come from the cache. */
+    return r.mode==='navigate'?net.then(res=>res||hit):hit||net;
   }));
 });
