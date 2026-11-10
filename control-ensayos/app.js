@@ -1076,7 +1076,7 @@ async function saveDialog(){
   if(dlg.dataset.kind==='gh') return saveGh();
   if(dlg.dataset.kind==='smp-rc') return smpSaveReceive(false);
   if(dlg.dataset.kind==='smp-lot') return smpSaveLot();
-  if(dlg.dataset.kind==='smp-lb'||dlg.dataset.kind==='smp-gen') return;
+  if(dlg.dataset.kind==='smp-lb'||dlg.dataset.kind==='smp-gen'||dlg.dataset.kind==='smp-as') return;
   if(!db||S.ro) return;
   const kind=dlg.dataset.kind, id=dlg.dataset.id, f=readForm(), now=nowIso(), T=iso(todayMs());
   try{
@@ -1229,13 +1229,13 @@ es:{
   nextCode:c=>`Se asignará <b class="mono">${c}</b>. Cada unidad lleva su sufijo (-1, -2…) y su propia etiqueta.`,
   u_code:'Código', u_sn:'Nº serie', u_state:'Estado', u_loc:'Ubicación', u_note:'Nota', u_lbl:'Etiqueta',
   save:'Guardar', savePrint:'Guardar e imprimir etiquetas', cancel:'Cancelar', close:'Cerrar',
-  errPlr:'Indica el PLR.', errLinked:p=>`Deja al menos un ensayo de ${p} marcado, o quita ${p} del campo PLR para desenlazarlo entero.`, errDesc:'Escribe la descripción de la muestra.', errQty:'Tiene que haber al menos una unidad.',
+  errPlr:'Indica el PLR.', errLinked:p=>`Deja al menos un ensayo de ${p} marcado, o pulsa «Quitar este PLR».`, errDesc:'Escribe la descripción de la muestra.', errQty:'Tiene que haber al menos una unidad.',
   saved:c=>`Recepción ${c} guardada.`,
   lot_eyebrow:c=>`Recepción ${c}`, addUnit:'+ Añadir unidad', allTo:'Todas a…', withdraw:'Retirar', restore:'Recuperar',
   printed:'Impresa', notPrintedS:'Pendiente', history:'Historial', del:'Eliminar recepción', delArm:'Pulsa otra vez para eliminar',
   deleted:c=>`Recepción ${c} eliminada. Su número no se vuelve a usar.`, unitsHelp:'Las unidades retiradas conservan su número: no se reutiliza. Una unidad nueva recibe el siguiente sufijo libre.',
-  linked:'Ensayos enlazados', linkedHelp:'Desmarca los ensayos que no usan estas muestras.', printLot:'Imprimir etiquetas',
-  log_recv:n=>`Recibida (${n} ud${n===1?'':'s'}.)`, log_state:(c,a,b)=>`${c}: ${a} → ${b}`, log_add:c=>`${c} añadida`, log_rm:c=>`${c} retirada`, log_back:c=>`${c} recuperada`, log_edit:'Datos de la recepción editados', log_tests:'Ensayos enlazados cambiados', log_print:n=>`${n} etiqueta${n===1?'':'s'} impresa${n===1?'':'s'}`,
+  linked:'Ensayos enlazados', linkedHelp:'Desmarca los ensayos que no usan estas muestras. Para reutilizarlas en otra petición, asígnalas a otro PLR.', ltAdd:'Asignar a otro PLR', ltRm:'Quitar este PLR', assign:'Usar muestras existentes', as_eyebrow:'Reutilizar muestras', as_title:p=>`Muestras existentes para ${p}`, as_help:'Elige las recepciones QTS que se vuelven a usar en este PLR. Mantienen sus códigos y etiquetas; quedan enlazadas a todos los ensayos del PLR (puedes desmarcar alguno en la ficha de cada recepción).', as_ok:'Asignar al PLR', as_n:n=>`${n} recepci${n===1?'ón':'ones'} elegida${n===1?'':'s'}`, as_done:(n,p)=>`${n} recepci${n===1?'ón asignada':'ones asignadas'} a ${p}`, printLot:'Imprimir etiquetas',
+  log_recv:n=>`Recibida (${n} ud${n===1?'':'s'}.)`, log_state:(c,a,b)=>`${c}: ${a} → ${b}`, log_add:c=>`${c} añadida`, log_rm:c=>`${c} retirada`, log_back:c=>`${c} recuperada`, log_edit:'Datos de la recepción editados', log_plrAdd:p=>`Asignada también a ${p}`, log_plrRm:p=>`Quitada de ${p}`, log_tests:'Ensayos enlazados cambiados', log_print:n=>`${n} etiqueta${n===1?'':'s'} impresa${n===1?'':'s'}`,
   lb_eyebrow:'Etiquetas · DYMO LabelWriter 550', lb_title:n=>`Imprimir ${n} etiqueta${n===1?'':'s'}`, lb_units:'Unidades', lb_all:'Todas', lb_noneSel:'Ninguna',
   lb_size:'Etiqueta', lb_rot:'Giro al imprimir', lb_rot90:'90° a la derecha', lb_rot270:'90° a la izquierda', lb_rot0:'Sin giro (horizontal)', lb_rot180:'180°', lb_code:'Código', qr:'QR (abre los ensayos del PLR en Control de ensayos)', bar:'Código de barras (Code 128)', noCode:'Sin código',
   lb_show:'Contenido', lb_plr:'PLR · QTP', lb_desc:'Descripción', lb_date:'Fecha de recepción',
@@ -1305,13 +1305,13 @@ en:{
   nextCode:c=>`It will get <b class="mono">${c}</b>. Each unit gets its suffix (-1, -2…) and its own label.`,
   u_code:'Code', u_sn:'Serial no.', u_state:'Status', u_loc:'Location', u_note:'Note', u_lbl:'Label',
   save:'Save', savePrint:'Save and print labels', cancel:'Cancel', close:'Close',
-  errPlr:'Enter the PLR.', errLinked:p=>`Keep at least one test of ${p} ticked, or remove ${p} from the PLR field to unlink it completely.`, errDesc:'Enter the sample description.', errQty:'There must be at least one unit.',
+  errPlr:'Enter the PLR.', errLinked:p=>`Keep at least one test of ${p} ticked, or press “Remove this PLR”.`, errDesc:'Enter the sample description.', errQty:'There must be at least one unit.',
   saved:c=>`Reception ${c} saved.`,
   lot_eyebrow:c=>`Reception ${c}`, addUnit:'+ Add unit', allTo:'Set all to…', withdraw:'Withdraw', restore:'Restore',
   printed:'Printed', notPrintedS:'Pending', history:'History', del:'Delete reception', delArm:'Press again to delete',
   deleted:c=>`Reception ${c} deleted. Its number is not used again.`, unitsHelp:'Withdrawn units keep their number: it is never reused. A new unit gets the next free suffix.',
-  linked:'Linked tests', linkedHelp:'Untick the tests these samples are not for.', printLot:'Print labels',
-  log_recv:n=>`Received (${n} unit${n===1?'':'s'})`, log_state:(c,a,b)=>`${c}: ${a} → ${b}`, log_add:c=>`${c} added`, log_rm:c=>`${c} withdrawn`, log_back:c=>`${c} restored`, log_edit:'Reception details edited', log_tests:'Linked tests changed', log_print:n=>`${n} label${n===1?'':'s'} printed`,
+  linked:'Linked tests', linkedHelp:'Untick the tests these samples are not for. To reuse them in another request, assign them to another PLR.', ltAdd:'Assign to another PLR', ltRm:'Remove this PLR', assign:'Use existing samples', as_eyebrow:'Reuse samples', as_title:p=>`Existing samples for ${p}`, as_help:'Pick the QTS receptions that are used again in this PLR. They keep their codes and labels and are linked to all the tests of the PLR (untick any in each reception).', as_ok:'Assign to PLR', as_n:n=>`${n} reception${n===1?'':'s'} picked`, as_done:(n,p)=>`${n} reception${n===1?'':'s'} assigned to ${p}`, printLot:'Print labels',
+  log_recv:n=>`Received (${n} unit${n===1?'':'s'})`, log_state:(c,a,b)=>`${c}: ${a} → ${b}`, log_add:c=>`${c} added`, log_rm:c=>`${c} withdrawn`, log_back:c=>`${c} restored`, log_edit:'Reception details edited', log_plrAdd:p=>`Also assigned to ${p}`, log_plrRm:p=>`Removed from ${p}`, log_tests:'Linked tests changed', log_print:n=>`${n} label${n===1?'':'s'} printed`,
   lb_eyebrow:'Labels · DYMO LabelWriter 550', lb_title:n=>`Print ${n} label${n===1?'':'s'}`, lb_units:'Units', lb_all:'All', lb_noneSel:'None',
   lb_size:'Label', lb_rot:'Print rotation', lb_rot90:'90° clockwise', lb_rot270:'90° counter-clockwise', lb_rot0:'No rotation (landscape)', lb_rot180:'180°', lb_code:'Code', qr:'QR (opens the PLR tests in Control de ensayos)', bar:'Barcode (Code 128)', noCode:'No code',
   lb_show:'Content', lb_plr:'PLR · QTP', lb_desc:'Description', lb_date:'Reception date',
@@ -1872,7 +1872,7 @@ function smpCard(g){
       <div class="recv"><b>${g.recv}</b>${g.pieces?` / ${g.pieces}`:''}<br>${esc(g.pieces?tx('recvOf',g.recv,g.pieces):tx('recvN'))}<div class="prog"><span style="width:${pct}%"></span></div></div></div>
     ${g.tests.length?`<ol class="qlines">${g.tests.map(x=>`<li><span class="seq">${esc(x.sequence||'·')}</span><button type="button" class="link ref" data-act="edit" data-id="${esc(x.id)}">${esc(x.qtp)}</button><span class="tt" title="${esc(x.title)}">${esc(x.title)}</span>${estPill(x.status)}${resTag(x.result)}</li>`).join('')}</ol>`:''}
     <div class="lots">${shown.map(l=>smpLotBtn(l,g.plr)).join('')||(g.lots.length?'':`<p class="note">${esc(tx('noLots'))}</p>`)}${hidden?`<span class="hidden-n">${esc(tx('hiddenN',hidden))}</span>`:''}</div>
-    <div class="pc-f">${status}${g.exp.length?`<span class="wtag mut">${esc(tx('expN',g.exp.length))}</span>`:''}<span class="sp"></span>${g.legacy||S.ro?'':`${g.exp.length?`<button class="btn sm primary" data-sa="recv-exp" data-plr="${esc(g.plr)}">${esc(tx('recvExp',g.exp.length))}</button>`:''}<button class="btn sm" data-sa="gen" data-plr="${esc(g.plr)}">${esc(tx('gen'))}</button><button class="btn sm" data-sa="receive" data-plr="${esc(g.plr)}">${esc(tx('receiveFor'))}</button>`}</div>
+    <div class="pc-f">${status}${g.exp.length?`<span class="wtag mut">${esc(tx('expN',g.exp.length))}</span>`:''}<span class="sp"></span>${g.legacy||S.ro?'':`${g.exp.length?`<button class="btn sm primary" data-sa="recv-exp" data-plr="${esc(g.plr)}">${esc(tx('recvExp',g.exp.length))}</button>`:''}<button class="btn sm" data-sa="gen" data-plr="${esc(g.plr)}">${esc(tx('gen'))}</button><button class="btn sm" data-sa="assign" data-plr="${esc(g.plr)}">${esc(tx('assign'))}</button><button class="btn sm" data-sa="receive" data-plr="${esc(g.plr)}">${esc(tx('receiveFor'))}</button>`}</div>
   </article>`;
 }
 function smpList(){
@@ -1986,7 +1986,6 @@ function smpOpenLot(id,focusN){
   const tests=smpLotTests(l), unlinked=(l.plrs||[]).filter(p=>!smpLegacy(p)&&!smpTestsOfPlr(p).length);
   const body=`<fieldset><legend>${esc(tx('lg_sample'))}</legend>
       ${fld('f-desc',esc(tx('f_desc')),inp('desc',l.desc),'req span2')}
-      ${fld('f-plrs',esc(tx('f_plr')),inp('plrs',(l.plrs||[]).join(', ')),'',esc(tx('f_plr2_help')))}
       ${fld('f-pn',esc(tx('f_pn')),inp('pn',l.pn))}
       ${fld('f-phase',esc(tx('f_phase')),sel('phase',l.phase,[['',''],...SMP_PHASES]))}
       ${fld('f-project',esc(tx('f_project')),inp('project',l.project))}
@@ -2001,12 +2000,13 @@ function smpOpenLot(id,focusN){
     <div><p class="eyebrow" style="margin-bottom:6px">${esc(tx('linked'))}</p>
       ${S.ro?'':`<p class="note" style="margin:0 0 6px">${esc(tx('linkedHelp'))}</p>`}
       <div id="smp-lot-tests"></div>
+      ${S.ro?'':`<div class="row lt-add"><input id="smp-lt-add" list="smp-lt-plrs" placeholder="${esc(tx('f_plr_ph'))}" aria-label="${esc(tx('ltAdd'))}" autocomplete="off"><datalist id="smp-lt-plrs">${smpPlrOptions()}</datalist><button type="button" class="btn sm" data-sa="lt-add-plr">${esc(tx('ltAdd'))}</button></div>`}
       ${S.ro&&tests.length?`<ol class="qlines">${tests.map(x=>`<li><span class="seq">${esc(x.sequence||'·')}</span><button type="button" class="link ref" data-act="edit" data-id="${esc(x.id)}">${esc(x.plr)} · ${esc(x.qtp)}</button><span class="tt">${esc(x.title||'')}</span>${estPill(x.status)}${resTag(x.result)}</li>`).join('')}</ol>`:''}
-      ${(l.plrs||[]).filter(smpLegacy).map(p=>`<p class="note">${esc(p)} · ${esc(tx('legacy'))}</p>`).join('')}
-      ${unlinked.map(p=>`<p class="note">${esc(p)} · ${esc(tx('plrUnknown'))}</p>`).join('')}</div>
+      ${S.ro?`${(l.plrs||[]).filter(smpLegacy).map(p=>`<p class="note">${esc(p)} · ${esc(tx('legacy'))}</p>`).join('')}
+      ${unlinked.map(p=>`<p class="note">${esc(p)} · ${esc(tx('plrUnknown'))}</p>`).join('')}`:''}</div>
     <details><summary>${esc(tx('history'))} (${(l.log||[]).length})</summary><ul class="log">${[...(l.log||[])].reverse().map(e=>`<li><time>${fmt(String(e.at||'').slice(0,10))}</time>${esc(smpLogTxt(e))}${e.by?` <span class="muted">· ${esc(e.by)}</span>`:''}</li>`).join('')}</ul></details>`;
   dlg.innerHTML=smpShell(tx('lot_eyebrow',l.code),l.desc,body,`${S.ro?'':`<button type="button" class="btn ghost danger" data-sa="del">${esc(tx('del'))}</button>`}<button type="button" class="btn" data-sa="print-lot">🏷 ${esc(tx('printLot'))}</button><span class="sp"></span><button type="button" class="btn ghost" data-act="close">${esc(S.ro?tx('close'):tx('cancel'))}</button>${S.ro?'':`<button class="btn primary" type="submit">${esc(tx('save'))}</button>`}`);
-  S.smp.edit.linked=new Set(tests.map(x=>x.id));
+  S.smp.edit.linked=new Set(tests.map(x=>x.id)); S.smp.edit.plrs=[...(l.plrs||[])];
   if(!dlg.open) dlg.showModal();
   smpLotUnits(); smpLotTestsBox();
   if(focusN){const el=dlg.querySelector(`[data-un="${focusN}"][data-f="state"]`); if(el) el.focus();}
@@ -2014,10 +2014,20 @@ function smpOpenLot(id,focusN){
 /* Every test of the reception's PLRs with a tick: unticking one unlinks it from these samples. */
 function smpLotTestsBox(){
   const box=$('#smp-lot-tests'); if(!box||S.ro) return; const e=S.smp.edit;
-  const all=(e.plrs||[]).flatMap(smpTestsOfPlr);
-  box.innerHTML=all.length?`<ol class="qlines lt-pick">${all.map(x=>{const on=e.linked.has(x.id);
-    return `<li class="${on?'':'off'}"><input type="checkbox" data-lt="${esc(x.id)}" ${on?'checked':''} aria-label="${esc(x.plr)} · ${esc(x.qtp)}"><span class="seq">${esc(x.sequence||'·')}</span><button type="button" class="link ref" data-act="edit" data-id="${esc(x.id)}">${esc(x.plr)} · ${esc(x.qtp)}</button><span class="tt">${esc(x.title||'')}</span>${estPill(x.status)}${resTag(x.result)}</li>`;}).join('')}</ol>`:'';
+  box.innerHTML=e.plrs.map(p=>{const all=smpTestsOfPlr(p), t0=all[0]||{};
+    return `<div class="lt-plr"><div class="row"><b class="ref">${esc(p)}</b>${t0.project?smpProj(t0.project):''}<span class="sp"></span>${e.plrs.length>1?`<button type="button" class="btn sm ghost danger" data-sa="lt-rm-plr" data-plr="${esc(p)}">${esc(tx('ltRm'))}</button>`:''}</div>
+    ${all.length?`<ol class="qlines lt-pick">${all.map(x=>{const on=e.linked.has(x.id);
+      return `<li class="${on?'':'off'}"><input type="checkbox" data-lt="${esc(x.id)}" ${on?'checked':''} aria-label="${esc(x.plr)} · ${esc(x.qtp)}"><span class="seq">${esc(x.sequence||'·')}</span><button type="button" class="link ref" data-act="edit" data-id="${esc(x.id)}">${esc(x.qtp)}</button><span class="tt">${esc(x.title||'')}</span>${estPill(x.status)}${resTag(x.result)}</li>`;}).join('')}</ol>`
+      :`<p class="note">${esc(smpLegacy(p)?tx('legacy'):tx('plrUnknown'))}</p>`}</div>`;}).join('');
 }
+/* PLRs known from the tests, for the "assign to another PLR" pickers. */
+const smpPlrOptions=()=>[...new Map(S.tests.filter(x=>x.plr).map(x=>[smpPlrKey(x.plr),x])).values()].sort((a,b)=>smpPlrKey(b.plr).localeCompare(smpPlrKey(a.plr))).map(x=>`<option value="${esc(smpPlrKey(x.plr))}">${esc(projectNo(x))} · ${esc(x.title||'')}</option>`).join('');
+function smpLtAdd(){
+  const i=$('#smp-lt-add'), p=smpPlrKey(i&&i.value), e=S.smp.edit; if(!p) return;
+  if(!e.plrs.includes(p)){e.plrs.push(p); smpTestsOfPlr(p).forEach(x=>e.linked.add(x.id));}
+  i.value=''; smpLotTestsBox();
+}
+function smpLtRm(p){const e=S.smp.edit; if(e.plrs.length<2) return; e.plrs=e.plrs.filter(x=>x!==p); smpTestsOfPlr(p).forEach(x=>e.linked.delete(x.id)); smpLotTestsBox();}
 function smpLotUnits(){
   const l=S.smp.edit;
   $('#smp-lot-units').innerHTML=`<table class="utbl"><thead><tr><th>${esc(tx('u_code'))}</th><th>${esc(tx('u_state'))}</th><th>${esc(tx('u_sn'))}</th><th>${esc(tx('u_loc'))}</th><th>${esc(tx('u_note'))}</th><th>${esc(tx('u_lbl'))}</th><th></th></tr></thead><tbody>${(l.units||[]).map(u=>`<tr class="${u.removed?'rm':''}">
@@ -2029,15 +2039,44 @@ function smpLotUnits(){
     <td class="nowrap">${u.removed?'':u.printed?`<span class="wtag ok">${esc(tx('printed'))}</span>`:`<span class="wtag">${esc(tx('notPrintedS'))}</span>`}</td>
     <td>${S.ro?'':`<button type="button" class="btn sm ghost ${u.removed?'':'danger'}" data-sa="${u.removed?'restore-unit':'rm-unit'}" data-n="${u.n}">${esc(u.removed?tx('restore'):tx('withdraw'))}</button>`}</td></tr>`).join('')}</tbody></table>`;
 }
+/* "Use existing samples" on a PLR card: samples already coded for other PLRs are reused in this one.
+   The PLR joins each reception linked to all its tests; its own codes, units and states stay as they are. */
+function smpOpenAssign(p){
+  if(S.ro) return; p=smpPlrKey(p); S.smp.as={plr:p,q:'',sel:new Set()};
+  dlg.dataset.kind='smp-as'; dlg.dataset.id=p;
+  dlg.innerHTML=smpShell(tx('as_eyebrow'),tx('as_title',p),`<p class="note">${esc(tx('as_help'))}</p>
+    <input class="search" id="smp-as-q" type="search" placeholder="${esc(tx('search'))}" aria-label="${esc(tx('search'))}" style="width:100%;margin:8px 0">
+    <div class="as-list" id="smp-as-list"></div>`,
+    `<span class="note" id="smp-as-n"></span><span class="sp"></span><button type="button" class="btn ghost" data-act="close">${esc(tx('cancel'))}</button><button type="button" class="btn primary" data-sa="assign-ok" disabled>${esc(tx('as_ok'))}</button>`);
+  if(!dlg.open) dlg.showModal(); smpAssignList();
+}
+function smpAssignList(){
+  const A=S.smp.as, q=A.q, box=$('#smp-as-list'); if(!box) return;
+  const lots=S.samples.filter(l=>!(l.plrs||[]).includes(A.plr)&&smpLive(l).length&&smpMatch(l,q)).sort((a,b)=>b.code.localeCompare(a.code));
+  box.innerHTML=lots.length?lots.map(l=>`<label class="as-row"><input type="checkbox" data-as="${esc(l.id)}" ${A.sel.has(l.id)?'checked':''}>
+    <span class="ref"><b>${esc(l.code)}</b></span><span class="ds">${esc(l.desc)}</span><span class="chips">${(l.plrs||[]).map(p=>`<span class="chip">${esc(p)}</span>`).join('')}</span>${smpSummary(l)}</label>`).join('')
+    :`<p class="note">${esc(tx('noMatch'))}</p>`;
+  smpAssignCount();
+}
+function smpAssignCount(){const n=S.smp.as.sel.size, b=dlg.querySelector('[data-sa="assign-ok"]'), c=$('#smp-as-n'); if(b) b.disabled=!n; if(c) c.textContent=n?tx('as_n',n):'';}
+async function smpSaveAssign(){
+  if(S.ro||!db) return; const A=S.smp.as, now=nowIso();
+  const lots=[...A.sel].map(id=>S.samples.find(x=>x.id===id)).filter(l=>l&&!(l.plrs||[]).includes(A.plr));
+  try{
+    await Promise.all(lots.map(l=>db.doc(`${COL.samples}/${l.id}`).update({plrs:[...(l.plrs||[]),A.plr],log:[...(l.log||[]),smpLog('log_plrAdd',A.plr)],updated:now})));
+    dlg.close(); toast(tx('as_done',lots.length,A.plr)); render();
+  }catch(e){formErr(errMsg(e));}
+}
 async function smpSaveLot(){
   if(S.ro||!db) return;
   const old=S.samples.find(x=>x.id===dlg.dataset.id); if(!old) return;
   const {g}=smpFd();
   if(!g('desc')) return formErr(tx('errDesc'));
-  const plrs=smpSplit(g('plrs')); if(!plrs.length) return formErr(tx('errPlr'));
-  const e=S.smp.edit, log=[];
+  const e=S.smp.edit, log=[], plrs=[...e.plrs]; if(!plrs.length) return formErr(tx('errPlr'));
   const fields={desc:g('desc'),pn:g('pn'),phase:g('phase'),project:g('project'),received:g('received'),by:g('by'),loc:g('loc'),comments:g('comments')};
-  if(Object.keys(fields).some(k=>String(old[k]||'')!==fields[k])||plrs.join()!==(old.plrs||[]).join()) log.push(smpLog('log_edit'));
+  if(Object.keys(fields).some(k=>String(old[k]||'')!==fields[k])) log.push(smpLog('log_edit'));
+  plrs.filter(p=>!(old.plrs||[]).includes(p)).forEach(p=>log.push(smpLog('log_plrAdd',p)));
+  (old.plrs||[]).filter(p=>!plrs.includes(p)).forEach(p=>log.push(smpLog('log_plrRm',p)));
   for(const u of e.units){ const o=(old.units||[]).find(x=>x.n===u.n), c=smpCode(e,u);
     if(!o){log.push(smpLog('log_add',c)); continue;}
     if(u.removed&&!o.removed) log.push(smpLog('log_rm',c));
@@ -2049,10 +2088,10 @@ async function smpSaveLot(){
   const ticked=[];
   for(const p of plrs){ const all=smpTestsOfPlr(p); if(!all.length) continue;
     const mine=all.filter(x=>e.linked.has(x.id));
-    if(!mine.length&&(old.plrs||[]).includes(p)) return formErr(tx('errLinked',p));
+    if(!mine.length) return formErr(tx('errLinked',p));
     if(mine.length<all.length) ticked.push(...mine.map(x=>x.id)); }
   const prevT=smpLotTests(old).map(x=>x.id).sort().join(), nextT=smpLotTests({...old,plrs,tests:ticked}).map(x=>x.id).sort().join();
-  if(prevT!==nextT) log.push(smpLog('log_tests'));
+  if(prevT!==nextT&&plrs.join()===(old.plrs||[]).join()) log.push(smpLog('log_tests'));
   if(!fields.received&&e.units.some(u=>u.state!=='expected'&&!u.removed&&((old.units||[]).find(x=>x.n===u.n)||{}).state==='expected')) fields.received=iso(todayMs());
   const patch={...fields,plrs,units:e.units.map(({n,state,serial,loc,note,removed,printed})=>({n,state,serial:String(serial||'').trim(),loc:String(loc||'').trim(),note:String(note||'').trim(),removed:!!removed,printed:!!printed})),
     tests:ticked,log:[...(old.log||[]),...log],updated:nowIso()};
@@ -2171,6 +2210,10 @@ document.addEventListener('click',ev=>{
   const a=el.dataset.sa, V=S.smp;
   if(a==='receive') smpOpenReceive(el.dataset.plr||'');
   else if(a==='lot') smpOpenLot(el.dataset.id);
+  else if(a==='lt-add-plr') smpLtAdd();
+  else if(a==='lt-rm-plr') smpLtRm(el.dataset.plr);
+  else if(a==='assign') smpOpenAssign(el.dataset.plr);
+  else if(a==='assign-ok'){el.disabled=true; Promise.resolve(smpSaveAssign()).finally(()=>{if(el.isConnected) el.disabled=false;});}
   else if(a==='tog'){ev.stopPropagation(); const id=el.dataset.id; V.collapsed.has(id)?V.collapsed.delete(id):V.collapsed.add(id); render();}
   else if(a==='tog-all'){ if(V.collapsed.size) V.collapsed.clear(); else S.samples.forEach(l=>V.collapsed.add(l.id)); render();}
   else if(a==='sv'){V.sv=el.dataset.v; try{localStorage.setItem('tl.smp.view',V.sv);}catch(e){} render();}
@@ -2200,12 +2243,14 @@ document.addEventListener('click',ev=>{
   else if(a==='prop-skip') smpSkip(el.dataset.plr);
   else if(a==='recv-exp'){const g=smpGroups().find(x=>x.plr===el.dataset.plr); if(g&&g.exp.length){const n=g.exp.length; smpSetStates(g.exp,'received').then(()=>toast(tx('recvDone',n)));}}
 });
+document.addEventListener('keydown',ev=>{ if(ev.key==='Enter'&&ev.target.id==='smp-lt-add'){ev.preventDefault(); smpLtAdd();} });
 document.addEventListener('input',ev=>{
   const el=ev.target;
   if(dlg.dataset.kind==='smp-rc'&&el.id==='f-plr') smpRcPlr();
   else if(el.id==='smp-qty'){S.smp.rc.qtyTouched=true; smpRcResize(el.value);}
   else if(el.dataset.rcu!=null) S.smp.rc.units[+el.dataset.rcu][el.dataset.f]=el.value;
   else if(el.dataset.un&&el.dataset.f!=='state'){const u=S.smp.edit.units.find(x=>x.n===+el.dataset.un); if(u) u[el.dataset.f]=el.value;}
+  else if(el.id==='smp-as-q'){S.smp.as.q=el.value; smpAssignList();}
 });
 document.addEventListener('change',ev=>{
   const el=ev.target, V=S.smp;
@@ -2215,6 +2260,7 @@ document.addEventListener('change',ev=>{
   else if(el.id==='smp-sel-state'&&el.value){const n=V.sel.size; smpSetStates([...V.sel],el.value).then(()=>toast(tx('stateChanged',n)));}
   else if(el.id==='smp-phase'){V.phase=el.value; render();}
   else if(el.id==='smp-only-missing'){V.onlyMissing=el.checked; render();}
+  else if(el.dataset.as){const A=S.smp.as.sel; el.checked?A.add(el.dataset.as):A.delete(el.dataset.as); smpAssignCount();}
   else if(el.dataset.lt){const L=S.smp.edit.linked; el.checked?L.add(el.dataset.lt):L.delete(el.dataset.lt); el.closest('li').classList.toggle('off',!el.checked);}
   else if(el.dataset.un&&el.dataset.f==='state'){const u=V.edit.units.find(x=>x.n===+el.dataset.un); if(u){u.state=el.value; smpLotUnits();}}
   else if(el.id==='smp-all-to'&&el.value){V.edit.units.forEach(u=>{if(!u.removed) u.state=el.value;}); el.value=''; smpLotUnits();}
@@ -2625,7 +2671,8 @@ function relang(){
   if(k==='test') openEditor(id); else if(k==='person') openPerson(id); else if(k==='equipment') openEquipment(id); else if(k==='qtp') openQtp(id);
   else if(k==='gh') openGh();
   else if(k==='smp-rc'){smpOpenReceive(''); V.rc=keep.rc; put(); smpRcPlr(); smpRcUnits();}
-  else if(k==='smp-lot'){smpOpenLot(id); V.edit=keep.edit; smpLotUnits();}
+  else if(k==='smp-lot'){smpOpenLot(id); V.edit=keep.edit; smpLotUnits(); smpLotTestsBox();}
+  else if(k==='smp-as'){const as=V.as; smpOpenAssign(id); V.as=as; const q=$('#smp-as-q'); if(q) q.value=as.q; smpAssignList();}
   else if(k==='smp-lb'){smpOpenLabels(keep.lb.keys); V.lb=keep.lb; smpLbSide(); smpLbPreview();}
   else if(k==='smp-gen') smpGenRender();
   put();

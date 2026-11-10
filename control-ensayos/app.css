@@ -339,6 +339,11 @@ img{max-width:100%}
 .recv .prog span{background:var(--rc)}
 .qlines{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:13px}
 .qlines li{display:flex;gap:8px;align-items:center;min-width:0}
+.lt-plr{border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;margin-bottom:8px;display:grid;gap:6px}
+.lt-add input{flex:1;min-width:140px;max-width:260px}
+.as-list{display:grid;gap:6px;max-height:50vh;overflow:auto}
+.as-row{display:grid;grid-template-columns:auto auto 1fr;gap:4px 10px;align-items:center;border:1px solid var(--line);border-radius:var(--r);padding:8px 10px;cursor:pointer}
+.as-row .chips,.as-row .ssum{grid-column:2/-1}
 .lt-pick li.off{opacity:.5}
 .lt-pick li.off .ref{text-decoration:line-through}
 .qlines .seq{font-family:var(--f-mono);font-size:10px;width:18px;height:18px;border-radius:50%;background:var(--surface-2);display:grid;place-items:center;flex:none;color:var(--muted)}
