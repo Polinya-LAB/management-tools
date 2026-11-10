@@ -393,3 +393,25 @@ Deno.test("la contraseña no aparece en la consola si ponerPassword falla", asyn
     console.error = original;
   }
 });
+
+Deno.test("los errores llevan code (y args si hacen falta) para que la página los traduzca", async () => {
+  {
+    const { llamar } = montar();
+    const res = await llamar("POST", "/admin/usuarios", { ...valido, password: "corta-11chr" });
+    const j = await res.json();
+    assertEquals(res.status, 400);
+    assertEquals([j.code, j.args], ["password_short", [12]]);
+    assertMatch(j.message, /al menos 12/);
+  }
+  {
+    const { llamar } = montar();
+    const res = await llamar("POST", "/admin/usuarios", { ...valido, roles: { inventado: "ver" } });
+    const j = await res.json();
+    assertEquals([res.status, j.code, j.args], [400, "unknown_role", ["inventado"]]);
+  }
+  {
+    const { llamar } = montar();
+    const res = await llamar("GET", "/admin/otra");
+    assertEquals((await res.json()).code, "not_found");
+  }
+});

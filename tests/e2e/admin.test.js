@@ -360,6 +360,18 @@ const texto = (page) => page.evaluate(() => document.body.innerText);
         assert.ok(await f.getByText('Nueva contraseña').isEnabled());
         assert.ok(await page.locator('#clave').isHidden());
       });
+      await check('errores del servidor con code: salen en el idioma elegido (EN), con sus datos', async () => {
+        await ctx.unroute(/\/functions\/v1\/admin\/usuarios\/[^/]+\/password$/);
+        await ctx.route(/\/functions\/v1\/admin\/usuarios\/[^/]+\/password$/, (route) => route.request().method() === 'POST'
+          ? route.fulfill({ status: 400, contentType: 'application/json', headers: { 'access-control-allow-origin': ORIGEN },
+            body: JSON.stringify({ message: 'La contraseña debe tener al menos 12 caracteres', code: 'password_short', args: [12] }) })
+          : route.fallback());
+        await page.evaluate(() => LabLang.set('en'));
+        await fila(page, 'luis.ver@fluidra.com').locator('[data-clave]').click();
+        await page.click('#c-si');
+        await toast(page, /The password must have at least 12 characters/);
+        await page.evaluate(() => LabLang.set('es'));
+      });
       await ctx.close();
     }
     {

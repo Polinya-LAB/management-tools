@@ -23,13 +23,19 @@ export const MIN_PASSWORD = 12;
 // bcrypt (Supabase Auth) solo usa los primeros 72 bytes.
 const MAX_PASSWORD_BYTES = 72;
 
+// Error para la página: `message` en español (lo que se mostraba siempre) y `code` + `args` para que la página
+// lo traduzca al idioma elegido (acceso/index.html).
+export type Fallo = { motivo: string; code: string; args?: (string | number)[] };
+const fallo = (motivo: string, code: string, ...args: (string | number)[]): Fallo =>
+  args.length ? { motivo, code, args } : { motivo, code };
+
 // Motivo si no vale; null si vale. No recorta: los espacios forman parte de la contraseña.
-function motivoPassword(p: unknown): string | null {
+function motivoPassword(p: unknown): Fallo | null {
   if (typeof p !== "string" || p.length < MIN_PASSWORD) {
-    return `La contraseña debe tener al menos ${MIN_PASSWORD} caracteres`;
+    return fallo(`La contraseña debe tener al menos ${MIN_PASSWORD} caracteres`, "password_short", MIN_PASSWORD);
   }
   if (new TextEncoder().encode(p).length > MAX_PASSWORD_BYTES) {
-    return `La contraseña no puede pasar de ${MAX_PASSWORD_BYTES} bytes`;
+    return fallo(`La contraseña no puede pasar de ${MAX_PASSWORD_BYTES} bytes`, "password_long", MAX_PASSWORD_BYTES);
   }
   return null;
 }
@@ -48,21 +54,22 @@ const normalizarEmail = (s: string) => s.trim().toLowerCase();
 const pareceCorreo = (s: string) => /^[^@\s]+@[^@\s]+$/.test(s);
 
 // Valida y normaliza el cuerpo del POST; devuelve el motivo si no vale.
-function validar(cuerpo: unknown): { ok: true; acceso: Acceso } | { ok: false; motivo: string } {
-  if (!esObjeto(cuerpo)) return { ok: false, motivo: "Cuerpo no válido" };
-  if (typeof cuerpo.email !== "string") return { ok: false, motivo: "Correo no válido" };
+function validar(cuerpo: unknown): { ok: true; acceso: Acceso } | ({ ok: false } & Fallo) {
+  const no = (f: Fallo) => ({ ok: false as const, ...f });
+  if (!esObjeto(cuerpo)) return no(fallo("Cuerpo no válido", "bad_body"));
+  if (typeof cuerpo.email !== "string") return no(fallo("Correo no válido", "bad_email"));
   const email = normalizarEmail(cuerpo.email);
-  if (!pareceCorreo(email)) return { ok: false, motivo: "Correo no válido" };
+  if (!pareceCorreo(email)) return no(fallo("Correo no válido", "bad_email"));
   if (typeof cuerpo.nombre !== "string" || !cuerpo.nombre.trim()) {
-    return { ok: false, motivo: "El nombre es obligatorio" };
+    return no(fallo("El nombre es obligatorio", "name_required"));
   }
-  if (typeof cuerpo.admin !== "boolean") return { ok: false, motivo: "admin debe ser verdadero o falso" };
+  if (typeof cuerpo.admin !== "boolean") return no(fallo("admin debe ser verdadero o falso", "bad_admin"));
   const roles: Acceso["roles"] = {};
   if (cuerpo.roles !== undefined) {
-    if (!esObjeto(cuerpo.roles)) return { ok: false, motivo: "roles no válido" };
+    if (!esObjeto(cuerpo.roles)) return no(fallo("roles no válido", "bad_roles"));
     for (const [k, v] of Object.entries(cuerpo.roles)) {
-      if (!CLAVES_ROL.has(k)) return { ok: false, motivo: `Rol desconocido: ${k}` };
-      if (typeof v !== "string" || !VALORES_ROL.has(v)) return { ok: false, motivo: `Valor no válido para ${k}` };
+      if (!CLAVES_ROL.has(k)) return no(fallo(`Rol desconocido: ${k}`, "unknown_role", k));
+      if (typeof v !== "string" || !VALORES_ROL.has(v)) return no(fallo(`Valor no válido para ${k}`, "bad_role_value", k));
       roles[k as ClaveRol] = v as Rol;
     }
   }
@@ -97,32 +104,33 @@ export function crearHandlerAdmin(deps: AdminDeps): (req: Request) => Promise<Re
       return await atender(req, deps, responder);
     } catch (e) {
       console.error("admin:", e);
-      return responder(502, { message: "Error al contactar con el servicio" });
+      return responder(502, { message: "Error al contactar con el servicio", code: "service" });
     }
   };
 }
 
 async function atender(req: Request, deps: AdminDeps, responder: Responder): Promise<Response> {
-  const error = (status: number, message: string) => responder(status, { message });
+  const error = (status: number, message: string, code: string) => responder(status, { message, code });
+  const errorDe = (status: number, f: Fallo) => responder(status, { message: f.motivo, code: f.code, ...(f.args ? { args: f.args } : {}) });
   const seg = new URL(req.url).pathname.split("/").slice(1);
-  if (seg[0] !== "admin" || seg[1] !== "usuarios" || seg.length > 4) return error(404, "Not Found");
-  if (seg.length === 4 && (seg[3] !== "password" || !seg[2])) return error(404, "Not Found");
+  if (seg[0] !== "admin" || seg[1] !== "usuarios" || seg.length > 4) return error(404, "Not Found", "not_found");
+  if (seg.length === 4 && (seg[3] !== "password" || !seg[2])) return error(404, "Not Found", "not_found");
   const objetivo = seg[2]; // correo codificado: DELETE /usuarios/<correo> y POST /usuarios/<correo>/password
   const esColeccion = seg.length === 2;
   const esPassword = seg.length === 4;
 
   const metodo = req.method;
-  if (metodo !== "GET" && metodo !== "POST" && metodo !== "DELETE") return error(405, "Método no permitido");
-  if (esPassword && metodo !== "POST") return error(405, "Método no permitido");
+  if (metodo !== "GET" && metodo !== "POST" && metodo !== "DELETE") return error(405, "Método no permitido", "method");
+  if (esPassword && metodo !== "POST") return error(405, "Método no permitido", "method");
 
   // Sesión
   const m = /^Bearer\s+(\S+)$/i.exec(req.headers.get("authorization") ?? "");
-  if (!m) return error(401, "Requires authentication");
+  if (!m) return error(401, "Requires authentication", "auth_required");
   const usuario = await deps.usuario(m[1]);
-  if (!usuario?.email) return error(401, "Bad credentials");
+  if (!usuario?.email) return error(401, "Bad credentials", "bad_credentials");
   const yo = normalizarEmail(usuario.email);
   const fila = await deps.acceso(yo);
-  if (!fila?.admin) return error(403, "Solo para administradores");
+  if (!fila?.admin) return error(403, "Solo para administradores", "admin_only");
 
   if (esColeccion && metodo === "GET") {
     const lista = [...await deps.listar()].sort((a, b) =>
@@ -136,24 +144,24 @@ async function atender(req: Request, deps: AdminDeps, responder: Responder): Pro
     try {
       cuerpo = await req.json();
     } catch {
-      return error(400, "JSON no válido");
+      return error(400, "JSON no válido", "bad_json");
     }
     const v = validar(cuerpo);
-    if (!v.ok) return error(400, v.motivo);
+    if (!v.ok) return errorDe(400, v);
     const a = v.acceso;
     const password = (cuerpo as Record<string, unknown>).password;
     if (password !== undefined) {
       const motivo = motivoPassword(password);
-      if (motivo) return error(400, motivo);
+      if (motivo) return errorDe(400, motivo);
     }
-    if (a.email === yo && !a.admin) return error(400, "No puedes quitarte el rol de administrador");
+    if (a.email === yo && !a.admin) return error(400, "No puedes quitarte el rol de administrador", "self_unadmin");
     const existente = await deps.acceso(a.email);
     if (existente) {
       // Un solo camino para cambiar la contraseña: POST /usuarios/<correo>/password.
-      if (password !== undefined) return error(400, "Usa Nueva contraseña para cambiarla");
+      if (password !== undefined) return error(400, "Usa Nueva contraseña para cambiarla", "use_new_password");
       await deps.guardar(a);
     } else {
-      if (password === undefined) return error(400, motivoPassword(undefined)!);
+      if (password === undefined) return errorDe(400, motivoPassword(undefined)!);
       const user_id = await deps.crearUsuarioAuth(a.email, password as string);
       await deps.guardar({ ...a, user_id });
     }
@@ -162,33 +170,33 @@ async function atender(req: Request, deps: AdminDeps, responder: Responder): Pro
 
   if (esPassword && metodo === "POST") {
     const email = correoDe(objetivo);
-    if (email === null) return error(400, "Correo no válido");
+    if (email === null) return error(400, "Correo no válido", "bad_email");
     let cuerpo: unknown;
     try {
       cuerpo = await req.json();
     } catch {
-      return error(400, "JSON no válido");
+      return error(400, "JSON no válido", "bad_json");
     }
-    if (!esObjeto(cuerpo)) return error(400, "Cuerpo no válido");
+    if (!esObjeto(cuerpo)) return error(400, "Cuerpo no válido", "bad_body");
     const motivo = motivoPassword(cuerpo.password);
-    if (motivo) return error(400, motivo);
-    if (!await deps.acceso(email)) return error(404, "Esa persona no está dada de alta");
+    if (motivo) return errorDe(400, motivo);
+    if (!await deps.acceso(email)) return error(404, "Esa persona no está dada de alta", "not_registered");
     if (!await deps.ponerPassword(email, cuerpo.password as string)) {
-      return error(409, "Esa persona no tiene usuario de acceso; dala de baja y vuelve a darla de alta");
+      return error(409, "Esa persona no tiene usuario de acceso; dala de baja y vuelve a darla de alta", "no_auth_user");
     }
     return responder(200, { ok: true });
   }
 
   if (!esColeccion && metodo === "DELETE") {
-    if (!objetivo) return error(404, "Not Found");
+    if (!objetivo) return error(404, "Not Found", "not_found");
     const email = correoDe(objetivo);
-    if (email === null) return error(400, "Correo no válido");
-    if (email === yo) return error(400, "No puedes borrarte a ti mismo");
+    if (email === null) return error(400, "Correo no válido", "bad_email");
+    if (email === yo) return error(400, "No puedes borrarte a ti mismo", "self_delete");
     // Primero Auth: necesita el user_id guardado en la fila, que `borrar` elimina.
     await deps.borrarUsuarioAuth(email);
     await deps.borrar(email);
     return responder(200, { ok: true });
   }
 
-  return error(405, "Método no permitido");
+  return error(405, "Método no permitido", "method");
 }

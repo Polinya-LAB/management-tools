@@ -165,6 +165,17 @@ td.acc .btn + .btn { margin-left: 6px; }
       askRemove: function (n, m) { return '¿Dar de baja a ' + n + ' (' + m + ')? Ya no podrá entrar en ninguna app.'; },
       askPass: function (n, m) { return '¿Generar una contraseña nueva para ' + n + ' (' + m + ')? La actual dejará de valer.'; },
       admin: 'Administrador', saved: 'Guardado', removed: 'Dada de baja', exists: 'Esa persona ya está dada de alta',
+      se_service: 'Error al contactar con el servicio', se_not_found: 'No encontrado', se_method: 'Operación no permitida',
+      se_auth_required: 'Hace falta iniciar sesión', se_bad_credentials: 'La sesión no es válida; vuelve a entrar', se_admin_only: 'Solo para administradores',
+      se_bad_json: 'La petición no es válida', se_bad_body: 'La petición no es válida', se_bad_email: 'Correo no válido',
+      se_name_required: 'El nombre es obligatorio', se_bad_admin: 'El valor de administrador no es válido', se_bad_roles: 'Los roles no son válidos',
+      se_unknown_role: function (k) { return 'Rol desconocido: ' + k; }, se_bad_role_value: function (k) { return 'Valor no válido para ' + k; },
+      se_self_unadmin: 'No puedes quitarte el rol de administrador', se_use_new_password: 'Usa Nueva contraseña para cambiarla',
+      se_password_short: function (n) { return 'La contraseña debe tener al menos ' + n + ' caracteres'; },
+      se_password_long: function (n) { return 'La contraseña no puede pasar de ' + n + ' bytes'; },
+      se_not_registered: 'Esa persona no está dada de alta',
+      se_no_auth_user: 'Esa persona no tiene usuario de acceso; dala de baja y vuelve a darla de alta',
+      se_self_delete: 'No puedes borrarte a ti mismo',
       eSave: 'No se pudo guardar', eLoad: function (m) { return 'No se pudo cargar la lista: ' + m; }, eHttp: function (s) { return 'Error ' + s; },
       r_ensayos: 'Control de ensayos y Ocupación', r_muestras: 'Muestras', r_calibraciones: 'Plan de calibraciones',
       r_mantenimiento: 'Plan de mantenimiento', r_piscina: 'Piscina',
@@ -188,6 +199,17 @@ td.acc .btn + .btn { margin-left: 6px; }
       askRemove: function (n, m) { return 'Remove ' + n + ' (' + m + ')? They will no longer be able to sign in to any app.'; },
       askPass: function (n, m) { return 'Generate a new password for ' + n + ' (' + m + ')? The current one will stop working.'; },
       admin: 'Administrator', saved: 'Saved', removed: 'Removed', exists: 'That person is already registered',
+      se_service: 'Could not reach the service', se_not_found: 'Not found', se_method: 'Operation not allowed',
+      se_auth_required: 'You need to sign in', se_bad_credentials: 'The session is not valid; sign in again', se_admin_only: 'Administrators only',
+      se_bad_json: 'The request is not valid', se_bad_body: 'The request is not valid', se_bad_email: 'Invalid email',
+      se_name_required: 'The name is required', se_bad_admin: 'The administrator value is not valid', se_bad_roles: 'The roles are not valid',
+      se_unknown_role: function (k) { return 'Unknown role: ' + k; }, se_bad_role_value: function (k) { return 'Invalid value for ' + k; },
+      se_self_unadmin: 'You cannot remove your own administrator role', se_use_new_password: 'Use New password to change it',
+      se_password_short: function (n) { return 'The password must have at least ' + n + ' characters'; },
+      se_password_long: function (n) { return 'The password cannot be longer than ' + n + ' bytes'; },
+      se_not_registered: 'That person is not registered',
+      se_no_auth_user: 'That person has no sign-in user; remove them and add them again',
+      se_self_delete: 'You cannot remove yourself',
       eSave: 'Could not save', eLoad: function (m) { return 'Could not load the list: ' + m; }, eHttp: function (s) { return 'Error ' + s; },
       r_ensayos: 'Test Lab Control and Lab Occupancy', r_muestras: 'Samples', r_calibraciones: 'Calibration Plan',
       r_mantenimiento: 'Maintenance Plan', r_piscina: 'Endurance pool',
@@ -200,6 +222,12 @@ td.acc .btn + .btn { margin-left: 6px; }
     }
   };
   function t(k) { return LL.t.apply(LL, [D].concat(Array.prototype.slice.call(arguments))); }
+  /* Error text of the admin function in the chosen language: by its code when the page knows it, else as it came. */
+  function msgDe(e) {
+    if (!e) return '';
+    var k = 'se_' + e.code;
+    return e.code && D.es[k] ? t.apply(null, [k].concat(e.args || [])) : e.message;
+  }
   var MIN_CLAVE = 12;
   // Contraseñas generadas: 16 caracteres de letras y números sin los que se confunden (0 O 1 l I).
   var ALFABETO = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
@@ -220,7 +248,7 @@ td.acc .btn + .btn { margin-left: 6px; }
   var yo = null;         // {email} de la sesión
   var lista = [];        // personas tal como las tiene el servidor
   var aviso = '';        // clave del texto fijo sobre el formulario de entrada (sesión caducada)
-  var falloMsg = '';     // mensaje del servidor al fallar la carga de la lista
+  var falloErr = null;   // error del servidor al fallar la carga de la lista
   var dirCorreo = '';     // último correo escrito en el formulario de entrada
 
   function vista(cual) {
@@ -299,7 +327,7 @@ td.acc .btn + .btn { margin-left: 6px; }
     }).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (j) {
         if (r.ok) return j;
-        var e = new Error(j && j.message || t('eHttp', r.status)); e.status = r.status; throw e;
+        var e = new Error(j && j.message || t('eHttp', r.status)); e.status = r.status; e.code = j && j.code; e.args = j && j.args; throw e;
       });
     });
   }
@@ -309,7 +337,7 @@ td.acc .btn + .btn { margin-left: 6px; }
     }, function (e) {
       if (e.status === 401) return aEntrar('expired');
       if (e.status === 403) return vista('denegado');
-      falloMsg = e.message; $('fallo-msg').textContent = t('eLoad', falloMsg); vista('fallo');
+      falloErr = e; $('fallo-msg').textContent = t('eLoad', msgDe(e)); vista('fallo');
     });
   }
 
@@ -341,7 +369,7 @@ td.acc .btn + .btn { margin-left: 6px; }
   }
   function errorLlamada(e) {
     if (e.status === 401) { aEntrar('expired'); return; }
-    toast(e.message || t('eSave'), true); // e.message: texto de la función admin, tal cual (solo en español)
+    toast(msgDe(e) || t('eSave'), true);
   }
   function bloquear(tr, si) {
     tr.classList.toggle('guardando', si);
@@ -438,7 +466,7 @@ td.acc .btn + .btn { margin-left: 6px; }
   /* ---------- Idioma: se retraduce en el sitio, sin recargar ni rehacer la tabla (los diálogos tapan el selector) ---------- */
   LL.onChange(function () {
     LL.apply(D);
-    if (!$('fallo').hidden) $('fallo-msg').textContent = t('eLoad', falloMsg);
+    if (!$('fallo').hidden) $('fallo-msg').textContent = t('eLoad', msgDe(falloErr));
     Array.prototype.forEach.call($('tabla').querySelectorAll('tr[data-email]'), function (tr) {
       var u = lista.filter(function (x) { return x.email === tr.dataset.email; })[0]; if (!u) return;
       Array.prototype.forEach.call(tr.querySelectorAll('select[data-rol]'), function (s) { s.setAttribute('aria-label', t('r_' + s.dataset.rol) + ' — ' + u.nombre); });
