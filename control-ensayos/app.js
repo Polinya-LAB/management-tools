@@ -1152,6 +1152,8 @@ async function setTech(id,techId){
 const SMP=['expected','received','waiting','testing','tested','stored','returned','scrapped'];
 const SMP_CLS={expected:'exp',received:'plan',waiting:'cola',testing:'curso',tested:'inf',stored:'cerr',returned:'endu',scrapped:'canc'};
 const SMP_DEFAULT=['expected','received','waiting','testing','tested','stored'];
+/* Sample codes started on this date: PLRs already imported before it and still without receptions are not chased for samples. */
+const SMP_SINCE='2026-11-01';
 const SMP_PHASES=['Feasibility','MSL','ESL','Pilot','Production','N/A'];
 /* Labels are designed lying down (w = long side, h = short side). The LabelWriter feeds them short side first, so the
    printed page is h wide and w long and the label is turned 90° on it (see smpPrint).
@@ -1193,7 +1195,7 @@ es:{
   removed:'Retirada',
   recvOf:(a,b)=>`de ${b} recibidas`, recvN:'recibidas',
   missing:n=>`Faltan ${n} muestra${n===1?'':'s'}`, complete:'Muestras completas', none:'Pendiente de recibir', extra:n=>`${n} de más`,
-  closedPlr:'Ensayos cerrados', legacy:'Referencia antigua (FLT): no está en Control de ensayos',
+  closedPlr:'Ensayos cerrados', oldPlr:'Anterior al 1/11/2026: sin códigos QTS', legacy:'Referencia antigua (FLT): no está en Control de ensayos',
   alsoIn:p=>`también en ${p}`, noLots:'Aún no ha llegado ninguna muestra.', hiddenN:n=>`${n} recepción${n===1?'':'es'} oculta${n===1?'':'s'} por el filtro`,
   by:'por', units:n=>`${n} ud${n===1?'':'s'}.`, notPrinted:'sin etiqueta', receiveFor:'+ Recibir',
   noMatch:'Ninguna muestra cumple el filtro.', noPlr:'Ningún PLR cumple el filtro.',
@@ -1269,7 +1271,7 @@ en:{
   removed:'Withdrawn',
   recvOf:(a,b)=>`of ${b} received`, recvN:'received',
   missing:n=>`${n} sample${n===1?'':'s'} missing`, complete:'All samples in', none:'Not received yet', extra:n=>`${n} extra`,
-  closedPlr:'Tests closed', legacy:'Old reference (FLT): not in Control de ensayos',
+  closedPlr:'Tests closed', oldPlr:'Before 1/11/2026: no QTS codes', legacy:'Old reference (FLT): not in Control de ensayos',
   alsoIn:p=>`also in ${p}`, noLots:'No samples have arrived yet.', hiddenN:n=>`${n} reception${n===1?'':'s'} hidden by the filter`,
   by:'by', units:n=>`${n} unit${n===1?'':'s'}`, notPrinted:'no label', receiveFor:'+ Receive',
   noMatch:'No samples match the filter.', noPlr:'No PLRs match the filter.',
@@ -1346,6 +1348,8 @@ function smpPieces(p){
   S.samples.filter(l=>(l.plrs||[]).includes(smpPlrKey(p))).forEach(l=>{const mine=(l.tests||[]).filter(id=>ids.has(id)); if(mine.length===1) own.add(mine[0]);});
   return own.size>1?ts.reduce((a,x)=>a+(+x.pieces||0),0):Math.max(0,...ts.map(x=>+x.pieces||0));
 }
+/* The preview's example data is dated relative to today, so the cut-off does not apply to it. */
+const smpOld=p=>{if(PREVIEW&&DEMO) return false; const ts=smpTestsOfPlr(p); return ts.length>0&&ts.every(x=>String(x.created||x.imported||'').slice(0,10)<SMP_SINCE)&&!S.samples.some(l=>(l.plrs||[]).includes(smpPlrKey(p)));};
 const smpRecv=p=>S.samples.filter(l=>(l.plrs||[]).includes(smpPlrKey(p))).reduce((a,l)=>a+smpIn(l).length,0);
 const smpNum=l=>+((String(l.code||'').match(/\d{5}/)||[0])[0]);
 const smpNextSeq=()=>Math.max(+((S.cfg.samples||{}).seq)||0,0,...S.samples.map(smpNum))+1;
@@ -1373,18 +1377,19 @@ function smpGroups(){
   S.tests.forEach(x=>{ if(x.plr) get(x.plr).tests.push(x); });
   S.samples.forEach(l=>(l.plrs||[]).forEach(p=>get(p).lots.push(l)));
   return [...M.values()].map(g=>{ g.tests.sort(smpBySeq);
-    g.active=g.tests.some(x=>ACTIVE.includes(x.status)&&x.status!=='Not approved'); g.legacy=!g.tests.length;
+    g.active=g.tests.some(x=>ACTIVE.includes(x.status)&&x.status!=='Not approved'); g.legacy=!g.tests.length; g.old=!g.legacy&&!g.lots.length&&smpOld(g.plr);
     g.pieces=smpPieces(g.plr); g.recv=g.lots.reduce((a,l)=>a+smpIn(l).length,0); g.exp=g.lots.flatMap(l=>smpLive(l).filter(u=>u.state==='expected').map(u=>smpKey(l,u)));
     g.project=(g.tests[0]||{}).project||(g.lots[0]||{}).project||''; g.requester=(g.tests[0]||{}).requester||'';
-    g.rc=g.legacy?'rc-legacy':!g.active?'rc-closed':g.recv===0?'rc-none':g.pieces&&g.recv<g.pieces?'rc-part':'rc-ok';
-    g.rank=g.legacy?4:!g.active?3:g.rc==='rc-ok'?2:g.rc==='rc-part'?0:1; return g;});
+    g.rc=g.legacy?'rc-legacy':!g.active||g.old?'rc-closed':g.recv===0?'rc-none':g.pieces&&g.recv<g.pieces?'rc-part':'rc-ok';
+    g.rank=g.legacy?4:!g.active||g.old?3:g.rc==='rc-ok'?2:g.rc==='rc-part'?0:1; return g;});
 }
 function smpKpis(){
   const U=S.samples.flatMap(smpLive), n=s=>U.filter(u=>u.state===s).length;
   return {inlab:U.filter(u=>!['expected','returned','scrapped'].includes(u.state)).length,wait:n('received')+n('waiting'),test:n('testing'),done:n('tested'),
-    miss:smpGroups().filter(g=>g.active&&g.pieces>g.recv).length,lbl:U.filter(u=>!u.printed).length};
+    miss:smpMissingCount(),lbl:U.filter(u=>!u.printed).length};
 }
-const smpMissingCount=()=>smpGroups().filter(g=>g.active&&g.pieces>g.recv).length;
+const smpChased=g=>g.active&&!g.old;
+const smpMissingCount=()=>smpGroups().filter(g=>smpChased(g)&&g.pieces>g.recv).length;
 const smpPending=()=>S.samples.flatMap(l=>smpLive(l).filter(u=>!u.printed).map(u=>smpKey(l,u)));
 
 /* ---------- Codes from the ARAS requests ----------
@@ -1407,7 +1412,7 @@ function smpProposal(p){
   groups.forEach((g,i)=>{const q=(st.qty||{})[g.key]; g.qty=q!=null?q:st.force&&none&&!i?1:g.need;});
   return {plr:p,mode,canSplit:ls.length>1,groups,project:t0.project||'',requester:t0.requester||'',have:units(lots)};
 }
-const smpProposals=()=>smpGroups().filter(g=>g.active&&!g.legacy&&!smpSkipped(g.plr)).map(g=>smpProposal(g.plr)).filter(P=>P.groups.some(g=>g.need>0));
+const smpProposals=()=>smpGroups().filter(g=>smpChased(g)&&!g.legacy&&!smpSkipped(g.plr)).map(g=>smpProposal(g.plr)).filter(P=>P.groups.some(g=>g.need>0));
 /* One proposal; next.n numbers the preview in the order shown. */
 function smpPropBlock(P,next){
   const rows=P.groups.map(g=>{const n=g.qty>0?next.n++:0;
@@ -1458,7 +1463,7 @@ const smpPropRerender=()=>dlg.open&&dlg.dataset.kind==='smp-gen'?smpGenRender():
 
 /* Board cards and the test editor show the samples of the PLR. */
 function smpTestChip(t){
-  if(!t.plr) return ''; const p=smpPieces(t.plr), r=smpRecv(t.plr); if(!p&&!r) return '';
+  if(!t.plr) return ''; const p=smpPieces(t.plr), r=smpRecv(t.plr); if(!p&&!r||!r&&smpOld(t.plr)) return '';
   return `<span class="chip smp-chip ${p&&r<p&&counts(t)?'warn':''}" title="${esc(tx('ed_title',t.plr))}">📦 ${esc(tx('chip',r,p))}</span>`;
 }
 function smpEditorBlock(t){
@@ -1504,15 +1509,18 @@ function vSamples(){
   ${V.sv==='plr'?smpByPlr():smpList()}`;
 }
 const smpLangSeg=()=>`<div class="seg" role="group" aria-label="${esc(tx('lang'))}"><button data-sa="lang" data-l="es" aria-pressed="${SMP_LANG==='es'}">ES</button><button data-sa="lang" data-l="en" aria-pressed="${SMP_LANG==='en'}">EN</button></div>`;
+const smpDefaultStates=()=>S.smp.sst.size===SMP_DEFAULT.length&&SMP_DEFAULT.every(s=>S.smp.sst.has(s));
 function smpByPlr(){
   const q=S.q, V=S.smp;
   const gs=smpGroups().filter(g=>{
     const lotsOk=g.lots.filter(smpVisible);
-    if(V.onlyMissing&&!(g.active&&g.pieces>g.recv)) return false;
-    if(V.phase&&!lotsOk.length) return false;
+    if(V.onlyMissing&&!(smpChased(g)&&g.pieces>g.recv)) return false;
     const textOk=!q||[g.plr,g.project,g.requester,...g.tests.flatMap(x=>[x.qtp,x.title])].some(v=>norm(v).includes(norm(q)))||g.lots.some(l=>smpMatch(l,q));
     if(!textOk) return false;
-    return g.active||lotsOk.length;
+    if(lotsOk.length) return true;
+    /* A PLR with nothing to show passes only while the state and phase filters are untouched (PLRs still waiting for samples),
+       and a PLR from before SMP_SINCE only when searched for. */
+    return g.active&&!V.phase&&smpDefaultStates()&&(!g.old||!!q);
   }).sort((a,b)=>a.rank-b.rank||b.plr.localeCompare(a.plr));
   if(!gs.length) return `<div class="empty-ok">${esc(tx('noPlr'))}</div>`;
   return `<div class="pgrid">${gs.map(smpCard).join('')}</div>`;
@@ -1522,6 +1530,7 @@ function smpCard(g){
   const pct=g.pieces?Math.min(100,g.recv/g.pieces*100):(g.recv?100:0);
   const status=g.legacy?`<span class="wtag mut">${esc(tx('legacy'))}</span>`
     :!g.active?`<span class="wtag mut">${esc(tx('closedPlr'))}</span>`
+    :g.old?`<span class="wtag mut">${esc(tx('oldPlr'))}</span>`
     :g.recv===0?`<span class="wtag crit">${esc(tx('none'))}</span>`
     :g.pieces&&g.recv<g.pieces?`<span class="wtag">${esc(tx('missing',g.pieces-g.recv))}</span>`
     :g.pieces&&g.recv>g.pieces?`<span class="wtag mut">${esc(tx('extra',g.recv-g.pieces))}</span>`:`<span class="wtag ok">${esc(tx('complete'))}</span>`;
@@ -1538,7 +1547,8 @@ function smpList(){
   const st=(u,k,c)=>u.removed?`<span class="rm-tag">${esc(tx('removed'))}</span>`:S.ro?`<span class="pill est st-${SMP_CLS[u.state]}">${esc(smpSt(u.state))}</span>`
     :`<select class="st-sel st-${SMP_CLS[u.state]}" data-setunit="${esc(k)}" aria-label="${esc(tx('c_state'))} ${esc(c)}">${SMP.map(s=>`<option value="${s}" ${s===u.state?'selected':''}>${esc(smpSt(s))}</option>`).join('')}</select>`;
   const rows=lots.map(l=>{
-    const open=!V.collapsed.has(l.id), L=smpLive(l), allSel=L.length&&L.every(u=>V.sel.has(smpKey(l,u)));
+    /* Units outside the state filter stay hidden; removed units only show while the state filter is untouched. */
+    const open=!V.collapsed.has(l.id), L=smpLive(l), shownU=(l.units||[]).filter(u=>u.removed?smpDefaultStates():V.sst.has(u.state)), LS=L.filter(u=>V.sst.has(u.state)), allSel=LS.length&&LS.every(u=>V.sel.has(smpKey(l,u)));
     const serials=[...new Set(L.map(u=>u.serial).filter(Boolean))], qtps=smpLotTests(l).map(x=>x.qtp);
     const head=`<tr class="lot-row click" data-sa="lot" data-id="${esc(l.id)}">
       <td class="ck"><input type="checkbox" data-sellot="${esc(l.id)}" ${allSel?'checked':''} aria-label="${esc(l.code)}"></td>
@@ -1553,7 +1563,7 @@ function smpList(){
       <td>${esc(l.loc||'—')}</td>
       <td class="nowrap">${fmt(l.received)}<small>${esc(smpWho(l.by))}</small></td>
       <td>${l.comments?`<span class="snip" title="${esc(l.comments)}">${esc(l.comments)}</span>`:''}</td></tr>`;
-    const units=open?(l.units||[]).map(u=>{const k=smpKey(l,u), c=smpCode(l,u);
+    const units=open?shownU.map(u=>{const k=smpKey(l,u), c=smpCode(l,u);
       return `<tr class="unit-row click ${u.removed?'rm':'strow st-'+SMP_CLS[u.state]}" data-sa="lot" data-id="${esc(l.id)}">
       <td class="ck">${u.removed?'':`<input type="checkbox" data-sel="${esc(k)}" ${V.sel.has(k)?'checked':''} aria-label="${esc(c)}">`}</td>
       <td class="ref nowrap u-code"><b>${esc(c)}</b>${!u.printed&&!u.removed?`<span class="np-tag">${esc(tx('notPrinted'))}</span>`:''}</td>
@@ -1815,6 +1825,7 @@ document.addEventListener('click',ev=>{
   else if(a==='sst'){const s=el.dataset.s; V.sst.has(s)?V.sst.delete(s):V.sst.add(s); render();}
   else if(a==='kpi'){const k=el.dataset.k;
     if(k==='lbl') return smpOpenLabels(smpPending());
+    S.q=''; V.phase='';
     if(k==='miss'){V.sv='plr'; V.onlyMissing=true; V.sst=new Set(SMP_DEFAULT);}
     else {V.sv='list'; V.onlyMissing=false; V.sst=new Set({inlab:SMP_DEFAULT.filter(s=>s!=='expected'),wait:['received','waiting'],test:['testing'],done:['tested']}[k]);}
     render();}
@@ -1848,7 +1859,7 @@ document.addEventListener('change',ev=>{
   const el=ev.target, V=S.smp;
   if(el.dataset.setunit) smpSetStates([el.dataset.setunit],el.value);
   else if(el.dataset.sel){el.checked?V.sel.add(el.dataset.sel):V.sel.delete(el.dataset.sel); render();}
-  else if(el.dataset.sellot){const l=S.samples.find(x=>x.id===el.dataset.sellot); if(l) smpLive(l).forEach(u=>el.checked?V.sel.add(smpKey(l,u)):V.sel.delete(smpKey(l,u))); render();}
+  else if(el.dataset.sellot){const l=S.samples.find(x=>x.id===el.dataset.sellot); if(l) smpLive(l).filter(u=>V.sst.has(u.state)).forEach(u=>el.checked?V.sel.add(smpKey(l,u)):V.sel.delete(smpKey(l,u))); render();}
   else if(el.id==='smp-sel-state'&&el.value){const n=V.sel.size; smpSetStates([...V.sel],el.value).then(()=>toast(tx('stateChanged',n)));}
   else if(el.id==='smp-phase'){V.phase=el.value; render();}
   else if(el.id==='smp-only-missing'){V.onlyMissing=el.checked; render();}

@@ -44,7 +44,8 @@ const otros404 = (respuestas) => respuestas.filter((r) => r.status === 404 && !r
 function datosExtra(lab) {
   const d = lab.datos('lab-data', FICHERO);
   const base = d.tests['t-demo-002'];
-  d.tests['t-demo-004'] = { ...base, plr: 'PLR900004', qtp: 'QTP9002', title: 'Grifo demo D - ciclos', pieces: 2, sequence: 1 };
+  // Importado después del corte de códigos QTS (SMP_SINCE): los PLR anteriores no reciben propuesta.
+  d.tests['t-demo-004'] = { ...base, plr: 'PLR900004', qtp: 'QTP9002', title: 'Grifo demo D - ciclos', pieces: 2, sequence: 1, created: '2026-11-05T09:00:00Z', imported: '2026-11-05T09:00:00Z' };
   d.tests['t-demo-qr'] = { ...base, plr: 'PLR003715', qtp: 'QTP9001', title: 'Filtro demo QR - resistencia', pieces: 0 };
   lab.fijarDatos('lab-data', FICHERO, d);
 }
