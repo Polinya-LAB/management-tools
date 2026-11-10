@@ -339,6 +339,8 @@ img{max-width:100%}
 .recv .prog span{background:var(--rc)}
 .qlines{list-style:none;margin:0;padding:0;display:grid;gap:4px;font-size:13px}
 .qlines li{display:flex;gap:8px;align-items:center;min-width:0}
+.lt-pick li.off{opacity:.5}
+.lt-pick li.off .ref{text-decoration:line-through}
 .qlines .seq{font-family:var(--f-mono);font-size:10px;width:18px;height:18px;border-radius:50%;background:var(--surface-2);display:grid;place-items:center;flex:none;color:var(--muted)}
 .qlines .tt{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
 .qlines .link.ref{text-decoration:none;font-weight:500}
