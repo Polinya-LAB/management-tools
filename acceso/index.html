@@ -117,6 +117,11 @@ td.acc .btn + .btn { margin-left: 6px; }
       <p class="muted" style="margin:10px 0 0" data-i18n="addHelp">La persona nueva empieza sin acceso a ninguna app; asígnale después el nivel de cada una. La contraseña viene generada; puedes escribir otra (al menos 12 caracteres).</p>
     </div>
     <div class="card tablewrap"><table id="tabla"></table></div>
+    <div class="card">
+      <h2 data-i18n="stTitle">Impresora del laboratorio</h2>
+      <p class="muted" style="margin:0 0 12px" data-i18n="stHelp">La estación del ordenador fijo (estacion-dymo.exe) necesita una clave para recoger las etiquetas. Al generarla se descarga estacion-dymo.json: cópialo junto al programa en ese ordenador y borra la copia de Descargas.</p>
+      <button type="button" class="btn" id="st-gen" data-i18n="stGen">Generar clave de la estación</button>
+    </div>
   </section>
 
   <p class="foot"><a href="../" data-i18n="back">← Volver a la portada</a></p>
@@ -176,6 +181,10 @@ td.acc .btn + .btn { margin-left: 6px; }
       se_not_registered: 'Esa persona no está dada de alta',
       se_no_auth_user: 'Esa persona no tiene usuario de acceso; dala de baja y vuelve a darla de alta',
       se_self_delete: 'No puedes borrarte a ti mismo',
+      stTitle: 'Impresora del laboratorio', stGen: 'Generar clave de la estación', stGenOk: 'Generar y descargar',
+      stHelp: 'La estación del ordenador fijo (estacion-dymo.exe) necesita una clave para recoger las etiquetas. Al generarla se descarga estacion-dymo.json: cópialo junto al programa en ese ordenador y borra la copia de Descargas.',
+      stAsk: 'Se genera una clave nueva y la anterior deja de valer: la estación no imprimirá hasta que tenga el estacion-dymo.json nuevo. ¿Seguir?',
+      stDone: 'Descargado estacion-dymo.json. Cópialo junto a estacion-dymo.exe y borra la copia de Descargas.',
       eSave: 'No se pudo guardar', eLoad: function (m) { return 'No se pudo cargar la lista: ' + m; }, eHttp: function (s) { return 'Error ' + s; },
       r_ensayos: 'Control de ensayos y Ocupación', r_muestras: 'Muestras', r_calibraciones: 'Plan de calibraciones',
       r_mantenimiento: 'Plan de mantenimiento', r_piscina: 'Piscina',
@@ -210,6 +219,10 @@ td.acc .btn + .btn { margin-left: 6px; }
       se_not_registered: 'That person is not registered',
       se_no_auth_user: 'That person has no sign-in user; remove them and add them again',
       se_self_delete: 'You cannot remove yourself',
+      stTitle: 'Lab printer', stGen: 'Generate station key', stGenOk: 'Generate and download',
+      stHelp: 'The station on the fixed computer (estacion-dymo.exe) needs a key to collect the labels. Generating it downloads estacion-dymo.json: copy it next to the program on that computer and delete the copy in Downloads.',
+      stAsk: 'A new key is generated and the previous one stops working: the station will not print until it has the new estacion-dymo.json. Continue?',
+      stDone: 'Downloaded estacion-dymo.json. Copy it next to estacion-dymo.exe and delete the copy in Downloads.',
       eSave: 'Could not save', eLoad: function (m) { return 'Could not load the list: ' + m; }, eHttp: function (s) { return 'Error ' + s; },
       r_ensayos: 'Test Lab Control and Lab Occupancy', r_muestras: 'Samples', r_calibraciones: 'Calibration Plan',
       r_mantenimiento: 'Maintenance Plan', r_piscina: 'Endurance pool',
@@ -435,8 +448,32 @@ td.acc .btn + .btn { margin-left: 6px; }
       bloquear(tr, false); errorLlamada(e);
     });
   }
+  /* Clave de la estación de impresión: la función `impresion` guarda solo su hash y la devuelve una vez; aquí se descarga
+     ya dentro de estacion-dymo.json para no copiarla a mano. */
+  $('st-gen').addEventListener('click', function () {
+    rotulo($('c-titulo'), 'stGen'); $('c-texto').textContent = t('stAsk');
+    rotulo($('c-si'), 'stGenOk'); $('c-si').className = 'btn';
+    $('confirmar').dataset.email = ''; $('confirmar').dataset.accion = 'estacion';
+    $('confirmar').hidden = false; $('c-no').focus();
+  });
+  function claveEstacion() {
+    var b = $('st-gen'); b.disabled = true;
+    LA.cabeceras().then(function (h) {
+      return fetch(LA.apiImpresion() + '/admin/clave', { method: 'POST', headers: h });
+    }).then(function (r) {
+      return r.json().catch(function () { return {}; }).then(function (j) {
+        if (!r.ok) { var e = new Error(j && j.message || t('eHttp', r.status)); e.status = r.status; e.code = j && j.code; throw e; }
+        var cfg = JSON.stringify({ url: LA.apiImpresion(), clave: j.clave }, null, 2) + '\n';
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(new Blob([cfg], { type: 'application/json' })); a.download = 'estacion-dymo.json';
+        document.body.appendChild(a); a.click(); a.remove(); setTimeout(function () { URL.revokeObjectURL(a.href); }, 1000);
+        toast(t('stDone'));
+      });
+    }).catch(errorLlamada).then(function () { b.disabled = false; });
+  }
   $('c-si').addEventListener('click', function () {
     var email = $('confirmar').dataset.email, accion = $('confirmar').dataset.accion; $('confirmar').hidden = true;
+    if (accion === 'estacion') return claveEstacion();
     if (accion === 'baja') darDeBaja(email); else nuevaClave(email);
   });
   $('n-form').addEventListener('submit', function (e) {

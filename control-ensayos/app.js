@@ -1241,6 +1241,15 @@ es:{
   lb_show:'Contenido', lb_plr:'PLR · QTP', lb_desc:'Descripción', lb_date:'Fecha de recepción',
   lb_preview:'Vista previa a tamaño real',
   lb_how:'<b>Una vez por equipo:</b> en Windows, Preferencias de impresión de la <b>DYMO LabelWriter 550</b> → tamaño de papel el de la etiqueta y orientación <b>vertical</b>; el navegador usa ese papel, no el de la app.<br><b>En el cuadro de impresión:</b> impresora <b>DYMO LabelWriter 550</b>, tamaño de papel el de la etiqueta (p. ej. <i>11354 Multi-Purpose</i>), orientación <b>vertical</b> (u <b>horizontal</b> si eliges giro 0° o 180°), márgenes <b>ninguno</b>, escala <b>100 %</b> y sin encabezados ni pies de página. Sale una etiqueta por página.',
+  imp_dest:'Dónde imprimir', imp_lab:'Impresora del laboratorio', imp_here:'Imprimir aquí (cuadro de impresión de este ordenador)',
+  imp_loading:'Consultando la impresora del laboratorio…', imp_on:'Conectada', imp_off:t=>`Sin señal de la estación${t?` desde ${t}`:''}`,
+  imp_nocfg:'Sin configurar: un administrador tiene que generar la clave de la estación en la página de accesos.', imp_nodymo:'La estación no encuentra la DYMO',
+  imp_roll:'Rollo puesto en la impresora', imp_rollHelp:'Cámbialo solo si cambias el rollo: vale para todo el equipo.', imp_rollSet:n=>`Rollo puesto: ${n}`,
+  imp_send:'Enviar a la impresora del laboratorio', imp_render:'Preparando etiquetas…',
+  imp_sent:n=>`${n} etiqueta${n===1?'':'s'} en la cola de la impresora del laboratorio.`, imp_sentOff:n=>`${n} etiqueta${n===1?'':'s'} en cola: la estación no da señal, se imprimirán cuando vuelva.`,
+  imp_how:'Se imprimen en la DYMO del ordenador fijo del laboratorio con el rollo puesto. Las unidades quedan marcadas como impresas cuando la estación lo confirma.',
+  imp_recent:'Tus últimos envíos', imp_st_pendiente:'En cola', imp_st_imprimiendo:(h,n)=>`Imprimiendo ${h}/${n}`, imp_st_impreso:'Enviado a la impresora', imp_st_error:'Error', imp_retry:'Reintentar',
+  imp_e_roll:r=>`El rollo puesto ha cambiado (${r}): revisa la vista previa y vuelve a enviar.`, imp_e:m=>`No se ha podido enviar a la impresora del laboratorio${m?`: ${m}`:'.'}`,
   lb_print:'Imprimir', lb_done:n=>`${n} etiqueta${n===1?'':'s'} enviada${n===1?'':'s'} a la impresora.`, lb_empty:'Marca al menos una unidad.', lb_noLib:'No se ha podido cargar la librería del código. Revisa la conexión.',
   prop_h:n=>`Códigos por validar · ${n} PLR`, prop_help:'PLR activos con piezas pedidas en ARAS que aún no tienen código. Revisa la propuesta y valida: los números QTS se asignan al validar y las unidades quedan pendientes de recibir.',
   prop_all:'Validar todos', prop_ok:'Validar', prop_okPrint:'Validar e imprimir etiquetas', prop_skip:'Descartar',
@@ -1317,6 +1326,15 @@ en:{
   lb_show:'Content', lb_plr:'PLR · QTP', lb_desc:'Description', lb_date:'Reception date',
   lb_preview:'Preview at real size',
   lb_how:'<b>Once per computer:</b> in Windows, <b>DYMO LabelWriter 550</b> Printing Preferences → paper size of the label and <b>portrait</b> orientation; the browser uses that paper, not the app\'s.<br><b>In the print dialog:</b> printer <b>DYMO LabelWriter 550</b>, paper size of the label (e.g. <i>11354 Multi-Purpose</i>), orientation <b>portrait</b> (or <b>landscape</b> with a 0° or 180° turn), margins <b>none</b>, scale <b>100%</b> and no headers or footers. One label per page.',
+  imp_dest:'Where to print', imp_lab:'Lab printer', imp_here:'Print here (this computer’s print dialog)',
+  imp_loading:'Checking the lab printer…', imp_on:'Connected', imp_off:t=>`No signal from the station${t?` since ${t}`:''}`,
+  imp_nocfg:'Not set up: an administrator has to generate the station key on the access page.', imp_nodymo:'The station cannot find the DYMO',
+  imp_roll:'Roll loaded in the printer', imp_rollHelp:'Change it only when you change the roll: it applies to the whole team.', imp_rollSet:n=>`Roll loaded: ${n}`,
+  imp_send:'Send to the lab printer', imp_render:'Preparing labels…',
+  imp_sent:n=>`${n} label${n===1?'':'s'} queued for the lab printer.`, imp_sentOff:n=>`${n} label${n===1?'':'s'} queued: the station has no signal, they will print when it is back.`,
+  imp_how:'They print on the DYMO of the lab’s fixed computer with the roll loaded. The units are marked printed when the station confirms it.',
+  imp_recent:'Your recent jobs', imp_st_pendiente:'Queued', imp_st_imprimiendo:(h,n)=>`Printing ${h}/${n}`, imp_st_impreso:'Sent to the printer', imp_st_error:'Error', imp_retry:'Retry',
+  imp_e_roll:r=>`The loaded roll has changed (${r}): check the preview and send again.`, imp_e:m=>`Could not send to the lab printer${m?`: ${m}`:'.'}`,
   lb_print:'Print', lb_done:n=>`${n} label${n===1?'':'s'} sent to the printer.`, lb_empty:'Tick at least one unit.', lb_noLib:'Could not load the code library. Check the connection.',
   prop_h:n=>`Codes to validate · ${n} PLR${n===1?'':'s'}`, prop_help:'Active PLRs with pieces requested in ARAS that have no code yet. Check the proposal and validate: the QTS numbers are assigned when you validate, and the units wait to be received.',
   prop_all:'Validate all', prop_ok:'Validate', prop_okPrint:'Validate and print labels', prop_skip:'Dismiss',
@@ -1816,6 +1834,7 @@ function smpLotBtn(l,plr){
 
 /* ---------- Samples view ---------- */
 function vSamples(){
+  if(impOn()&&!IMP.loaded){IMP.loaded=true; impLoad();} // jobs printed while this page was closed mark their units
   const k=smpKpis(), V=S.smp;
   $('#smp-plr-list').innerHTML=[...new Map(S.tests.filter(x=>x.plr).map(x=>[smpPlrKey(x.plr),x])).values()].map(x=>`<option value="${esc(smpPlrKey(x.plr))}">${esc(projectNo(x))} · ${esc(x.title||'')}</option>`).join('');
   $('#smp-loc-list').innerHTML=[...new Set(S.samples.flatMap(l=>[l.loc,...(l.units||[]).map(u=>u.loc)]).filter(Boolean))].sort().map(v=>`<option value="${esc(v)}">`).join('');
@@ -2150,25 +2169,43 @@ function smpLabel(k,c){
 }
 function smpOpenLabels(keys){
   keys=keys.filter(smpByKey); S.smp.lb={keys,checked:new Set(keys)}; dlg.dataset.kind='smp-lb'; dlg.dataset.id='';
-  dlg.innerHTML=smpShell(tx('lb_eyebrow'),tx('lb_title',keys.length),`<div class="lb-grid"><div class="lb-side" id="smp-lb-side"></div><div><p class="eyebrow" style="margin-bottom:6px">${esc(tx('lb_preview'))}</p><div class="lb-prev" id="smp-lb-prev"></div><p class="note" style="margin-top:10px">${tx('lb_how')}</p></div></div>`,
+  dlg.innerHTML=smpShell(tx('lb_eyebrow'),tx('lb_title',keys.length),`<div class="lb-grid"><div class="lb-side" id="smp-lb-side"></div><div><p class="eyebrow" style="margin-bottom:6px">${esc(tx('lb_preview'))}</p><div class="lb-prev" id="smp-lb-prev"></div><p class="note lb-how" style="margin-top:10px">${tx('lb_how')}</p></div></div>`,
     `<span class="sp"></span><button type="button" class="btn ghost" data-act="close">${esc(tx('close'))}</button><button type="button" class="btn primary" data-sa="do-print">🖨 ${esc(tx('lb_print'))}</button>`);
   if(!dlg.open) dlg.showModal(); smpLbSide(); smpLbPreview();
+  if(impOn()){impLoad(); impPoll();}
 }
 function smpLbSide(){
   const c=smpLblCfg(), ck=(k,lab)=>`<label><input type="checkbox" data-lbc="${k}" ${c[k]?'checked':''}> ${esc(lab)}</label>`;
-  $('#smp-lb-side').innerHTML=`<div class="field"><span class="lbl">${esc(tx('lb_units'))} · <button type="button" class="link" data-sa="lb-all">${esc(tx('lb_all'))}</button> · <button type="button" class="link" data-sa="lb-none">${esc(tx('lb_noneSel'))}</button></span>
+  const lab=impDest(c)==='lab', E=IMP.est;
+  const dest=impOn()?`<div class="field"><span class="lbl">${esc(tx('imp_dest'))}</span><div class="checks" style="flex-direction:column;align-items:flex-start">
+      <label><input type="radio" name="smp-lb-dest" value="lab" ${lab?'checked':''}> ${esc(tx('imp_lab'))}</label>
+      <label><input type="radio" name="smp-lb-dest" value="here" ${lab?'':'checked'}> ${esc(tx('imp_here'))}</label></div>
+      ${lab?`<div id="imp-status" class="imp-status">${impStatusHtml()}</div>`:''}</div>`:'';
+  const size=lab?fld('smp-imp-rollo',esc(tx('imp_roll')),`<select id="smp-imp-rollo">${Object.entries(SMP_LABELS).map(([k,v])=>`<option value="${k}" ${(E?E.rollo:c.size)===k?'selected':''}>${esc(v.n)}</option>`).join('')}</select>`,'',esc(tx('imp_rollHelp')))
+    :fld('smp-lb-size',esc(tx('lb_size')),`<select id="smp-lb-size">${Object.entries(SMP_LABELS).map(([k,v])=>`<option value="${k}" ${c.size===k?'selected':''}>${esc(v.n)}</option>`).join('')}</select>`);
+  $('#smp-lb-side').innerHTML=dest+`<div class="field"><span class="lbl">${esc(tx('lb_units'))} · <button type="button" class="link" data-sa="lb-all">${esc(tx('lb_all'))}</button> · <button type="button" class="link" data-sa="lb-none">${esc(tx('lb_noneSel'))}</button></span>
       <div class="lb-list">${S.smp.lb.keys.map(k=>{const {l,u}=smpByKey(k); return `<label><input type="checkbox" data-lbk="${esc(k)}" ${S.smp.lb.checked.has(k)?'checked':''}> ${esc(smpCode(l,u))}${u.printed?' ✓':''}</label>`;}).join('')}</div></div>
-    ${fld('smp-lb-size',esc(tx('lb_size')),`<select id="smp-lb-size">${Object.entries(SMP_LABELS).map(([k,v])=>`<option value="${k}" ${c.size===k?'selected':''}>${esc(v.n)}</option>`).join('')}</select>`)}
+    ${size}
     <div class="field"><span class="lbl">${esc(tx('lb_code'))}</span><div class="checks" style="flex-direction:column;align-items:flex-start">${[['qr',tx('qr')],['bar',tx('bar')],['none',tx('noCode')]].map(([v,lab])=>`<label><input type="radio" name="smp-lb-code" value="${v}" ${c.code===v?'checked':''}> ${esc(lab)}</label>`).join('')}</div></div>
-    ${fld('smp-lb-rot',esc(tx('lb_rot')),`<select id="smp-lb-rot">${['90','270','0','180'].map(v=>`<option value="${v}" ${c.rot===v?'selected':''}>${esc(tx('lb_rot'+v))}</option>`).join('')}</select>`)}
+    ${lab?'':fld('smp-lb-rot',esc(tx('lb_rot')),`<select id="smp-lb-rot">${['90','270','0','180'].map(v=>`<option value="${v}" ${c.rot===v?'selected':''}>${esc(tx('lb_rot'+v))}</option>`).join('')}</select>`)}
     <div class="field"><span class="lbl">${esc(tx('lb_show'))}</span><div class="checks" style="flex-direction:column;align-items:flex-start">${ck('plr',tx('lb_plr'))}${ck('desc',tx('lb_desc'))}${ck('date',tx('lb_date'))}</div></div>`;
 }
 function smpLbPreview(){
-  const c=smpLblCfg(), keys=S.smp.lb.keys.filter(k=>S.smp.lb.checked.has(k)), p=$('#smp-lb-prev');
+  const c0=smpLblCfg(), lab=impDest(c0)==='lab', c=lab&&IMP.est?{...c0,size:IMP.est.rollo}:c0;
+  const keys=S.smp.lb.keys.filter(k=>S.smp.lb.checked.has(k)), p=$('#smp-lb-prev');
   p.innerHTML=keys.length?keys.map(k=>smpLabel(k,c)).join(''):`<p class="note">${esc(tx('lb_empty'))}</p>`;
   smpBarcodes(p);
-  const b=dlg.querySelector('[data-sa="do-print"]'); if(b) b.disabled=!keys.length;
+  const b=dlg.querySelector('[data-sa="do-print"]'); if(b){b.disabled=!keys.length||IMP.busy; if(!IMP.busy) b.textContent='🖨 '+tx(lab?'imp_send':'lb_print');}
   const h=dlg.querySelector('.dlg-h h2'); if(h) h.textContent=tx('lb_title',keys.length);
+  const how=dlg.querySelector('.lb-how'); if(how) how.innerHTML=lab?esc(tx('imp_how')):tx('lb_how');
+  let j=$('#imp-jobs'); if(lab&&!j){j=document.createElement('div'); j.id='imp-jobs'; p.parentElement.appendChild(j);} if(j){j.hidden=!lab; if(lab) j.innerHTML=impJobsHtml();}
+  /* The lab printer prints the 1-bit image: the preview shows that image (what you see is what prints). */
+  if(lab&&keys.length){const seq=++IMP.prev, slice=keys.slice(0,12);
+    Promise.all(slice.map(k=>impLabelPng(k,c))).then(pngs=>{ if(seq!==IMP.prev||!p.isConnected) return;
+      const sz=SMP_LABELS[c.size]||SMP_LABELS['99012'];
+      p.querySelectorAll('.dlbl').forEach((el,i)=>{ if(i<pngs.length) el.outerHTML=`<img class="dlbl-img" alt="" src="data:image/png;base64,${pngs[i]}" style="width:${sz.w}mm;height:${sz.h}mm">`; });
+    }).catch(()=>{});
+  }
 }
 function smpLbSet(k,v){const c=smpLblCfg(); c[k]=v; try{localStorage.setItem('tl.lbl',JSON.stringify(c));}catch(e){} smpLbPreview();}
 function smpPrint(){
@@ -2188,12 +2225,144 @@ function smpPrint(){
   setTimeout(()=>{
     window.print(); area.innerHTML='';
     toast(tx('lb_done',keys.length));
-    if(S.ro||!db) return;
-    /* Printed units stop counting as "labels to print". */
-    const by=new Map(); keys.map(smpByKey).filter(Boolean).forEach(({l,u})=>{ if(!by.has(l)) by.set(l,new Set()); by.get(l).add(u.n); });
-    Promise.all([...by].map(([l,ns])=>db.doc(`${COL.samples}/${l.id}`).update({units:(l.units||[]).map(u=>ns.has(u.n)?{...u,printed:true}:u),log:[...(l.log||[]),smpLog('log_print',ns.size)]}))).catch(e=>toast(errMsg(e)));
+    smpMarkPrinted(keys).catch(e=>toast(errMsg(e)));
   },60);
 }
+/* Printed units stop counting as "labels to print". */
+function smpMarkPrinted(keys){
+  if(S.ro||!db) return Promise.resolve();
+  const by=new Map(); keys.map(smpByKey).filter(Boolean).forEach(({l,u})=>{ if(u.printed) return; if(!by.has(l)) by.set(l,new Set()); by.get(l).add(u.n); });
+  return Promise.all([...by].map(([l,ns])=>db.doc(`${COL.samples}/${l.id}`).update({units:(l.units||[]).map(u=>ns.has(u.n)?{...u,printed:true}:u),log:[...(l.log||[]),smpLog('log_print',ns.size)]})));
+}
+
+/* ---------- Lab printer: the labels go to the DYMO of the lab's fixed PC through the print queue (Supabase function
+   `impresion`); the station program there (estacion-dymo.exe) prints them. Design:
+   docs/superpowers/specs/2026-11-10-impresion-remota-dymo-design.md. Each label travels as a 1-bit PNG drawn from the
+   same HTML as the preview, at the printer's 300 dpi. The units are marked printed when the station confirms. ---------- */
+const IMP={est:null,trab:[],loaded:false,busy:false,timer:0,css:null,prev:0};
+const IMP_APL='tl.imp.apl';
+const impOn=()=>APP==='samples'&&!!LA&&typeof LA.apiImpresion==='function'&&byMail()&&canWrite()&&!S.ro;
+const impDest=c=>impOn()&&c.dest!=='here'?'lab':'here';
+async function impFetch(path,opt={}){
+  const h=await LA.cabeceras(), init={method:opt.method||'GET',headers:h};
+  if(opt.body!==undefined){h['Content-Type']='application/json'; init.body=JSON.stringify(opt.body);}
+  let r; try{r=await fetch(LA.apiImpresion()+path,init);}catch(e){const x=new Error(tx('e_net')); x.code='unavailable'; throw x;}
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok){const x=new Error(j.message||('HTTP '+r.status)); x.status=r.status; x.code=r.status===401?'auth':j.code; x.args=j.args; throw x;}
+  return j;
+}
+const impErr=e=>e.code==='roll_changed'?tx('imp_e_roll',(e.args||[])[0]||''):e.code==='no_edit'?tx('e_perm'):e.code==='auth'?tx('e_auth'):e.code==='unavailable'?tx('e_net'):tx('imp_e',e.message);
+/* Reads the station and the person's recent jobs; jobs the station confirmed mark their units printed (once). */
+async function impLoad(){
+  if(!impOn()) return;
+  try{const j=await impFetch('/estado'); IMP.est=j.estacion; IMP.trab=j.trabajos||[]; IMP.loaded=true;}
+  catch(e){IMP.loaded=true; IMP.err=impErr(e); impPaint(); return;}
+  IMP.err=''; await impApply(); impPaint();
+}
+async function impApply(){
+  let apl=[]; try{apl=JSON.parse(localStorage.getItem(IMP_APL)||'[]')||[];}catch(e){}
+  const done=IMP.trab.filter(t=>t.estado==='impreso'&&!apl.includes(t.id));
+  if(!done.length) return;
+  try{await smpMarkPrinted(done.flatMap(t=>t.unidades||[])); apl=[...done.map(t=>t.id),...apl].slice(0,100); try{localStorage.setItem(IMP_APL,JSON.stringify(apl));}catch(e){}}
+  catch(e){toast(errMsg(e));}
+}
+/* While the label dialog is open, the status refreshes every 5 s. */
+function impPoll(){
+  clearInterval(IMP.timer);
+  IMP.timer=setInterval(()=>{ if(!dlg.open||dlg.dataset.kind!=='smp-lb'){clearInterval(IMP.timer); return;} impLoad(); },5000);
+}
+const impTime=iso=>iso?new Date(iso).toLocaleString(LL.locale(),{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
+function impStatusHtml(){
+  const E=IMP.est; if(IMP.err) return `<span class="imp-st off">${esc(IMP.err)}</span>`;
+  if(!E) return `<span class="imp-st">${esc(tx('imp_loading'))}</span>`;
+  if(!E.configurada) return `<span class="imp-st off">${esc(tx('imp_nocfg'))}</span>`;
+  if(!E.conectada) return `<span class="imp-st off">● ${esc(tx('imp_off',impTime(E.visto)))}</span>`;
+  const s=E.estado||{};
+  if(!s.dymo||!s.conectada) return `<span class="imp-st warn">● ${esc(tx('imp_nodymo'))}${s.error?` · ${esc(s.error)}`:''}</span>`;
+  return `<span class="imp-st ok">● ${esc(tx('imp_on'))}${s.impresora?` · ${esc(s.impresora)}`:''}</span>`;
+}
+function impJobsHtml(){
+  if(!IMP.trab.length) return '';
+  const st=t=>t.estado==='imprimiendo'?tx('imp_st_imprimiendo',t.hechas,t.n):tx('imp_st_'+t.estado);
+  return `<p class="eyebrow" style="margin:14px 0 6px">${esc(tx('imp_recent'))}</p><ul class="imp-jobs">${IMP.trab.map(t=>`<li class="imp-${t.estado}"><time>${esc(impTime(t.creado))}</time>
+    <span class="cods">${esc((t.codigos||[]).slice(0,3).join(', '))}${t.n>3?` +${t.n-3}`:''}</span><span class="sp"></span>
+    <span class="imp-tag">${esc(st(t))}</span>${t.estado==='error'?`${t.error?`<span class="imp-msg">${esc(t.error)}</span>`:''}<button type="button" class="btn sm" data-sa="imp-retry" data-id="${esc(t.id)}">${esc(tx('imp_retry'))}</button>`:''}</li>`).join('')}</ul>`;
+}
+/* Repaints the parts of the open label dialog that depend on the station. */
+function impPaint(){
+  if(!dlg.open||dlg.dataset.kind!=='smp-lb') return;
+  const a=$('#imp-status'); if(a) a.innerHTML=impStatusHtml();
+  const b=$('#imp-jobs'); if(b) b.innerHTML=impJobsHtml();
+  const r=$('#smp-imp-rollo'); if(r&&IMP.est&&r.value!==IMP.est.rollo&&document.activeElement!==r){r.value=IMP.est.rollo; smpLbPreview();}
+}
+/* The .dlbl rules of app.css and the fonts, embedded so the label can be drawn as an image (SVG foreignObject). */
+const impB64=buf=>{const b=new Uint8Array(buf); let s=''; for(let i=0;i<b.length;i+=0x8000) s+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000)); return btoa(s);};
+function impCss(){
+  if(IMP.css) return IMP.css;
+  IMP.css=(async()=>{
+    const rules=[];
+    for(const sh of document.styleSheets){let rs; try{rs=sh.cssRules;}catch(e){continue;} for(const ru of rs) if(ru.selectorText&&/\.dlbl/.test(ru.selectorText)) rules.push(ru.cssText);}
+    const cs=getComputedStyle(document.documentElement), vars=`:root{--f-body:${cs.getPropertyValue('--f-body')};--f-mono:${cs.getPropertyValue('--f-mono')}}`;
+    let fonts='';
+    const link=[...document.querySelectorAll('link[rel="stylesheet"]')].find(l=>/fonts\.googleapis\.com/.test(l.href));
+    if(link) try{
+      const css=await (await fetch(link.href)).text();
+      const blocks=(css.match(/@font-face\s*{[^}]*}/g)||[]).filter(b=>!/unicode-range/.test(b)||/U\+0000-00FF/i.test(b));
+      fonts=(await Promise.all(blocks.map(async b=>{const m=b.match(/url\((https:[^)]+)\)/); if(!m) return ''; const buf=await (await fetch(m[1])).arrayBuffer(); return b.replace(m[1],'data:font/woff2;base64,'+impB64(buf));}))).join('\n');
+    }catch(e){fonts='';}
+    return `${fonts}\n${vars}\n${rules.join('\n')}\n.dlbl{border-radius:0!important;box-shadow:none!important}`;
+  })();
+  return IMP.css;
+}
+/* PNG with 1-bit greyscale pixels (0 = black), deflated with the browser's CompressionStream. */
+const IMP_CRC=(()=>{const t=new Uint32Array(256); for(let n=0;n<256;n++){let c=n; for(let k=0;k<8;k++) c=c&1?0xedb88320^(c>>>1):c>>>1; t[n]=c>>>0;} return t;})();
+function impChunk(type,data){
+  const out=new Uint8Array(12+data.length), dv=new DataView(out.buffer);
+  dv.setUint32(0,data.length); for(let i=0;i<4;i++) out[4+i]=type.charCodeAt(i); out.set(data,8);
+  let c=~0; for(let i=4;i<8+data.length;i++) c=IMP_CRC[(c^out[i])&255]^(c>>>8);
+  dv.setUint32(8+data.length,(~c)>>>0); return out;
+}
+async function impPng1(w,h,dark){
+  const row=Math.ceil(w/8)+1, raw=new Uint8Array(row*h).fill(0xff);
+  for(let y=0;y<h;y++){raw[y*row]=0; for(let x=0;x<w;x++) if(dark[y*w+x]) raw[y*row+1+(x>>3)]&=~(0x80>>(x&7));}
+  const z=new Uint8Array(await new Response(new Blob([raw]).stream().pipeThrough(new CompressionStream('deflate'))).arrayBuffer());
+  const ih=new Uint8Array(13), dv=new DataView(ih.buffer); dv.setUint32(0,w); dv.setUint32(4,h); ih[8]=1; ih[9]=0;
+  const parts=[new Uint8Array([137,80,78,71,13,10,26,10]),impChunk('IHDR',ih),impChunk('IDAT',z),impChunk('IEND',new Uint8Array(0))];
+  const png=new Uint8Array(parts.reduce((a,p)=>a+p.length,0)); let o=0; for(const p of parts){png.set(p,o); o+=p.length;}
+  return impB64(png.buffer);
+}
+/* One label as base64 PNG, landscape (long side across), 300 dpi, pure black and white. */
+async function impLabelPng(k,c){
+  const sz=SMP_LABELS[c.size]||SMP_LABELS['99012'], css=await impCss();
+  const host=document.createElement('div'); host.style.cssText='position:fixed;left:-10000px;top:0'; host.innerHTML=smpLabel(k,c); document.body.appendChild(host); smpBarcodes(host);
+  const html=new XMLSerializer().serializeToString(host.firstElementChild); host.remove();
+  const W=Math.round(sz.w/25.4*300), H=Math.round(sz.h/25.4*300), cw=sz.w/25.4*96, ch=sz.h/25.4*96;
+  const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${cw} ${ch}"><foreignObject x="0" y="0" width="${cw}" height="${ch}"><div xmlns="http://www.w3.org/1999/xhtml" style="margin:0"><style>${css.replace(/&/g,'\\26 ').replace(/</g,'\\3c ')}</style>${html}</div></foreignObject></svg>`;
+  const img=new Image(); img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg); await img.decode();
+  const cv=document.createElement('canvas'); cv.width=W; cv.height=H; const g=cv.getContext('2d');
+  g.fillStyle='#fff'; g.fillRect(0,0,W,H); g.drawImage(img,0,0,W,H);
+  const d=g.getImageData(0,0,W,H).data, dark=new Uint8Array(W*H);
+  for(let i=0;i<W*H;i++) dark[i]=(d[i*4]*299+d[i*4+1]*587+d[i*4+2]*114)/1000<150?1:0;
+  return impPng1(W,H,dark);
+}
+async function impSend(){
+  if(IMP.busy) return; const c=smpLblCfg(), keys=S.smp.lb.keys.filter(k=>S.smp.lb.checked.has(k)); if(!keys.length) return toast(tx('lb_empty'));
+  if(!IMP.est) await impLoad(); if(!IMP.est) return toast(IMP.err||tx('imp_e',''));
+  const cfg={...c,size:IMP.est.rollo}, btn=dlg.querySelector('[data-sa="do-print"]');
+  IMP.busy=true; if(btn){btn.disabled=true; btn.textContent=tx('imp_render');}
+  try{
+    for(let i=0;i<keys.length;i+=100){
+      const part=keys.slice(i,i+100), etiquetas=[];
+      for(const k of part){const {l,u}=smpByKey(k); etiquetas.push({codigo:smpCode(l,u),png:await impLabelPng(k,cfg)});}
+      const t=await impFetch('/trabajos',{method:'POST',body:{id:crypto.randomUUID(),rollo:cfg.size,etiquetas,unidades:part}});
+      IMP.trab=[t,...IMP.trab.filter(x=>x.id!==t.id)].slice(0,10);
+    }
+    toast(tx(IMP.est.conectada?'imp_sent':'imp_sentOff',keys.length)); impPaint();
+  }catch(e){ toast(impErr(e)); if(e.code==='roll_changed'){await impLoad(); smpLbPreview();} }
+  finally{IMP.busy=false; if(btn&&btn.isConnected){btn.disabled=false; btn.textContent='🖨 '+tx('imp_send');}}
+}
+async function impRetry(id){try{await impFetch(`/trabajos/${id}/reintentar`,{method:'POST'}); await impLoad();}catch(e){toast(impErr(e));}}
+async function impSetRoll(v){try{const j=await impFetch('/rollo',{method:'PUT',body:{rollo:v}}); if(IMP.est) IMP.est.rollo=j.rollo; toast(tx('imp_rollSet',SMP_LABELS[j.rollo].n)); smpLbPreview();}catch(e){toast(impErr(e)); await impLoad();}}
 
 /* ---------- Samples events (data-sa, so they never reach the main handlers) ---------- */
 function smpOpenCode(code){
@@ -2235,7 +2404,8 @@ document.addEventListener('click',ev=>{
   else if(a==='print-lot'){const l=S.samples.find(x=>x.id===dlg.dataset.id); if(l) smpOpenLabels(smpLive(l).map(u=>smpKey(l,u)));}
   else if(a==='lb-all'){V.lb.checked=new Set(V.lb.keys); smpLbSide(); smpLbPreview();}
   else if(a==='lb-none'){V.lb.checked.clear(); smpLbSide(); smpLbPreview();}
-  else if(a==='do-print') smpPrint();
+  else if(a==='do-print'){ if(impDest(smpLblCfg())==='lab') impSend(); else smpPrint(); }
+  else if(a==='imp-retry') impRetry(el.dataset.id);
   else if(a==='gen') smpOpenGen(el.dataset.plr);
   else if(a==='prop-mode'){const p=el.dataset.plr; V.prop[p]={...(V.prop[p]||{}),mode:el.dataset.m,qty:{}}; smpPropRerender();}
   else if(a==='prop-ok'||a==='prop-ok-print'){el.disabled=true; Promise.resolve(smpValidate([el.dataset.plr],a==='prop-ok-print')).finally(()=>{if(el.isConnected) el.disabled=false;});}
@@ -2270,6 +2440,8 @@ document.addEventListener('change',ev=>{
   else if(el.id==='smp-lb-size') smpLbSet('size',el.value);
   else if(el.name==='smp-lb-code') smpLbSet('code',el.value);
   else if(el.id==='smp-lb-rot') smpLbSet('rot',el.value);
+  else if(el.name==='smp-lb-dest'){smpLbSet('dest',el.value); smpLbSide(); if(el.value==='lab'&&impOn()){impLoad(); impPoll();}}
+  else if(el.id==='smp-imp-rollo') impSetRoll(el.value);
 });
 /* A barcode or QR scanner types the code and Enter in the search box: open that sample at once. */
 document.addEventListener('keydown',ev=>{

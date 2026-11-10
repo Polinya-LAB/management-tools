@@ -14,6 +14,7 @@
      salir()                    Promise<void>
      api(app)                   string: `${url}/functions/v1/github/${app}`
      apiAdmin()                 string: `${url}/functions/v1/admin`
+     apiImpresion()             string: `${url}/functions/v1/impresion` (cola de la impresora del laboratorio)
      cabeceras()                Promise<{Authorization:'Bearer <jwt>', apikey}> con el JWT renovado si hace falta;
                                 sin sesión, solo {apikey} (la función responde 401)
      onCambio(fn)               fn({email}|null) cada vez que se entra o se sale (también desde otra pestaña,
@@ -153,6 +154,10 @@
     if (!activo) throw err('inactive', 'El acceso por correo no está configurado');
     return url + '/functions/v1/admin';
   }
+  function apiImpresion() {
+    if (!activo) throw err('inactive', 'El acceso por correo no está configurado');
+    return url + '/functions/v1/impresion';
+  }
 
   function cabeceras() {
     if (!activo) return Promise.reject(err('inactive', 'El acceso por correo no está configurado'));
@@ -177,6 +182,7 @@
     salir: salir,
     api: api,
     apiAdmin: apiAdmin,
+    apiImpresion: apiImpresion,
     cabeceras: cabeceras,
     onCambio: onCambio,
   });

@@ -6,7 +6,7 @@
 //   - Google Fonts → CSS vacío
 //   - <supabaseUrl>/auth/v1/{token,user,logout} → Supabase Auth simulado: correo + contraseña
 //     (grant_type=password; cada usuario tiene `password`, por defecto CLAVE_PRUEBA)
-//   - <supabaseUrl>/functions/v1/github/**, /functions/v1/admin/** → los handlers REALES (supabase/functions/*/handler.ts,
+//   - <supabaseUrl>/functions/v1/{github,admin,impresion}/** → los handlers REALES (supabase/functions/*/handler.ts,
 //     empaquetados con esbuild) con dependencias falsas: así las pruebas ejercitan la lógica de permisos de verdad
 //   - api.github.com y raw.githubusercontent.com → modo "clave de GitHub" sobre los mismos ficheros
 //   - cualquier otra petición se bloquea (queda en `bloqueadas`)
@@ -51,6 +51,7 @@ function cargarHandlers() {
   handlers = {
     crearHandler: cargar('supabase/functions/github/handler.ts').crearHandler,
     crearHandlerAdmin: cargar('supabase/functions/admin/handler.ts').crearHandlerAdmin,
+    imp: cargar('supabase/functions/impresion/handler.ts'),
   };
   return handlers;
 }
@@ -258,7 +259,42 @@ async function setupLab(ctx, opts = {}) {
     const u = buscar(email);
     return u ? { email: u.email, nombre: u.nombre, roles: { ...u.roles }, admin: u.admin === true } : null;
   };
-  const { crearHandler, crearHandlerAdmin } = cargarHandlers();
+  const { crearHandler, crearHandlerAdmin, imp } = cargarHandlers();
+  // Cola de impresión en memoria (la estación se simula cambiando `impresion` desde las pruebas).
+  const impresion = {
+    est: { token_hash: null, rollo: '11354', visto: null, estado: null, purgado: null },
+    trabajos: [],
+    posts: [],
+  };
+  const sinPng = ({ etiquetas, ...t }) => ({ ...t, codigos: etiquetas.map((e) => e.codigo) });
+  const fnImpresion = imp.crearHandlerImpresion({
+    usuario,
+    acceso,
+    estacion: async () => ({ ...impresion.est }),
+    guardarEstacion: async (c) => void Object.assign(impresion.est, c),
+    crearTrabajo: async (t) => {
+      const ya = impresion.trabajos.find((x) => x.id === t.id);
+      if (ya) return ya;
+      const iso = new Date().toISOString();
+      const nuevo = { ...t, creado: iso, actualizado: iso, hechas: 0, estado: 'pendiente', error: null };
+      impresion.trabajos.push(nuevo);
+      impresion.posts.push(nuevo);
+      return nuevo;
+    },
+    trabajo: async (id) => { const t = impresion.trabajos.find((x) => x.id === id); return t ? sinPng(t) : null; },
+    ultimosDe: async (e, n) => impresion.trabajos.filter((t) => t.por === e).slice(-n).reverse().map(sinPng),
+    tomarSiguiente: async () => null,
+    actualizar: async (id, desde, c) => {
+      const t = impresion.trabajos.find((x) => x.id === id);
+      if (!t || !desde.includes(t.estado)) return false;
+      Object.assign(t, c, { actualizado: new Date().toISOString() });
+      return true;
+    },
+    interrumpir: async () => {},
+    purgar: async () => {},
+    ahora: () => new Date(),
+    clave: () => 'clave-estacion-de-prueba',
+  });
   const fnGithub = crearHandler({ usuario, acceso, gh: (p, init) => gh(p, init, 'funcion') });
   const fnAdmin = crearHandlerAdmin({
     usuario,
@@ -370,12 +406,12 @@ async function setupLab(ctx, opts = {}) {
       const metodo = req.method();
 
       // Funciones: los handlers reales reciben la ruta sin "/functions/v1", como en Supabase.
-      const fm = /^\/functions\/v1(\/(?:github|admin)(?:\/.*)?)$/.exec(u.pathname);
+      const fm = /^\/functions\/v1(\/(?:github|admin|impresion)(?:\/.*)?)$/.exec(u.pathname);
       if (fm) {
         const cabeceras = new Headers();
         for (const [k, v] of Object.entries(h)) if (!k.startsWith(':')) cabeceras.set(k, v);
         const cuerpo = metodo === 'GET' || metodo === 'HEAD' || metodo === 'OPTIONS' ? undefined : req.postDataBuffer() ?? undefined;
-        const r = await (fm[1].startsWith('/github') ? fnGithub : fnAdmin)(
+        const r = await (fm[1].startsWith('/github') ? fnGithub : fm[1].startsWith('/impresion') ? fnImpresion : fnAdmin)(
           new Request(`${supabaseUrl}${fm[1]}${u.search}`, { method: metodo, headers: cabeceras, body: cuerpo }),
         );
         const body = r.status === 204 || r.status === 304 ? undefined : Buffer.from(await r.arrayBuffer());
@@ -492,6 +528,7 @@ async function setupLab(ctx, opts = {}) {
     revocar,
     datos,
     fijarDatos,
+    impresion,
   };
 }
 

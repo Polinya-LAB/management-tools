@@ -2,6 +2,7 @@
 // Uso, desde la raíz del repositorio: node tests/e2e/admin.test.js
 'use strict';
 const assert = require('node:assert/strict');
+const fs = require('node:fs');
 const { chromium } = require('playwright');
 const { setupLab, CLAVE_PRUEBA } = require('./lab-mock.js');
 
@@ -339,9 +340,20 @@ const texto = (page) => page.evaluate(() => document.body.innerText);
       await ctx.close();
     }
     {
-      const { ctx, page } = await abrir(browser);
+      const { ctx, page, lab } = await abrir(browser);
       await entrar(page, 'admin@fluidra.com');
       await page.waitForSelector('table');
+      await check('"Generar clave de la estación": pide confirmación y descarga estacion-dymo.json con url y clave', async () => {
+        await page.click('#st-gen');
+        await page.waitForSelector('#confirmar:not([hidden])');
+        const [descarga] = await Promise.all([page.waitForEvent('download'), page.click('#c-si')]);
+        assert.equal(descarga.suggestedFilename(), 'estacion-dymo.json');
+        const cfg = JSON.parse(fs.readFileSync(await descarga.path(), 'utf8'));
+        assert.equal(cfg.clave, 'clave-estacion-de-prueba');
+        assert.match(cfg.url, /\/functions\/v1\/impresion$/);
+        assert.ok(lab.impresion.est.token_hash, 'guarda el hash');
+        assert.notEqual(lab.impresion.est.token_hash, cfg.clave, 'nunca la clave en claro');
+      });
       await check('"Nueva contraseña": la fila queda bloqueada mientras se guarda y un error se muestra', async () => {
         let soltar;
         const espera = new Promise((r) => { soltar = r; });

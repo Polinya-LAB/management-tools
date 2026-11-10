@@ -259,6 +259,73 @@ async function entrar(page, email, nombre, es = false) {
       await ctx.close();
     }
     {
+      // Impresora del laboratorio: la cola (función impresion real) y la estación simulada en lab.impresion.
+      const { ctx, page, lab, errores } = await abrir(browser, MUESTRAS, { idioma: 'es' });
+      const imp = lab.impresion;
+      Object.assign(imp.est, { token_hash: 'x', visto: new Date().toISOString(), estado: { dymo: true, conectada: true, impresora: 'DYMO LabelWriter 550' } });
+      await entrar(page, 'marta.m@fluidra.com', 'Marta Muestras', true);
+      await page.click('#tabs [data-view="samples"]');
+      await page.click('[data-sa="prop-ok"][data-plr="PLR900004"]');
+      await waitFor(() => lab.puts.length === 1);
+      await check('Impresora del laboratorio: por defecto; estado conectada; envía un PNG de 1 bit por unidad sin marcarlas aún', async () => {
+        await page.click('[data-sa="labels-pending"]');
+        await page.waitForSelector('input[name="smp-lb-dest"][value="lab"]:checked');
+        await page.waitForFunction(() => /Conectada/.test(document.querySelector('#imp-status').textContent));
+        assert.equal(await page.locator('#smp-lb-rot').count(), 0, 'sin giro con la impresora del laboratorio');
+        assert.match(await page.textContent('[data-sa="do-print"]'), /Enviar a la impresora del laboratorio/);
+        await page.waitForSelector('#smp-lb-prev img.dlbl-img');
+        await page.click('[data-sa="do-print"]');
+        await waitFor(() => imp.posts.length === 1);
+        const t = imp.posts[0];
+        assert.equal(t.por, 'marta.m@fluidra.com');
+        assert.equal(t.rollo, '11354');
+        assert.equal(t.etiquetas.length, t.unidades.length);
+        assert.ok(t.etiquetas.every((e) => /^QTS-\d{5}-\d+$/.test(e.codigo) && e.png.startsWith('iVBORw0KGgo')));
+        const png = Buffer.from(t.etiquetas[0].png, 'base64');
+        assert.equal(png[24], 1, 'profundidad de 1 bit'); assert.equal(png[25], 0, 'escala de grises');
+        assert.equal(png.readUInt32BE(16), 673, 'ancho a 300 ppp para 57 mm');
+        assert.equal(lab.puts.length, 1, 'no marca impresas hasta que la estación confirme');
+        await page.waitForSelector('.imp-jobs .imp-pendiente');
+      });
+      await check('Impresora del laboratorio: al confirmarse, las unidades quedan impresas (un solo PUT)', async () => {
+        Object.assign(imp.trabajos[0], { estado: 'impreso', hechas: imp.trabajos[0].n });
+        await waitFor(() => lab.puts.length === 2, 9000);
+        const p = lab.puts[1];
+        const claves = new Set(imp.trabajos[0].unidades);
+        const marcadas = Object.entries(p.data.muestras).flatMap(([id, m]) => (m.units || []).filter((u) => claves.has(`${id}:${u.n}`)));
+        assert.equal(marcadas.length, claves.size);
+        assert.ok(marcadas.every((u) => u.printed === true));
+        await page.waitForSelector('.imp-jobs .imp-impreso');
+        await new Promise((r) => setTimeout(r, 5500));
+        assert.equal(lab.puts.length, 2, 'no vuelve a marcarlas');
+      });
+      await check('Impresora del laboratorio: un error se puede reintentar; un rollo cambiado avisa y no envía', async () => {
+        Object.assign(imp.trabajos[0], { estado: 'error', error: 'Sin papel' });
+        await page.waitForSelector('.imp-jobs [data-sa="imp-retry"]', { timeout: 9000 });
+        assert.match(await page.textContent('.imp-jobs'), /Sin papel/);
+        await page.click('.imp-jobs [data-sa="imp-retry"]');
+        await waitFor(() => imp.trabajos[0].estado === 'pendiente');
+        imp.est.rollo = '99012';
+        await page.click('#smp-lb-side input[data-lbk]'); // vuelve a marcar algo para poder enviar
+        if (await page.isDisabled('[data-sa="do-print"]')) await page.click('#smp-lb-side input[data-lbk]');
+        await page.click('[data-sa="do-print"]');
+        await page.waitForFunction(() => /rollo puesto ha cambiado/.test(document.querySelector('#toast').textContent));
+        assert.equal(imp.posts.length, 1);
+        await page.waitForFunction(() => document.querySelector('#smp-imp-rollo').value === '99012');
+      });
+      await check('Imprimir aquí: vuelve el formato y el giro de siempre', async () => {
+        await page.click('input[name="smp-lb-dest"][value="here"]');
+        await page.waitForSelector('#smp-lb-rot');
+        assert.match(await page.textContent('[data-sa="do-print"]'), /Imprimir/);
+        assert.equal(await page.locator('#smp-lb-prev img.dlbl-img').count(), 0);
+      });
+      await check('Impresora del laboratorio: sin errores de consola ni peticiones bloqueadas', async () => {
+        assert.deepEqual(lab.bloqueadas, []);
+        assert.deepEqual(erroresReales(errores), []);
+      });
+      await ctx.close();
+    }
+    {
       const { ctx, page, lab, errores } = await abrir(browser, MUESTRAS, { idioma: 'es' });
       await check('Muestras con editar en ensayos: Import ARAS sí aparece', async () => {
         await entrar(page, 'ana.ruiz@fluidra.com', 'Ana Ruiz', true);
