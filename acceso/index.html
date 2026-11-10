@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Administrar accesos · Laboratorio Polinyà</title>
+<title data-i18n="docTitle">Administrar accesos · Laboratorio Polinyà</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@400&display=swap">
@@ -29,6 +29,7 @@ header { display: flex; justify-content: space-between; align-items: flex-end; g
 .eyebrow { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
 h1 { font-family: var(--f-display); font-size: clamp(28px, 5vw, 38px); font-weight: 700; line-height: 1.05; margin: 4px 0 0; }
 h2 { font-family: var(--f-display); font-size: 20px; font-weight: 600; margin: 0 0 8px; }
+.top-r { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
 .who { display: flex; align-items: center; gap: 12px; color: var(--muted); font-size: 14px; }
 .card { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 20px; }
 .card.narrow { max-width: 460px; }
@@ -81,79 +82,124 @@ td.acc .btn + .btn { margin-left: 6px; }
   <header>
     <div>
       <span class="eyebrow">R&amp;D · Fluidra</span>
-      <h1>Administrar accesos</h1>
+      <h1 data-i18n="h1">Administrar accesos</h1>
     </div>
-    <div class="who" id="who" hidden><span id="who-mail"></span><button type="button" class="btn ghost small" id="who-out">Salir</button></div>
+    <div class="top-r">
+      <div class="who" id="who" hidden><span id="who-mail"></span><button type="button" class="btn ghost small" id="who-out" data-i18n="out">Salir</button></div>
+      <span data-lab-lang></span>
+    </div>
   </header>
 
-  <section class="card narrow" id="no-config" hidden><p style="margin:0">El acceso por correo todavía no está configurado.</p></section>
+  <section class="card narrow" id="no-config" hidden><p style="margin:0" data-i18n="noConfig">El acceso por correo todavía no está configurado.</p></section>
 
   <section class="card narrow" id="login" hidden></section>
 
   <section class="card narrow" id="denegado" hidden>
-    <h2>Esta página es solo para administradores</h2>
-    <p class="muted">Tu cuenta no tiene permiso de administración. Si lo necesitas, pídeselo a un administrador.</p>
-    <button type="button" class="btn">Salir</button>
+    <h2 data-i18n="denTitle">Esta página es solo para administradores</h2>
+    <p class="muted" data-i18n="denText">Tu cuenta no tiene permiso de administración. Si lo necesitas, pídeselo a un administrador.</p>
+    <button type="button" class="btn" data-i18n="out">Salir</button>
   </section>
 
   <section class="card narrow" id="fallo" hidden>
     <p id="fallo-msg"></p>
-    <button type="button" class="btn" id="fallo-reintentar">Reintentar</button>
+    <button type="button" class="btn" id="fallo-reintentar" data-i18n="retry">Reintentar</button>
   </section>
 
   <section id="admin" hidden style="display:flex;flex-direction:column;gap:24px">
     <div class="card">
-      <h2>Añadir persona</h2>
+      <h2 data-i18n="addTitle">Añadir persona</h2>
       <form class="add" id="n-form" novalidate>
-        <div><label for="n-mail">Correo</label><input id="n-mail" type="email" autocomplete="off" spellcheck="false"></div>
-        <div><label for="n-nombre">Nombre</label><input id="n-nombre" type="text" autocomplete="off"></div>
-        <div><label for="n-pass">Contraseña</label><input id="n-pass" class="mono" type="text" autocomplete="off" spellcheck="false" autocapitalize="off" minlength="12"></div>
-        <button type="submit" class="btn" id="n-add">Añadir</button>
+        <div><label for="n-mail" data-i18n="mail">Correo</label><input id="n-mail" type="email" autocomplete="off" spellcheck="false"></div>
+        <div><label for="n-nombre" data-i18n="name">Nombre</label><input id="n-nombre" type="text" autocomplete="off"></div>
+        <div><label for="n-pass" data-i18n="pass">Contraseña</label><input id="n-pass" class="mono" type="text" autocomplete="off" spellcheck="false" autocapitalize="off" minlength="12"></div>
+        <button type="submit" class="btn" id="n-add" data-i18n="add">Añadir</button>
       </form>
-      <p class="muted" style="margin:10px 0 0">La persona nueva empieza sin acceso a ninguna app; asígnale después el nivel de cada una. La contraseña viene generada; puedes escribir otra (al menos 12 caracteres).</p>
+      <p class="muted" style="margin:10px 0 0" data-i18n="addHelp">La persona nueva empieza sin acceso a ninguna app; asígnale después el nivel de cada una. La contraseña viene generada; puedes escribir otra (al menos 12 caracteres).</p>
     </div>
     <div class="card tablewrap"><table id="tabla"></table></div>
   </section>
 
-  <p class="foot"><a href="../">← Volver a la portada</a></p>
+  <p class="foot"><a href="../" data-i18n="back">← Volver a la portada</a></p>
 </main>
 
 <div id="toast" role="status" hidden></div>
 <div id="confirmar" hidden role="dialog" aria-modal="true" aria-labelledby="c-titulo">
   <div class="card">
-    <h2 id="c-titulo">Dar de baja</h2>
+    <h2 id="c-titulo" data-i18n="remove">Dar de baja</h2>
     <p id="c-texto"></p>
-    <div class="actions"><button type="button" class="btn danger" id="c-si">Dar de baja</button><button type="button" class="btn ghost" id="c-no">Cancelar</button></div>
+    <div class="actions"><button type="button" class="btn danger" id="c-si" data-i18n="remove">Dar de baja</button><button type="button" class="btn ghost" id="c-no" data-i18n="cancel">Cancelar</button></div>
   </div>
 </div>
 <div id="clave" hidden role="dialog" aria-modal="true" aria-labelledby="k-titulo">
   <div class="card">
-    <h2 id="k-titulo">Contraseña</h2>
+    <h2 id="k-titulo" data-i18n="pass">Contraseña</h2>
     <p id="clave-para"></p>
     <code id="clave-valor"></code>
-    <p><b>Guárdala y dásela a la persona: no se vuelve a mostrar.</b></p>
-    <div class="actions"><button type="button" class="btn" id="clave-copiar">Copiar</button><button type="button" class="btn ghost" id="clave-cerrar">Hecho</button></div>
+    <p><b data-i18n="keepIt">Guárdala y dásela a la persona: no se vuelve a mostrar.</b></p>
+    <div class="actions"><button type="button" class="btn" id="clave-copiar" data-i18n="copy">Copiar</button><button type="button" class="btn ghost" id="clave-cerrar" data-i18n="done">Hecho</button></div>
   </div>
 </div>
 
 <script src="config.js"></script>
+<script src="lab-lang.js?v=20261114"></script>
 <script src="lab-auth.js?v=20261114"></script>
 <script>
 (function () {
   'use strict';
   var LA = window.LabAuth;
-  var ROLES = [
-    ['ensayos', 'Control de ensayos y Ocupación'], ['muestras', 'Muestras'], ['calibraciones', 'Plan de calibraciones'],
-    ['mantenimiento', 'Plan de mantenimiento'], ['piscina', 'Piscina']
-  ];
-  var NIVELES = [['ninguno', '—'], ['ver', 'Ver'], ['editar', 'Editar']];
-  var T = {
-    mail: 'Correo', pass: 'Contraseña', help: 'La contraseña te la da un administrador.', enter: 'Entrar',
-    eVacio: 'Escribe tu correo y tu contraseña.', eBad: 'Correo o contraseña incorrectos.',
-    eRate: 'Demasiados intentos. Espera unos minutos y vuelve a intentarlo.', eNet: 'No se pudo conectar. Comprueba la conexión y vuelve a intentarlo.',
-    expired: 'Tu sesión ha caducado. Vuelve a entrar.',
-    eCorta: 'La contraseña debe tener al menos 12 caracteres.'
+  var LL = window.LabLang;
+  // Claves de rol y de nivel: no cambian con el idioma; el texto sale de D (r_<app>, n_<nivel>).
+  var ROLES = ['ensayos', 'muestras', 'calibraciones', 'mantenimiento', 'piscina'];
+  var NIVELES = ['ninguno', 'ver', 'editar'];
+  var D = {
+    es: {
+      docTitle: 'Administrar accesos · Laboratorio Polinyà', h1: 'Administrar accesos', out: 'Salir',
+      noConfig: 'El acceso por correo todavía no está configurado.',
+      denTitle: 'Esta página es solo para administradores',
+      denText: 'Tu cuenta no tiene permiso de administración. Si lo necesitas, pídeselo a un administrador.',
+      retry: 'Reintentar', addTitle: 'Añadir persona', name: 'Nombre', add: 'Añadir',
+      addHelp: 'La persona nueva empieza sin acceso a ninguna app; asígnale después el nivel de cada una. La contraseña viene generada; puedes escribir otra (al menos 12 caracteres).',
+      back: '← Volver a la portada', remove: 'Dar de baja', cancel: 'Cancelar', newPass: 'Nueva contraseña', generate: 'Generar',
+      keepIt: 'Guárdala y dásela a la persona: no se vuelve a mostrar.', copy: 'Copiar', copied: 'Copiada', copyHand: 'Selecciónala y cópiala', done: 'Hecho',
+      passFor: function (m) { return 'Contraseña de ' + m + ':'; },
+      askRemove: function (n, m) { return '¿Dar de baja a ' + n + ' (' + m + ')? Ya no podrá entrar en ninguna app.'; },
+      askPass: function (n, m) { return '¿Generar una contraseña nueva para ' + n + ' (' + m + ')? La actual dejará de valer.'; },
+      admin: 'Administrador', saved: 'Guardado', removed: 'Dada de baja', exists: 'Esa persona ya está dada de alta',
+      eSave: 'No se pudo guardar', eLoad: function (m) { return 'No se pudo cargar la lista: ' + m; }, eHttp: function (s) { return 'Error ' + s; },
+      r_ensayos: 'Control de ensayos y Ocupación', r_muestras: 'Muestras', r_calibraciones: 'Plan de calibraciones',
+      r_mantenimiento: 'Plan de mantenimiento', r_piscina: 'Piscina',
+      n_ninguno: '—', n_ver: 'Ver', n_editar: 'Editar',
+      signIn: 'Entrar con tu correo', mail: 'Correo', pass: 'Contraseña', help: 'La contraseña te la da un administrador.', enter: 'Entrar',
+      eVacio: 'Escribe tu correo y tu contraseña.', eBad: 'Correo o contraseña incorrectos.',
+      eRate: 'Demasiados intentos. Espera unos minutos y vuelve a intentarlo.', eNet: 'No se pudo conectar. Comprueba la conexión y vuelve a intentarlo.',
+      expired: 'Tu sesión ha caducado. Vuelve a entrar.',
+      eCorta: 'La contraseña debe tener al menos 12 caracteres.'
+    },
+    en: {
+      docTitle: 'Manage access · Laboratorio Polinyà', h1: 'Manage access', out: 'Sign out',
+      noConfig: 'Email sign-in is not set up yet.',
+      denTitle: 'This page is for administrators only',
+      denText: 'Your account does not have admin rights. If you need them, ask an administrator.',
+      retry: 'Try again', addTitle: 'Add person', name: 'Name', add: 'Add',
+      addHelp: 'New people start with no access to any app; set their level for each app afterwards. The password is generated for you; you can type another one (at least 12 characters).',
+      back: '← Back to home', remove: 'Remove', cancel: 'Cancel', newPass: 'New password', generate: 'Generate',
+      keepIt: 'Save it and give it to the person: it will not be shown again.', copy: 'Copy', copied: 'Copied', copyHand: 'Select it and copy it', done: 'Done',
+      passFor: function (m) { return 'Password for ' + m + ':'; },
+      askRemove: function (n, m) { return 'Remove ' + n + ' (' + m + ')? They will no longer be able to sign in to any app.'; },
+      askPass: function (n, m) { return 'Generate a new password for ' + n + ' (' + m + ')? The current one will stop working.'; },
+      admin: 'Administrator', saved: 'Saved', removed: 'Removed', exists: 'That person is already registered',
+      eSave: 'Could not save', eLoad: function (m) { return 'Could not load the list: ' + m; }, eHttp: function (s) { return 'Error ' + s; },
+      r_ensayos: 'Test Lab Control and Lab Occupancy', r_muestras: 'Samples', r_calibraciones: 'Calibration Plan',
+      r_mantenimiento: 'Maintenance Plan', r_piscina: 'Endurance pool',
+      n_ninguno: '—', n_ver: 'View', n_editar: 'Edit',
+      signIn: 'Sign in with your email', mail: 'Email', pass: 'Password', help: 'An administrator gives you the password.', enter: 'Sign in',
+      eVacio: 'Enter your email and your password.', eBad: 'Wrong email or password.',
+      eRate: 'Too many attempts. Wait a few minutes and try again.', eNet: 'Could not connect. Check your connection and try again.',
+      expired: 'Your session has expired. Please sign in again.',
+      eCorta: 'The password must be at least 12 characters long.'
+    }
   };
+  function t(k) { return LL.t.apply(LL, [D].concat(Array.prototype.slice.call(arguments))); }
   var MIN_CLAVE = 12;
   // Contraseñas generadas: 16 caracteres de letras y números sin los que se confunden (0 O 1 l I).
   var ALFABETO = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789';
@@ -168,11 +214,13 @@ td.acc .btn + .btn { margin-left: 6px; }
     return out;
   }
   function $(id) { return document.getElementById(id); }
+  function rotulo(el, k) { el.dataset.i18n = k; el.textContent = t(k); } // texto que cambia de clave: LabLang.apply lo retraduce
   function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 
   var yo = null;         // {email} de la sesión
   var lista = [];        // personas tal como las tiene el servidor
-  var aviso = '';        // texto fijo sobre el formulario de entrada (sesión caducada)
+  var aviso = '';        // clave del texto fijo sobre el formulario de entrada (sesión caducada)
+  var falloMsg = '';     // mensaje del servidor al fallar la carga de la lista
   var dirCorreo = '';     // último correo escrito en el formulario de entrada
 
   function vista(cual) {
@@ -188,22 +236,23 @@ td.acc .btn + .btn { margin-left: 6px; }
 
   /* ---------- Entrar con correo y contraseña ---------- */
   function pintarLogin() {
-    $('login').innerHTML = '<h2>Entrar con tu correo</h2>' + (aviso ? '<p class="muted">' + esc(aviso) + '</p>' : '')
+    // data-i18n en cada texto: al cambiar de idioma se traduce sin rehacer el formulario (no se pierde lo escrito).
+    $('login').innerHTML = '<h2 data-i18n="signIn">' + t('signIn') + '</h2>' + (aviso ? '<p class="muted" data-i18n="' + aviso + '">' + esc(t(aviso)) + '</p>' : '')
       + '<form id="a-form" novalidate>'
-      + '<div class="field"><label for="a-mail">' + T.mail + '</label><input id="a-mail" type="email" autocomplete="username" spellcheck="false" value="' + esc(dirCorreo) + '"></div>'
-      + '<div class="field"><label for="a-pass">' + T.pass + '</label><input id="a-pass" type="password" autocomplete="current-password"></div>'
-      + '<p class="muted">' + T.help + '</p><div class="actions"><button type="submit" class="btn" id="a-go">' + T.enter + '</button></div>'
+      + '<div class="field"><label for="a-mail" data-i18n="mail">' + t('mail') + '</label><input id="a-mail" type="email" autocomplete="username" spellcheck="false" value="' + esc(dirCorreo) + '"></div>'
+      + '<div class="field"><label for="a-pass" data-i18n="pass">' + t('pass') + '</label><input id="a-pass" type="password" autocomplete="current-password"></div>'
+      + '<p class="muted" data-i18n="help">' + t('help') + '</p><div class="actions"><button type="submit" class="btn" id="a-go" data-i18n="enter">' + t('enter') + '</button></div>'
       + '<p class="hint" id="a-hint" role="alert"></p></form>';
     $('a-form').addEventListener('submit', function (e) { e.preventDefault(); entrar(); });
     (dirCorreo ? $('a-pass') : $('a-mail')).focus();
     vista('login');
   }
-  function pista(m) { $('a-hint').textContent = m || ''; }
+  function pista(k) { var h = $('a-hint'); if (k) h.dataset.i18n = k; else delete h.dataset.i18n; h.textContent = k ? t(k) : ''; }
   function ocupado(si) { var b = $('a-go'); if (b) b.disabled = si; }
   function entrar() {
     var email = $('a-mail').value.trim().toLowerCase(), clave = $('a-pass').value;
     $('a-pass').value = ''; // la contraseña no se queda en la página
-    if (!email || !clave) return pista(T.eVacio);
+    if (!email || !clave) return pista('eVacio');
     dirCorreo = email;
     ocupado(true); pista('');
     LA.entrar(email, clave).then(function () { return LA.sesion(); }).then(function (s) {
@@ -211,32 +260,32 @@ td.acc .btn + .btn { margin-left: 6px; }
     }, function (err) {
       ocupado(false);
       var code = err && err.code;
-      pista(code === 'bad_credentials' ? T.eBad : code === 'rate' ? T.eRate : T.eNet);
+      pista(code === 'bad_credentials' ? 'eBad' : code === 'rate' ? 'eRate' : 'eNet');
       if (code === 'bad_credentials') $('a-pass').focus();
     });
   }
-  function aEntrar(msg) { cerrarClave(); yo = null; lista = []; aviso = msg || ''; pintarLogin(); }
+  function aEntrar(k) { cerrarClave(); yo = null; lista = []; aviso = k || ''; pintarLogin(); }
 
   /* ---------- Contraseña: se enseña una vez ---------- */
   function mostrarClave(email, clave) {
-    $('clave-para').textContent = 'Contraseña de ' + email + ':';
+    $('clave').dataset.email = email; $('clave-para').textContent = t('passFor', email);
     $('clave-valor').textContent = clave;
-    $('clave-copiar').textContent = 'Copiar';
+    rotulo($('clave-copiar'), 'copy');
     $('clave').hidden = false; $('clave-copiar').focus();
   }
   function cerrarClave() {
-    $('clave').hidden = true; $('clave-valor').textContent = ''; $('clave-para').textContent = '';
+    $('clave').hidden = true; $('clave-valor').textContent = ''; $('clave-para').textContent = ''; delete $('clave').dataset.email;
   }
   $('clave-cerrar').addEventListener('click', cerrarClave);
   $('clave').addEventListener('keydown', function (e) { if (e.key === 'Escape') cerrarClave(); });
   $('clave-copiar').addEventListener('click', function () {
     var v = $('clave-valor').textContent, b = $('clave-copiar');
-    function hecho() { b.textContent = 'Copiada'; }
+    function hecho() { rotulo(b, 'copied'); }
     function aMano() { // sin API del portapapeles: se selecciona para copiarla con Ctrl+C
       var r = document.createRange(); r.selectNodeContents($('clave-valor'));
       var sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r);
       try { if (document.execCommand('copy')) return hecho(); } catch (e) { /* sin execCommand */ }
-      b.textContent = 'Selecciónala y cópiala';
+      rotulo(b, 'copyHand');
     }
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(v).then(hecho, aMano); else aMano();
   });
@@ -250,7 +299,7 @@ td.acc .btn + .btn { margin-left: 6px; }
     }).then(function (r) {
       return r.json().catch(function () { return {}; }).then(function (j) {
         if (r.ok) return j;
-        var e = new Error(j && j.message || 'Error ' + r.status); e.status = r.status; throw e;
+        var e = new Error(j && j.message || t('eHttp', r.status)); e.status = r.status; throw e;
       });
     });
   }
@@ -258,29 +307,29 @@ td.acc .btn + .btn { margin-left: 6px; }
     return llamar('GET', '/usuarios').then(function (j) {
       lista = j.usuarios || []; pintarTabla(); vista('admin');
     }, function (e) {
-      if (e.status === 401) return aEntrar(T.expired);
+      if (e.status === 401) return aEntrar('expired');
       if (e.status === 403) return vista('denegado');
-      $('fallo-msg').textContent = 'No se pudo cargar la lista: ' + e.message; vista('fallo');
+      falloMsg = e.message; $('fallo-msg').textContent = t('eLoad', falloMsg); vista('fallo');
     });
   }
 
   /* ---------- Tabla ---------- */
   function pintarTabla(destino) {
-    var h = '<thead><tr><th>Nombre</th><th>Correo</th>';
-    ROLES.forEach(function (r) { h += '<th>' + esc(r[1]) + '</th>'; });
-    h += '<th>Administrador</th><th></th></tr></thead><tbody>';
+    var h = '<thead><tr><th data-i18n="name">' + t('name') + '</th><th data-i18n="mail">' + t('mail') + '</th>';
+    ROLES.forEach(function (r) { h += '<th data-i18n="r_' + r + '">' + esc(t('r_' + r)) + '</th>'; });
+    h += '<th data-i18n="admin">' + t('admin') + '</th><th></th></tr></thead><tbody>';
     lista.forEach(function (u) {
       var propio = yo && u.email === String(yo.email).toLowerCase();
       h += '<tr data-email="' + esc(u.email) + '"><td>' + esc(u.nombre) + '</td><td class="mail">' + esc(u.email) + '</td>';
       ROLES.forEach(function (r) {
-        var v = (u.roles || {})[r[0]] || 'ninguno';
-        h += '<td><select data-rol="' + r[0] + '" aria-label="' + esc(r[1] + ' — ' + u.nombre) + '">';
-        NIVELES.forEach(function (n) { h += '<option value="' + n[0] + '"' + (n[0] === v ? ' selected' : '') + '>' + n[1] + '</option>'; });
+        var v = (u.roles || {})[r] || 'ninguno';
+        h += '<td><select data-rol="' + r + '" aria-label="' + esc(t('r_' + r) + ' — ' + u.nombre) + '">';
+        NIVELES.forEach(function (n) { h += '<option value="' + n + '" data-i18n="n_' + n + '"' + (n === v ? ' selected' : '') + '>' + esc(t('n_' + n)) + '</option>'; });
         h += '</select></td>';
       });
-      h += '<td class="c"><input type="checkbox" data-admin aria-label="Administrador — ' + esc(u.nombre) + '"' + (u.admin ? ' checked' : '') + (propio ? ' disabled' : '') + '></td>'
-        + '<td class="acc"><button type="button" class="btn ghost small" data-clave>Nueva contraseña</button>'
-        + (propio ? '' : '<button type="button" class="btn danger small" data-baja>Dar de baja</button>') + '</td></tr>';
+      h += '<td class="c"><input type="checkbox" data-admin aria-label="' + esc(t('admin') + ' — ' + u.nombre) + '"' + (u.admin ? ' checked' : '') + (propio ? ' disabled' : '') + '></td>'
+        + '<td class="acc"><button type="button" class="btn ghost small" data-clave data-i18n="newPass">' + t('newPass') + '</button>'
+        + (propio ? '' : '<button type="button" class="btn danger small" data-baja data-i18n="remove">' + t('remove') + '</button>') + '</td></tr>';
     });
     (destino || $('tabla')).innerHTML = h + '</tbody>';
   }
@@ -291,8 +340,8 @@ td.acc .btn + .btn { margin-left: 6px; }
     return { email: base.email, nombre: base.nombre, roles: roles, admin: tr.querySelector('[data-admin]').checked };
   }
   function errorLlamada(e) {
-    if (e.status === 401) { aEntrar(T.expired); return; }
-    toast(e.message || 'No se pudo guardar', true);
+    if (e.status === 401) { aEntrar('expired'); return; }
+    toast(e.message || t('eSave'), true); // e.message: texto de la función admin, tal cual (solo en español)
   }
   function bloquear(tr, si) {
     tr.classList.toggle('guardando', si);
@@ -313,7 +362,7 @@ td.acc .btn + .btn { margin-left: 6px; }
     var cuerpo = leerFila(tr, base);
     bloquear(tr, true);
     llamar('POST', '/usuarios', cuerpo).then(function () {
-      Object.assign(base, cuerpo); bloquear(tr, false); toast('Guardado');
+      Object.assign(base, cuerpo); bloquear(tr, false); toast(t('saved'));
     }, function (e) {
       if (e.status !== 401) pintarFila(base.email);
       errorLlamada(e);
@@ -327,11 +376,9 @@ td.acc .btn + .btn { margin-left: 6px; }
     var u = lista.filter(function (x) { return x.email === email; })[0];
     if (!u) return;
     var baja = accion === 'baja';
-    $('c-titulo').textContent = baja ? 'Dar de baja' : 'Nueva contraseña';
-    $('c-texto').textContent = baja
-      ? '¿Dar de baja a ' + u.nombre + ' (' + u.email + ')? Ya no podrá entrar en ninguna app.'
-      : '¿Generar una contraseña nueva para ' + u.nombre + ' (' + u.email + ')? La actual dejará de valer.';
-    $('c-si').textContent = baja ? 'Dar de baja' : 'Generar';
+    rotulo($('c-titulo'), baja ? 'remove' : 'newPass');
+    $('c-texto').textContent = t(baja ? 'askRemove' : 'askPass', u.nombre, u.email);
+    rotulo($('c-si'), baja ? 'remove' : 'generate');
     $('c-si').className = baja ? 'btn danger' : 'btn';
     $('confirmar').dataset.email = email; $('confirmar').dataset.accion = accion;
     $('confirmar').hidden = false; $('c-no').focus();
@@ -346,7 +393,7 @@ td.acc .btn + .btn { margin-left: 6px; }
     llamar('DELETE', '/usuarios/' + encodeURIComponent(email)).then(function () {
       lista = lista.filter(function (u) { return u.email !== email; });
       var tr = filaDe(email); if (tr) tr.remove();
-      toast('Dada de baja');
+      toast(t('removed'));
     }, errorLlamada);
   }
   function nuevaClave(email) {
@@ -367,9 +414,9 @@ td.acc .btn + .btn { margin-left: 6px; }
   $('n-form').addEventListener('submit', function (e) {
     e.preventDefault();
     var email = $('n-mail').value.trim().toLowerCase(), nombre = $('n-nombre').value.trim(), clave = $('n-pass').value;
-    if (lista.some(function (u) { return u.email === email; })) { toast('Esa persona ya está dada de alta', true); return; }
-    if (clave.length < MIN_CLAVE) { toast(T.eCorta, true); $('n-pass').focus(); return; }
-    var roles = {}; ROLES.forEach(function (r) { roles[r[0]] = 'ninguno'; });
+    if (lista.some(function (u) { return u.email === email; })) { toast(t('exists'), true); return; }
+    if (clave.length < MIN_CLAVE) { toast(t('eCorta'), true); $('n-pass').focus(); return; }
+    var roles = {}; ROLES.forEach(function (r) { roles[r] = 'ninguno'; });
     var cuerpo = { email: email, nombre: nombre, roles: roles, admin: false }; // sin la contraseña: así queda en `lista`
     $('n-add').disabled = true;
     llamar('POST', '/usuarios', Object.assign({ password: clave }, cuerpo)).then(function () {
@@ -378,7 +425,7 @@ td.acc .btn + .btn { margin-left: 6px; }
       if (i >= 0) lista[i] = cuerpo; else lista.push(cuerpo);
       lista.sort(function (a, b) { return a.nombre.localeCompare(b.nombre, 'es'); });
       pintarTabla(); $('n-mail').value = ''; $('n-nombre').value = ''; $('n-pass').value = generarClave();
-      toast('Guardado'); mostrarClave(email, clave);
+      toast(t('saved')); mostrarClave(email, clave);
     }, function (err) { $('n-add').disabled = false; errorLlamada(err); });
   });
 
@@ -387,6 +434,20 @@ td.acc .btn + .btn { margin-left: 6px; }
   $('who-out').addEventListener('click', salir);
   $('denegado').querySelector('button').addEventListener('click', salir);
   $('fallo-reintentar').addEventListener('click', cargar);
+
+  /* ---------- Idioma: se retraduce en el sitio, sin recargar ni rehacer la tabla ---------- */
+  LL.onChange(function () {
+    LL.apply(D);
+    if (!$('fallo').hidden) $('fallo-msg').textContent = t('eLoad', falloMsg);
+    if (!$('clave').hidden) $('clave-para').textContent = t('passFor', $('clave').dataset.email);
+    var c = $('confirmar'); if (!c.hidden) confirmar(c.dataset.accion, c.dataset.email);
+    Array.prototype.forEach.call($('tabla').querySelectorAll('tr[data-email]'), function (tr) {
+      var u = lista.filter(function (x) { return x.email === tr.dataset.email; })[0]; if (!u) return;
+      Array.prototype.forEach.call(tr.querySelectorAll('select[data-rol]'), function (s) { s.setAttribute('aria-label', t('r_' + s.dataset.rol) + ' — ' + u.nombre); });
+      tr.querySelector('[data-admin]').setAttribute('aria-label', t('admin') + ' — ' + u.nombre);
+    });
+  });
+  LL.apply(D);
 
   $('n-pass').value = generarClave();
   if (!LA || !LA.activo) { vista('no-config'); return; }
