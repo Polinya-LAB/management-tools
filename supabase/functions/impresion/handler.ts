@@ -47,6 +47,8 @@ export interface ImpresionDeps {
   crearTrabajo(t: NuevoTrabajo): Promise<Trabajo>;
   trabajo(id: string): Promise<Resumen | null>;
   ultimosDe(email: string, n: number): Promise<Resumen[]>;
+  /** Trabajos de esa persona en "impreso" creados desde `desde`: id y unidades (para marcarlas impresas). */
+  impresosDe(email: string, desde: Date): Promise<{ id: string; unidades: string[] }[]>;
   /** Toma el pendiente más antiguo y lo pasa a "imprimiendo" en una sola operación (nadie más puede tomarlo). */
   tomarSiguiente(): Promise<Trabajo | null>;
   /** Cambia estado (y opcionalmente hechas/error) solo si el trabajo está en uno de `desde`; devuelve si cambió.
@@ -63,6 +65,7 @@ const CONECTADA_MS = 30_000;
 const INTERRUMPIDO_MS = 3 * 60_000;
 const RETENCION_MS = 30 * 24 * 3600_000;
 const PURGA_MS = 3600_000;
+const IMPRESOS_MS = 14 * 24 * 3600_000;
 const MAX_ETIQUETAS = 100;
 const MAX_PNG = 60 * 1024; // bytes de cada imagen
 const MAX_TOTAL = 3 * 1024 * 1024; // bytes de todas las imágenes de un envío
@@ -158,9 +161,12 @@ async function atender(req: Request, deps: ImpresionDeps, responder: Responder):
         return error(400, "Cuerpo no válido", "bad_body");
       }
       if (b.fin !== undefined && b.fin !== "impreso" && b.fin !== "error") return error(400, "Cuerpo no válido", "bad_body");
-      const cambios: Partial<Pick<Trabajo, "estado" | "hechas" | "error">> = { hechas: b.hechas };
+      // El progreso solo avanza y nunca pasa de n: un aviso que llega tarde o desordenado no hace reimprimir.
+      const actual = await deps.trabajo(seg[3]);
+      if (!actual || actual.estado !== "imprimiendo") return error(409, "El trabajo ya no está imprimiéndose", "not_printing");
+      const cambios: Partial<Pick<Trabajo, "estado" | "hechas" | "error">> = { hechas: Math.min(actual.n, Math.max(actual.hechas, b.hechas)) };
       if (b.fin === "impreso") Object.assign(cambios, { estado: "impreso", error: null });
-      if (b.fin === "error") Object.assign(cambios, { estado: "error", error: texto(b.error, 300).trim() || "Error de impresión" });
+      if (b.fin === "error") Object.assign(cambios, { estado: "error", error: texto(b.error, 300).trim() || "print_error" });
       await deps.guardarEstacion({ visto: ahora.toISOString() });
       const ok = await deps.actualizar(seg[3], ["imprimiendo"], cambios);
       return ok ? responder(200, { ok: true }) : error(409, "El trabajo ya no está imprimiéndose", "not_printing");
@@ -187,12 +193,16 @@ async function atender(req: Request, deps: ImpresionDeps, responder: Responder):
   if (rolDe(fila, "muestras") !== "editar") return error(403, "No tienes permiso de edición en Muestras", "no_edit");
   const ahora = deps.ahora();
 
+  // Sin estación que haga ciclos, un trabajo a medias pasaría a error solo cuando volviera: se revisa también aquí.
+  await deps.interrumpir(new Date(ahora.getTime() - INTERRUMPIDO_MS));
+
   if (ruta === "estado" && metodo === "GET") {
     const est = await deps.estacion();
     const conectada = !!est.visto && ahora.getTime() - Date.parse(est.visto) < CONECTADA_MS;
     return responder(200, {
       estacion: { configurada: !!est.token_hash, conectada, visto: est.visto, rollo: est.rollo, estado: est.estado ?? {} },
       trabajos: await deps.ultimosDe(yo, 10),
+      impresos: await deps.impresosDe(yo, new Date(ahora.getTime() - IMPRESOS_MS)),
     });
   }
 

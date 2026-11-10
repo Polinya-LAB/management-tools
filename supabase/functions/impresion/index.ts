@@ -51,6 +51,12 @@ const deps: ImpresionDeps = {
     if (error) throw error;
     return (data ?? []).map(aResumen);
   },
+  async impresosDe(email, desde) {
+    const { data, error } = await supabase.from(T).select("id, unidades").eq("por", email).eq("estado", "impreso")
+      .gte("creado", desde.toISOString()).order("creado", { ascending: false }).limit(200);
+    if (error) throw error;
+    return (data as { id: string; unidades: string[] }[]) ?? [];
+  },
   async tomarSiguiente() {
     const { data, error } = await supabase.rpc("impresion_tomar");
     if (error) throw error;
@@ -63,7 +69,7 @@ const deps: ImpresionDeps = {
     return (data ?? []).length > 0;
   },
   async interrumpir(antes) {
-    const { error } = await supabase.from(T).update({ estado: "error", error: "Interrumpido", actualizado: new Date().toISOString() })
+    const { error } = await supabase.from(T).update({ estado: "error", error: "interrupted", actualizado: new Date().toISOString() })
       .eq("estado", "imprimiendo").lt("actualizado", antes.toISOString());
     if (error) throw error;
   },

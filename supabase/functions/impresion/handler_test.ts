@@ -33,6 +33,7 @@ async function montar(opts: { sinClave?: boolean } = {}) {
     },
     trabajo: async (id) => { const t = trabajos.find((x) => x.id === id); return t ? sinPng(t) : null; },
     ultimosDe: async (e, k) => trabajos.filter((t) => t.por === e).slice(-k).reverse().map(sinPng),
+    impresosDe: async (e, desde) => trabajos.filter((t) => t.por === e && t.estado === "impreso" && Date.parse(t.creado) >= desde.getTime()).map((t) => ({ id: t.id, unidades: t.unidades })),
     tomarSiguiente: async () => {
       const t = trabajos.find((x) => x.estado === "pendiente");
       if (!t) return null;
@@ -47,7 +48,7 @@ async function montar(opts: { sinClave?: boolean } = {}) {
     },
     interrumpir: async (antes) => {
       for (const t of trabajos) {
-        if (t.estado === "imprimiendo" && Date.parse(t.actualizado) < antes.getTime()) Object.assign(t, { estado: "error", error: "Interrumpido" });
+        if (t.estado === "imprimiendo" && Date.parse(t.actualizado) < antes.getTime()) Object.assign(t, { estado: "error", error: "interrupted" });
       }
     },
     purgar: async (antes) => {
@@ -184,7 +185,7 @@ Deno.test("estación: 'interrumpido' cuenta desde el último progreso; purga com
   assertEquals(trabajos[0].estado, "imprimiendo");
   reloj.t = new Date(reloj.t.getTime() + 2 * 60_000);
   await ciclo({ dymo: { ok: true, conectada: true } });
-  assertEquals([trabajos[0].estado, trabajos[0].error, trabajos[0].hechas], ["error", "Interrumpido", 1]);
+  assertEquals([trabajos[0].estado, trabajos[0].error, trabajos[0].hechas], ["error", "interrupted", 1]);
   const antes = purgas();
   await ciclo({}); await ciclo({});
   assertEquals(purgas(), antes);
@@ -207,4 +208,29 @@ Deno.test("CORS: el preflight anuncia POST y PUT", async () => {
   const r = await llamar("OPTIONS", "/impresion/trabajos", undefined, { origin: "https://polinya-lab.github.io" });
   assertEquals(r.status, 204);
   assert(r.headers.get("access-control-allow-methods")!.includes("POST"));
+});
+
+Deno.test("progreso: solo avanza y no pasa de n; /estado da los impresos y corta los atascados", async () => {
+  const { llamar, como, estacion, ciclo, trabajos, reloj } = await montar();
+  await llamar("POST", "/impresion/trabajos", envio(["A", "B", "C"]), como("ana@fluidra.com"));
+  const t = (await ciclo()).trabajo;
+  const p = (b: unknown) => llamar("POST", `/impresion/estacion/trabajos/${t.id}`, b, estacion);
+  await p({ hechas: 2 });
+  await p({ hechas: 1 });
+  assertEquals(trabajos[0].hechas, 2);
+  await p({ hechas: 9, fin: "impreso" });
+  assertEquals([trabajos[0].hechas, trabajos[0].estado], [3, "impreso"]);
+  const e = await (await llamar("GET", "/impresion/estado", undefined, como("ana@fluidra.com"))).json();
+  assertEquals(e.impresos, [{ id: t.id, unidades: ["s1:1", "s1:2", "s1:3"] }]);
+  // Estación caída a mitad de trabajo: la consulta del portátil lo pasa a error y se puede reintentar.
+  await llamar("POST", "/impresion/trabajos", envio(["D"]), como("ana@fluidra.com"));
+  const t2 = (await ciclo()).trabajo;
+  reloj.t = new Date(reloj.t.getTime() + 4 * 60_000);
+  await llamar("GET", "/impresion/estado", undefined, como("ana@fluidra.com"));
+  assertEquals(trabajos[1].estado, "error");
+  assertEquals((await llamar("POST", `/impresion/trabajos/${t2.id}/reintentar`, undefined, como("ana@fluidra.com"))).status, 200);
+  // Un error sin texto se guarda como código para traducirlo en el portátil.
+  const t3 = (await ciclo()).trabajo;
+  await llamar("POST", `/impresion/estacion/trabajos/${t3.id}`, { hechas: 0, fin: "error" }, estacion);
+  assertEquals(trabajos[1].error, "print_error");
 });

@@ -3,6 +3,32 @@
 import type { Rollo } from "./config.ts";
 import type { EnCurso } from "./estacion.ts";
 
+/** Lo justo del sistema de archivos; en las pruebas va en memoria. */
+export interface Fs {
+  leer(ruta: string): Uint8Array | null; // null si no existe
+  escribir(ruta: string, datos: Uint8Array, anadir?: boolean): void;
+  borrar(ruta: string): void; // sin error si no existe
+}
+
+export const fsDeno: Fs = {
+  leer(ruta) {
+    try {
+      return Deno.readFileSync(ruta);
+    } catch (e) {
+      if (e instanceof Deno.errors.NotFound) return null;
+      throw e;
+    }
+  },
+  escribir: (ruta, datos, anadir = false) => Deno.writeFileSync(ruta, datos, { append: anadir }),
+  borrar(ruta) {
+    try {
+      Deno.removeSync(ruta);
+    } catch (e) {
+      if (!(e instanceof Deno.errors.NotFound)) throw e;
+    }
+  },
+};
+
 export const ARCHIVO_ESTADO = "estacion-dymo.estado.json";
 export const ARCHIVO_LOG = "estacion-dymo.log";
 
@@ -26,20 +52,16 @@ export function decodificar(b: Uint8Array): string {
   return new TextDecoder().decode(b).replace(/^﻿/, "");
 }
 
-export function leerTexto(ruta: string): string | null {
-  try {
-    return decodificar(Deno.readFileSync(ruta));
-  } catch (e) {
-    if (e instanceof Deno.errors.NotFound) return null;
-    throw e;
-  }
+export function leerTexto(ruta: string, fs: Fs = fsDeno): string | null {
+  const b = fs.leer(ruta);
+  return b === null ? null : decodificar(b);
 }
 
-export function enCursoEn(dir: string) {
+export function enCursoEn(dir: string, fs: Fs = fsDeno) {
   const ruta = unir(dir, ARCHIVO_ESTADO);
   return {
     leer(): EnCurso | null {
-      const t = leerTexto(ruta);
+      const t = leerTexto(ruta, fs);
       if (t === null) return null;
       try {
         const v = JSON.parse(t);
@@ -49,16 +71,16 @@ export function enCursoEn(dir: string) {
       return null;
     },
     guardar(e: EnCurso) {
-      Deno.writeTextFileSync(ruta, JSON.stringify(e));
+      fs.escribir(ruta, new TextEncoder().encode(JSON.stringify(e)));
     },
     borrar() {
       try {
-        Deno.removeSync(ruta);
-      } catch { /* ya no está */ }
+        fs.borrar(ruta);
+      } catch { /* se queda; al arrancar se dará por interrumpido */ }
     },
   };
 }
 
-export function plantillaEn(dir: string) {
-  return (rollo: Rollo) => leerTexto(unir(dir, `plantilla-${rollo}.label`));
+export function plantillaEn(dir: string, fs: Fs = fsDeno) {
+  return (rollo: Rollo) => leerTexto(unir(dir, `plantilla-${rollo}.label`), fs);
 }

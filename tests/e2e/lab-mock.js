@@ -283,6 +283,7 @@ async function setupLab(ctx, opts = {}) {
     },
     trabajo: async (id) => { const t = impresion.trabajos.find((x) => x.id === id); return t ? sinPng(t) : null; },
     ultimosDe: async (e, n) => impresion.trabajos.filter((t) => t.por === e).slice(-n).reverse().map(sinPng),
+    impresosDe: async (e) => impresion.trabajos.filter((t) => t.por === e && t.estado === 'impreso').map((t) => ({ id: t.id, unidades: t.unidades })),
     tomarSiguiente: async () => null,
     actualizar: async (id, desde, c) => {
       const t = impresion.trabajos.find((x) => x.id === id);

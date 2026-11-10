@@ -83,7 +83,7 @@ export class Estacion {
     if (e) {
       try {
         await this.d.api.progreso(e.id, { hechas: e.hechas, fin: "error", error: INTERRUMPIDO });
-        this.d.log(`Trabajo ${e.id}: ${INTERRUMPIDO.toLowerCase()} (${e.hechas} etiquetas impresas)`);
+        this.d.log(`Trabajo ${e.id}: ${INTERRUMPIDO.toLowerCase()} (etiquetas impresas: ${e.hechas})`);
       } catch (err) {
         // 409/404: ya no está imprimiéndose; no hay nada que avisar. Red o clave: se reintenta en el siguiente ciclo.
         if (!(err instanceof ErrorApi) || err.status === 401 || err.status >= 500) throw err;

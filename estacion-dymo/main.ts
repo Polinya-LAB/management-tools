@@ -25,7 +25,9 @@ plantilla-<rollo>.label (opcional). Más información en LEEME.txt.`;
 
 async function main(args: string[]): Promise<number> {
   if (args.includes("--help") || args.includes("-h")) {
-    console.log(AYUDA);
+    try {
+      console.log(AYUDA);
+    } catch { /* sin consola */ }
     return 0;
   }
   const modoPrueba = args.includes("--prueba");

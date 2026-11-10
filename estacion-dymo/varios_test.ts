@@ -6,7 +6,7 @@ import { ClienteDymo } from "./dymo.ts";
 import { crearRegistro, marca, recortar } from "./log.ts";
 import { crc32, png1bit, pngPrueba } from "./png.ts";
 import { prueba } from "./prueba.ts";
-import { CLAVE, simulador, URL_API } from "./simulador_test.ts";
+import { CLAVE, fsMemoria, simulador, URL_API } from "./simulador_test.ts";
 
 Deno.test("config: valores por defecto y mensajes en español", () => {
   assertEquals(validarConfig(`﻿{"url":"${URL_API}/","clave":" k ","extra":1}`), {
@@ -34,27 +34,27 @@ Deno.test("config: valores por defecto y mensajes en español", () => {
   }
 });
 
-Deno.test("registro: marca de tiempo y recorte a los últimos bytes en líneas enteras", async () => {
-  const dir = await Deno.makeTempDir();
-  try {
-    const ruta = `${dir}/estacion-dymo.log`;
-    const log = crearRegistro(ruta, { max: 1000, conservar: 400, ahora: () => new Date(2026, 10, 10, 9, 5, 3), consola: false });
-    log("primera\nsegunda");
-    assertEquals(Deno.readTextFileSync(ruta), "2026-11-10 09:05:03 primera | segunda\n");
-    for (let i = 0; i < 60; i++) log(`línea ${i}`);
-    const t = Deno.readTextFileSync(ruta);
-    assert(new TextEncoder().encode(t).length <= 1000, "no pasa del máximo");
-    assert(t.startsWith("2026-11-10 09:05:03 línea "), "empieza en una línea entera");
-    assert(t.endsWith("línea 59\n"));
-    assert(!t.includes("primera"));
-    // recortar directamente
-    Deno.writeTextFileSync(ruta, "aaaa\nbbbb\ncccc\n");
-    recortar(ruta, 7);
-    assertEquals(Deno.readTextFileSync(ruta), "cccc\n");
-    assertEquals(marca(new Date(2026, 0, 2, 3, 4, 5)), "2026-01-02 03:04:05");
-  } finally {
-    await Deno.remove(dir, { recursive: true });
-  }
+Deno.test("registro: marca de tiempo y recorte a los últimos bytes en líneas enteras", () => {
+  const fs = fsMemoria();
+  const ruta = "dir/estacion-dymo.log";
+  const log = crearRegistro(ruta, { max: 1000, conservar: 400, ahora: () => new Date(2026, 10, 10, 9, 5, 3), consola: false, fs });
+  log("primera\nsegunda");
+  assertEquals(fs.texto(ruta), "2026-11-10 09:05:03 primera | segunda\n");
+  for (let i = 0; i < 60; i++) log(`línea ${i}`);
+  const t = fs.texto(ruta);
+  assert(fs.archivos.get(ruta)!.length <= 1000, "no pasa del máximo");
+  assert(t.startsWith("2026-11-10 09:05:03 línea "), "empieza en una línea entera");
+  assert(t.endsWith("línea 59\n"));
+  assert(!t.includes("primera"));
+  // Un registro que ya existía cuenta para el tamaño.
+  fs.escribir(ruta, new TextEncoder().encode("x".repeat(990) + "\n"));
+  crearRegistro(ruta, { max: 1000, conservar: 400, consola: false, fs })("nueva");
+  assert(fs.texto(ruta).endsWith(" nueva\n") && !fs.texto(ruta).includes("x"));
+  // recortar directamente
+  fs.escribir(ruta, new TextEncoder().encode("aaaa\nbbbb\ncccc\n"));
+  assertEquals(recortar(ruta, 7, fs), 5);
+  assertEquals(fs.texto(ruta), "cccc\n");
+  assertEquals(marca(new Date(2026, 0, 2, 3, 4, 5)), "2026-01-02 03:04:05");
 });
 
 Deno.test("png: PNG de 1 bit válido (cabecera, CRC, datos)", async () => {
@@ -80,26 +80,23 @@ Deno.test("png: PNG de 1 bit válido (cabecera, CRC, datos)", async () => {
   assertEquals([new DataView(prueba57.buffer).getUint32(16), new DataView(prueba57.buffer).getUint32(20)], [673, 378]);
 });
 
-Deno.test("archivos: texto UTF-8/UTF-16 y trabajo a medias en disco", async () => {
+Deno.test("archivos: texto UTF-8/UTF-16 y trabajo a medias en disco", () => {
   assertEquals(decodificar(new Uint8Array([0xef, 0xbb, 0xbf, 0x61])), "a");
   assertEquals(decodificar(new Uint8Array([0xff, 0xfe, 0x61, 0x00, 0xf1, 0x00])), "añ");
-  const dir = await Deno.makeTempDir();
-  try {
-    const e = enCursoEn(dir);
-    assertEquals(e.leer(), null);
-    e.guardar({ id: "x", hechas: 3 });
-    assertEquals(e.leer(), { id: "x", hechas: 3 });
-    e.borrar();
-    e.borrar();
-    assertEquals(e.leer(), null);
-    Deno.writeTextFileSync(`${dir}/estacion-dymo.estado.json`, "roto");
-    assertEquals(e.leer(), null);
-    assertEquals(plantillaEn(dir)("11354"), null);
-    Deno.writeTextFileSync(`${dir}/plantilla-11354.label`, "<DieCutLabel/>");
-    assertEquals(plantillaEn(dir)("11354"), "<DieCutLabel/>");
-  } finally {
-    await Deno.remove(dir, { recursive: true });
-  }
+  const fs = fsMemoria();
+  const e = enCursoEn("dir", fs);
+  assertEquals(e.leer(), null);
+  e.guardar({ id: "x", hechas: 3 });
+  assertEquals(e.leer(), { id: "x", hechas: 3 });
+  e.borrar();
+  e.borrar();
+  assertEquals(e.leer(), null);
+  fs.escribir(`dir/estacion-dymo.estado.json`, new TextEncoder().encode("roto"));
+  assertEquals(e.leer(), null);
+  assertEquals(fs.archivos.size, 0);
+  assertEquals(plantillaEn("dir", fs)("11354"), null);
+  fs.escribir(`dir/plantilla-11354.label`, new Uint8Array([0xff, 0xfe, ..."<D/>".split("").flatMap((c) => [c.charCodeAt(0), 0])]));
+  assertEquals(plantillaEn("dir", fs)("11354"), "<D/>");
 });
 
 Deno.test("--prueba: registra impresoras y consumibles e imprime una etiqueta en el rollo puesto", async () => {

@@ -1249,7 +1249,7 @@ es:{
   imp_sent:n=>`${n} etiqueta${n===1?'':'s'} en la cola de la impresora del laboratorio.`, imp_sentOff:n=>`${n} etiqueta${n===1?'':'s'} en cola: la estación no da señal, se imprimirán cuando vuelva.`,
   imp_how:'Se imprimen en la DYMO del ordenador fijo del laboratorio con el rollo puesto. Las unidades quedan marcadas como impresas cuando la estación lo confirma.',
   imp_recent:'Tus últimos envíos', imp_st_pendiente:'En cola', imp_st_imprimiendo:(h,n)=>`Imprimiendo ${h}/${n}`, imp_st_impreso:'Enviado a la impresora', imp_st_error:'Error', imp_retry:'Reintentar',
-  imp_e_roll:r=>`El rollo puesto ha cambiado (${r}): revisa la vista previa y vuelve a enviar.`, imp_e:m=>`No se ha podido enviar a la impresora del laboratorio${m?`: ${m}`:'.'}`,
+  imp_e_roll:r=>`El rollo puesto ha cambiado (${r}): revisa la vista previa y vuelve a enviar.`, imp_e_render:'Este navegador no puede preparar las etiquetas para la impresora del laboratorio. Usa Chrome o Edge, o «Imprimir aquí».', imp_int:'Interrumpido: la estación dejó de responder a mitad de trabajo', imp_perr:'Error de impresión', imp_e:m=>`No se ha podido enviar a la impresora del laboratorio${m?`: ${m}`:'.'}`,
   lb_print:'Imprimir', lb_done:n=>`${n} etiqueta${n===1?'':'s'} enviada${n===1?'':'s'} a la impresora.`, lb_empty:'Marca al menos una unidad.', lb_noLib:'No se ha podido cargar la librería del código. Revisa la conexión.',
   prop_h:n=>`Códigos por validar · ${n} PLR`, prop_help:'PLR activos con piezas pedidas en ARAS que aún no tienen código. Revisa la propuesta y valida: los números QTS se asignan al validar y las unidades quedan pendientes de recibir.',
   prop_all:'Validar todos', prop_ok:'Validar', prop_okPrint:'Validar e imprimir etiquetas', prop_skip:'Descartar',
@@ -1334,7 +1334,7 @@ en:{
   imp_sent:n=>`${n} label${n===1?'':'s'} queued for the lab printer.`, imp_sentOff:n=>`${n} label${n===1?'':'s'} queued: the station has no signal, they will print when it is back.`,
   imp_how:'They print on the DYMO of the lab’s fixed computer with the roll loaded. The units are marked printed when the station confirms it.',
   imp_recent:'Your recent jobs', imp_st_pendiente:'Queued', imp_st_imprimiendo:(h,n)=>`Printing ${h}/${n}`, imp_st_impreso:'Sent to the printer', imp_st_error:'Error', imp_retry:'Retry',
-  imp_e_roll:r=>`The loaded roll has changed (${r}): check the preview and send again.`, imp_e:m=>`Could not send to the lab printer${m?`: ${m}`:'.'}`,
+  imp_e_roll:r=>`The loaded roll has changed (${r}): check the preview and send again.`, imp_e_render:'This browser cannot prepare the labels for the lab printer. Use Chrome or Edge, or “Print here”.', imp_int:'Interrupted: the station stopped answering mid-job', imp_perr:'Print error', imp_e:m=>`Could not send to the lab printer${m?`: ${m}`:'.'}`,
   lb_print:'Print', lb_done:n=>`${n} label${n===1?'':'s'} sent to the printer.`, lb_empty:'Tick at least one unit.', lb_noLib:'Could not load the code library. Check the connection.',
   prop_h:n=>`Codes to validate · ${n} PLR${n===1?'':'s'}`, prop_help:'Active PLRs with pieces requested in ARAS that have no code yet. Check the proposal and validate: the QTS numbers are assigned when you validate, and the units wait to be received.',
   prop_all:'Validate all', prop_ok:'Validate', prop_okPrint:'Validate and print labels', prop_skip:'Dismiss',
@@ -2172,7 +2172,7 @@ function smpOpenLabels(keys){
   dlg.innerHTML=smpShell(tx('lb_eyebrow'),tx('lb_title',keys.length),`<div class="lb-grid"><div class="lb-side" id="smp-lb-side"></div><div><p class="eyebrow" style="margin-bottom:6px">${esc(tx('lb_preview'))}</p><div class="lb-prev" id="smp-lb-prev"></div><p class="note lb-how" style="margin-top:10px">${tx('lb_how')}</p></div></div>`,
     `<span class="sp"></span><button type="button" class="btn ghost" data-act="close">${esc(tx('close'))}</button><button type="button" class="btn primary" data-sa="do-print">🖨 ${esc(tx('lb_print'))}</button>`);
   if(!dlg.open) dlg.showModal(); smpLbSide(); smpLbPreview();
-  if(impOn()){impLoad(); impPoll();}
+  if(impDest(smpLblCfg())==='lab'){impLoad(); impPoll();}
 }
 function smpLbSide(){
   const c=smpLblCfg(), ck=(k,lab)=>`<label><input type="checkbox" data-lbc="${k}" ${c[k]?'checked':''}> ${esc(lab)}</label>`;
@@ -2204,7 +2204,7 @@ function smpLbPreview(){
     Promise.all(slice.map(k=>impLabelPng(k,c))).then(pngs=>{ if(seq!==IMP.prev||!p.isConnected) return;
       const sz=SMP_LABELS[c.size]||SMP_LABELS['99012'];
       p.querySelectorAll('.dlbl').forEach((el,i)=>{ if(i<pngs.length) el.outerHTML=`<img class="dlbl-img" alt="" src="data:image/png;base64,${pngs[i]}" style="width:${sz.w}mm;height:${sz.h}mm">`; });
-    }).catch(()=>{});
+    }).catch(e=>{ if(seq===IMP.prev&&e.code==='render') toast(tx('imp_e_render')); });
   }
 }
 function smpLbSet(k,v){const c=smpLblCfg(); c[k]=v; try{localStorage.setItem('tl.lbl',JSON.stringify(c));}catch(e){} smpLbPreview();}
@@ -2239,7 +2239,7 @@ function smpMarkPrinted(keys){
    `impresion`); the station program there (estacion-dymo.exe) prints them. Design:
    docs/superpowers/specs/2026-11-10-impresion-remota-dymo-design.md. Each label travels as a 1-bit PNG drawn from the
    same HTML as the preview, at the printer's 300 dpi. The units are marked printed when the station confirms. ---------- */
-const IMP={est:null,trab:[],loaded:false,busy:false,timer:0,css:null,prev:0};
+const IMP={est:null,trab:[],impresos:[],loaded:false,busy:false,timer:0,css:null,prev:0,ids:null};
 const IMP_APL='tl.imp.apl';
 const impOn=()=>APP==='samples'&&!!LA&&typeof LA.apiImpresion==='function'&&byMail()&&canWrite()&&!S.ro;
 const impDest=c=>impOn()&&c.dest!=='here'?'lab':'here';
@@ -2251,25 +2251,31 @@ async function impFetch(path,opt={}){
   if(!r.ok){const x=new Error(j.message||('HTTP '+r.status)); x.status=r.status; x.code=r.status===401?'auth':j.code; x.args=j.args; throw x;}
   return j;
 }
-const impErr=e=>e.code==='roll_changed'?tx('imp_e_roll',(e.args||[])[0]||''):e.code==='no_edit'?tx('e_perm'):e.code==='auth'?tx('e_auth'):e.code==='unavailable'?tx('e_net'):tx('imp_e',e.message);
+const impErr=e=>{
+  if(e.code==='auth'){mailExpired(); return ta('au_e_save');}
+  return e.code==='roll_changed'?tx('imp_e_roll',(e.args||[])[0]||''):e.code==='no_edit'||e.status===403?ta('au_e_perm'):e.code==='unavailable'?ta('au_e_net'):e.code==='render'?tx('imp_e_render'):tx('imp_e',e.message);
+};
+/* Errors the server stores as a code; the station's own messages (DYMO) are shown as they come. */
+const impErrTxt=m=>m==='interrupted'?tx('imp_int'):m==='print_error'?tx('imp_perr'):m;
 /* Reads the station and the person's recent jobs; jobs the station confirmed mark their units printed (once). */
 async function impLoad(){
   if(!impOn()) return;
-  try{const j=await impFetch('/estado'); IMP.est=j.estacion; IMP.trab=j.trabajos||[]; IMP.loaded=true;}
+  try{const j=await impFetch('/estado'); IMP.est=j.estacion; IMP.trab=j.trabajos||[]; IMP.impresos=j.impresos||[]; IMP.loaded=true;}
   catch(e){IMP.loaded=true; IMP.err=impErr(e); impPaint(); return;}
   IMP.err=''; await impApply(); impPaint();
 }
 async function impApply(){
   let apl=[]; try{apl=JSON.parse(localStorage.getItem(IMP_APL)||'[]')||[];}catch(e){}
-  const done=IMP.trab.filter(t=>t.estado==='impreso'&&!apl.includes(t.id));
+  const done=(IMP.impresos||[]).filter(t=>!apl.includes(t.id));
   if(!done.length) return;
-  try{await smpMarkPrinted(done.flatMap(t=>t.unidades||[])); apl=[...done.map(t=>t.id),...apl].slice(0,100); try{localStorage.setItem(IMP_APL,JSON.stringify(apl));}catch(e){}}
+  try{await smpMarkPrinted(done.flatMap(t=>t.unidades||[])); apl=[...done.map(t=>t.id),...apl].slice(0,400); try{localStorage.setItem(IMP_APL,JSON.stringify(apl));}catch(e){}}
   catch(e){toast(errMsg(e));}
 }
 /* While the label dialog is open, the status refreshes every 5 s. */
 function impPoll(){
   clearInterval(IMP.timer);
-  IMP.timer=setInterval(()=>{ if(!dlg.open||dlg.dataset.kind!=='smp-lb'){clearInterval(IMP.timer); return;} impLoad(); },5000);
+  IMP.timer=setInterval(()=>{ if(!dlg.open||dlg.dataset.kind!=='smp-lb'){clearInterval(IMP.timer); return;}
+    if(!document.hidden&&impDest(smpLblCfg())==='lab') impLoad(); },5000);
 }
 const impTime=iso=>iso?new Date(iso).toLocaleString(LL.locale(),{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}):'';
 function impStatusHtml(){
@@ -2286,7 +2292,7 @@ function impJobsHtml(){
   const st=t=>t.estado==='imprimiendo'?tx('imp_st_imprimiendo',t.hechas,t.n):tx('imp_st_'+t.estado);
   return `<p class="eyebrow" style="margin:14px 0 6px">${esc(tx('imp_recent'))}</p><ul class="imp-jobs">${IMP.trab.map(t=>`<li class="imp-${t.estado}"><time>${esc(impTime(t.creado))}</time>
     <span class="cods">${esc((t.codigos||[]).slice(0,3).join(', '))}${t.n>3?` +${t.n-3}`:''}</span><span class="sp"></span>
-    <span class="imp-tag">${esc(st(t))}</span>${t.estado==='error'?`${t.error?`<span class="imp-msg">${esc(t.error)}</span>`:''}<button type="button" class="btn sm" data-sa="imp-retry" data-id="${esc(t.id)}">${esc(tx('imp_retry'))}</button>`:''}</li>`).join('')}</ul>`;
+    <span class="imp-tag">${esc(st(t))}</span>${t.estado==='error'?`${t.error?`<span class="imp-msg">${esc(impErrTxt(t.error))}</span>`:''}<button type="button" class="btn sm" data-sa="imp-retry" data-id="${esc(t.id)}">${esc(tx('imp_retry'))}</button>`:''}</li>`).join('')}</ul>`;
 }
 /* Repaints the parts of the open label dialog that depend on the station. */
 function impPaint(){
@@ -2338,31 +2344,43 @@ async function impLabelPng(k,c){
   const html=new XMLSerializer().serializeToString(host.firstElementChild); host.remove();
   const W=Math.round(sz.w/25.4*300), H=Math.round(sz.h/25.4*300), cw=sz.w/25.4*96, ch=sz.h/25.4*96;
   const svg=`<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${cw} ${ch}"><foreignObject x="0" y="0" width="${cw}" height="${ch}"><div xmlns="http://www.w3.org/1999/xhtml" style="margin:0"><style>${css.replace(/&/g,'\\26 ').replace(/</g,'\\3c ')}</style>${html}</div></foreignObject></svg>`;
-  const img=new Image(); img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg); await img.decode();
-  const cv=document.createElement('canvas'); cv.width=W; cv.height=H; const g=cv.getContext('2d');
-  g.fillStyle='#fff'; g.fillRect(0,0,W,H); g.drawImage(img,0,0,W,H);
-  const d=g.getImageData(0,0,W,H).data, dark=new Uint8Array(W*H);
+  let d;
+  try{
+    const img=new Image(); img.src='data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg); await img.decode();
+    const cv=document.createElement('canvas'); cv.width=W; cv.height=H; const g=cv.getContext('2d');
+    g.fillStyle='#fff'; g.fillRect(0,0,W,H); g.drawImage(img,0,0,W,H);
+    d=g.getImageData(0,0,W,H).data; // Safari blocks reading a canvas with foreignObject drawn on it
+  }catch(e){const x=new Error(e.message); x.code='render'; throw x;}
+  const dark=new Uint8Array(W*H);
   for(let i=0;i<W*H;i++) dark[i]=(d[i*4]*299+d[i*4+1]*587+d[i*4+2]*114)/1000<150?1:0;
   return impPng1(W,H,dark);
 }
 async function impSend(){
-  if(IMP.busy) return; const c=smpLblCfg(), keys=S.smp.lb.keys.filter(k=>S.smp.lb.checked.has(k)); if(!keys.length) return toast(tx('lb_empty'));
+  if(IMP.busy) return; const c=smpLblCfg(), keys=S.smp.lb.keys.filter(k=>S.smp.lb.checked.has(k)&&smpByKey(k)); if(!keys.length) return toast(tx('lb_empty'));
   if(!IMP.est) await impLoad(); if(!IMP.est) return toast(IMP.err||tx('imp_e',''));
   const cfg={...c,size:IMP.est.rollo}, btn=dlg.querySelector('[data-sa="do-print"]');
+  /* The job ids stay the same while the same labels are sent again (lost answer, failed second part): the server
+     ignores a job it already has, so nothing prints twice. They change when what is sent changes. */
+  const firma=JSON.stringify([keys,cfg.size,cfg.code,cfg.plr,cfg.desc,cfg.date]);
+  if(!IMP.ids||IMP.ids.firma!==firma) IMP.ids={firma,ids:[]};
   IMP.busy=true; if(btn){btn.disabled=true; btn.textContent=tx('imp_render');}
   try{
     for(let i=0;i<keys.length;i+=100){
       const part=keys.slice(i,i+100), etiquetas=[];
       for(const k of part){const {l,u}=smpByKey(k); etiquetas.push({codigo:smpCode(l,u),png:await impLabelPng(k,cfg)});}
-      const t=await impFetch('/trabajos',{method:'POST',body:{id:crypto.randomUUID(),rollo:cfg.size,etiquetas,unidades:part}});
+      const id=IMP.ids.ids[i/100]||(IMP.ids.ids[i/100]=crypto.randomUUID());
+      const t=await impFetch('/trabajos',{method:'POST',body:{id,rollo:cfg.size,etiquetas,unidades:part}});
       IMP.trab=[t,...IMP.trab.filter(x=>x.id!==t.id)].slice(0,10);
     }
-    toast(tx(IMP.est.conectada?'imp_sent':'imp_sentOff',keys.length)); impPaint();
+    IMP.ids=null; toast(tx(IMP.est.conectada?'imp_sent':'imp_sentOff',keys.length)); impPaint();
   }catch(e){ toast(impErr(e)); if(e.code==='roll_changed'){await impLoad(); smpLbPreview();} }
   finally{IMP.busy=false; if(btn&&btn.isConnected){btn.disabled=false; btn.textContent='🖨 '+tx('imp_send');}}
 }
 async function impRetry(id){try{await impFetch(`/trabajos/${id}/reintentar`,{method:'POST'}); await impLoad();}catch(e){toast(impErr(e));}}
-async function impSetRoll(v){try{const j=await impFetch('/rollo',{method:'PUT',body:{rollo:v}}); if(IMP.est) IMP.est.rollo=j.rollo; toast(tx('imp_rollSet',SMP_LABELS[j.rollo].n)); smpLbPreview();}catch(e){toast(impErr(e)); await impLoad();}}
+async function impSetRoll(v){
+  try{const j=await impFetch('/rollo',{method:'PUT',body:{rollo:v}}); if(IMP.est) IMP.est.rollo=j.rollo; IMP.ids=null; toast(tx('imp_rollSet',SMP_LABELS[j.rollo].n)); smpLbPreview();}
+  catch(e){toast(impErr(e)); const r=$('#smp-imp-rollo'); if(r&&IMP.est) r.value=IMP.est.rollo; await impLoad();}
+}
 
 /* ---------- Samples events (data-sa, so they never reach the main handlers) ---------- */
 function smpOpenCode(code){

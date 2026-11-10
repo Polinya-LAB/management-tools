@@ -1,0 +1,80 @@
+ESTACIÓN DE IMPRESIÓN DYMO DEL LABORATORIO
+==========================================
+
+Qué es
+------
+estacion-dymo.exe es un programa pequeño para el ordenador fijo del laboratorio, el que tiene la DYMO LabelWriter 550.
+Cada 10 segundos pregunta al servidor si alguien ha mandado etiquetas desde Muestras ("Impresora del laboratorio") y,
+si las hay, las imprime en la DYMO a través de DYMO Connect. No tiene ventana: funciona en segundo plano y arranca solo
+al iniciar sesión en Windows. Lo que hace queda en estacion-dymo.log.
+
+Necesita DYMO Connect instalado (con su servicio "DYMO Connect Web Service") y la impresora conectada.
+
+Instalar
+--------
+1. En la página de accesos (solo administradores), "Impresora del laboratorio" > "Generar clave de la estación".
+   Se descarga estacion-dymo.json (lleva la clave; la anterior deja de valer).
+2. Descarga estacion-dymo.zip:
+   https://github.com/Polinya-LAB/management-tools/releases/download/estacion-dymo/estacion-dymo.zip
+3. Descomprímelo (botón derecho > Extraer todo) y haz doble clic en instalar.cmd.
+   Busca estacion-dymo.json junto a instalar.cmd o en Descargas. Lo copia todo a %LOCALAPPDATA%\EstacionDymo,
+   crea el acceso directo de Inicio y arranca la estación.
+4. Borra estacion-dymo.json de Descargas (instalar.cmd lo recuerda).
+
+Para actualizar el programa basta con volver a ejecutar instalar.cmd de un zip nuevo: si no encuentra un
+estacion-dymo.json nuevo, conserva el que ya estaba.
+
+Desinstalar: doble clic en desinstalar.cmd (para la estación, quita el acceso directo y borra su carpeta).
+
+Probar (modo prueba)
+--------------------
+Windows+R y escribe:
+   "%LOCALAPPDATA%\EstacionDymo\estacion-dymo.exe" --prueba
+Comprueba DYMO y el servidor, imprime UNA etiqueta de prueba (marco, aspa y un triángulo negro) en el rollo que
+figura puesto en Muestras y termina. Después abre el registro:
+   notepad "%LOCALAPPDATA%\EstacionDymo\estacion-dymo.log"
+Ahí quedan las impresoras que ve DYMO, lo que dice la 550 del rollo y si la etiqueta se envió.
+
+Configuración (estacion-dymo.json)
+----------------------------------
+   {"url": "...", "clave": "..."}           lo genera la página de accesos
+Opcional, añadiendo campos:
+   "impresora": "DYMO LabelWriter 550"      si hay varias; por defecto, la primera LabelWriter conectada
+   "intervalo": 10                          segundos entre consultas (3 a 300)
+   "girar180": true                         si las etiquetas salen del revés
+   "papel": {"11354": "11354 Multi-Purpose"}   nombre del papel de DYMO para un rollo
+Tras cambiarlo: cierra la estación (Administrador de tareas > estacion-dymo.exe > Finalizar tarea) y vuelve a abrir
+%LOCALAPPDATA%\EstacionDymo\estacion-dymo.exe, o cierra e inicia sesión.
+
+Problemas frecuentes
+--------------------
+* "El servicio de DYMO Connect no responde": abre DYMO Connect una vez, o reinicia el servicio "DYMO Connect Web
+  Service" (services.msc). La estación lo busca en https://127.0.0.1:41951 a 41960 y en localhost.
+* "La impresora no está conectada" / "No hay ninguna LabelWriter instalada": revisa el cable USB y que la impresora
+  aparezca en DYMO Connect. Mientras tanto no recoge trabajos: se quedan esperando.
+* "La clave de la estación no es válida": alguien generó otra clave. Genera una nueva en la página de accesos,
+  vuelve a ejecutar instalar.cmd con el estacion-dymo.json nuevo y borra el de Descargas.
+* "Sin conexión con el servidor": falta Internet o un proxy lo bloquea. La estación reintenta sola (cada vez más
+  espaciado, como mucho cada minuto).
+* "El trabajo es para el rollo X y está puesto Y": se cambió el rollo puesto mientras el trabajo esperaba. Quien lo
+  mandó puede reintentarlo desde Muestras después de corregir el rollo puesto.
+* Las etiquetas salen del revés: añade "girar180": true al json.
+* Error de papel o la etiqueta sale cortada o en otra medida: el nombre del papel de cada rollo no está comprobado
+  con la 550. Crea una etiqueta en DYMO Connect con ese rollo, guárdala como plantilla-<rollo>.label (por ejemplo
+  plantilla-11354.label) en %LOCALAPPDATA%\EstacionDymo y la estación tomará de ahí el papel y las medidas. Tiene
+  que estar en el formato clásico (archivo XML que empieza por <DieCutLabel>); si DYMO Connect la guarda en el
+  formato nuevo, usa "papel" en el json con el nombre exacto que muestra DYMO.
+* "La estación ya está en marcha": ya había una abierta; no hace falta hacer nada.
+* Windows SmartScreen avisa al abrir el exe: "Más información" > "Ejecutar de todas formas" (instalar.cmd ya le
+  quita la marca de descargado).
+
+El registro (estacion-dymo.log) se recorta solo a ~1 MB y no guarda la clave ni las imágenes.
+
+Para quien mantiene el programa
+-------------------------------
+Código: estacion-dymo/ en https://github.com/Polinya-LAB/management-tools. Pruebas: deno test estacion-dymo/
+Compilar (lo hace el workflow .github/workflows/estacion-dymo.yml al cambiar estacion-dymo/ en main):
+   deno compile --target x86_64-pc-windows-msvc --no-terminal --output estacion-dymo.exe
+     "--allow-net=127.0.0.1,localhost,*.supabase.co" --allow-read --allow-write --allow-env=ESTACION_DYMO_DIR
+     --unsafely-ignore-certificate-errors=127.0.0.1,localhost estacion-dymo/main.ts
+Para probar sin compilar: ESTACION_DYMO_DIR=<carpeta con el json> deno run <los mismos permisos> estacion-dymo/main.ts

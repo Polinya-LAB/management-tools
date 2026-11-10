@@ -1,0 +1,65 @@
+# Compila la estación de impresión DYMO (estacion-dymo.exe para Windows) y la publica en la release "estacion-dymo":
+# https://github.com/Polinya-LAB/management-tools/releases/download/estacion-dymo/estacion-dymo.zip
+name: Estación DYMO
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "estacion-dymo/**"
+      - ".github/workflows/estacion-dymo.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: estacion-dymo
+  cancel-in-progress: false
+
+jobs:
+  compilar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: denoland/setup-deno@v2.0.5
+        with:
+          deno-version: "2.9.6"
+
+      - name: Pruebas
+        run: deno test estacion-dymo/
+
+      - name: Compilar para Windows
+        run: |
+          mkdir -p dist
+          deno compile --target x86_64-pc-windows-msvc --no-terminal --output dist/estacion-dymo.exe \
+            '--allow-net=127.0.0.1,localhost,*.supabase.co' --allow-read --allow-write --allow-env=ESTACION_DYMO_DIR \
+            --unsafely-ignore-certificate-errors=127.0.0.1,localhost \
+            estacion-dymo/main.ts
+
+      - name: Empaquetar
+        run: |
+          cp estacion-dymo/instalar.cmd estacion-dymo/desinstalar.cmd estacion-dymo/LEEME.txt dist/
+          # Windows: fin de línea CRLF en los .cmd y el LEEME.
+          sed -i 's/\r$//; s/$/\r/' dist/instalar.cmd dist/desinstalar.cmd dist/LEEME.txt
+          cd dist && zip -9 estacion-dymo.zip estacion-dymo.exe instalar.cmd desinstalar.cmd LEEME.txt
+          ls -l
+
+      - name: Mover la etiqueta estacion-dymo a este commit
+        run: |
+          git tag -f estacion-dymo
+          git push -f origin refs/tags/estacion-dymo
+
+      - name: Publicar
+        uses: softprops/action-gh-release@v2.6.2
+        with:
+          tag_name: estacion-dymo
+          name: Estación DYMO
+          body: |
+            Estación de impresión DYMO del laboratorio (Windows). Descarga estacion-dymo.zip, descomprímelo junto al
+            estacion-dymo.json de la página de accesos y ejecuta instalar.cmd. Instrucciones en LEEME.txt.
+            Compilada desde ${{ github.sha }}.
+          files: dist/estacion-dymo.zip
+          make_latest: false
+          overwrite_files: true

@@ -1,6 +1,7 @@
 // Servicio de DYMO y función `impresion` simulados detrás de un único fetch (sin red). Lo usan los demás *_test.ts.
 
 import type { TrabajoEstacion } from "./api.ts";
+import type { Fs } from "./archivos.ts";
 import type { Rollo } from "./config.ts";
 import type { Fetch } from "./dymo.ts";
 
@@ -40,6 +41,7 @@ export function simulador() {
 
   const json = (status: number, v: unknown) => new Response(JSON.stringify(v), { status, headers: { "content-type": "application/json" } });
 
+  // deno-lint-ignore require-await
   const f: Fetch = async (entrada, init) => {
     const u = new URL(String(entrada));
     if (u.pathname.startsWith("/DYMO/DLS/Printing/")) {
@@ -91,5 +93,23 @@ export function trabajo(id: string, n: number, extra: Partial<TrabajoEstacion> =
     n,
     hechas: 0,
     ...extra,
+  };
+}
+
+/** Sistema de archivos en memoria (las pruebas no necesitan permisos). */
+export function fsMemoria(): Fs & { archivos: Map<string, Uint8Array>; texto(ruta: string): string } {
+  const archivos = new Map<string, Uint8Array>();
+  return {
+    archivos,
+    leer: (ruta) => archivos.get(ruta)?.slice() ?? null,
+    escribir(ruta, datos, anadir = false) {
+      const antes = anadir ? archivos.get(ruta) ?? new Uint8Array() : new Uint8Array();
+      const nuevo = new Uint8Array(antes.length + datos.length);
+      nuevo.set(antes);
+      nuevo.set(datos, antes.length);
+      archivos.set(ruta, nuevo);
+    },
+    borrar: (ruta) => void archivos.delete(ruta),
+    texto: (ruta) => new TextDecoder().decode(archivos.get(ruta)),
   };
 }

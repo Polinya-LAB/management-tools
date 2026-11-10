@@ -24,7 +24,7 @@ function montar(op: { clave?: string; enCurso?: EnCurso; plantilla?: string; gir
       borrar: () => void (disco.actual = null),
     },
     plantilla: () => op.plantilla ?? null,
-    dormir: async (ms) => void (esperas.push(ms), op.alDormir?.()),
+    dormir: (ms) => (esperas.push(ms), op.alDormir?.(), Promise.resolve()),
   });
   return { ...sim, estacion, lineas, esperas, disco };
 }
