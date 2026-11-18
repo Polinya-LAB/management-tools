@@ -512,6 +512,97 @@ const enviarSinPermiso = (page) => page.evaluate(() => {
       await ctx.close();
     }
     {
+      // Importar Excel: la tabla empieza en D5, como en el fichero de las tandas (18_bombas_durabilidad.xlsx).
+      const XLSX = require('xlsx');
+      const filas = [
+        ['Posición', 'Petaca', 'Proyecto', 'Fabricante motor', 'Potencia', 'Referencia', 'S/N', 'Fecha Inicio', 'Fecha Fin'],
+        [27, 27.3, '25046 SSP TO VSP CONVERSION', 'HEIENENG', '150M', '78491 VICTORIA VS 150M', 33262078867, new Date(Date.UTC(2026, 10, 12)), null],
+        [28, 28.1, '25046 SSP TO VSP CONVERSION', 'HEINENG ', '100M', '78490 VICTORIA VS 100M', 33262078846, new Date(Date.UTC(2026, 10, 12)), null],
+        [29, 28.1, '25046 SSP TO VSP CONVERSION', 'HEINENG ', '100M', '78490 VICTORIA VS 100M', 33262078851, new Date(Date.UTC(2026, 10, 12)), null], // misma fase que la fila anterior
+        [1, 40.2, '25046 SSP TO VSP CONVERSION', 'HEINENG ', '100M', '78490 VICTORIA VS 100M', 33262078852, new Date(Date.UTC(2026, 10, 12)), null], // posición ocupada
+        [2, 2.1, 'Demo', 'Motor Demo', '100M', 'REF', 'SN-DEMO-2', new Date(Date.UTC(2026, 10, 12)), null], // ya está (misma posición y serie)
+        [30, 30, '25046 SSP TO VSP CONVERSION', 'HEINENG ', '300T', '78495 TRI', 'TRI-1', '12/11/2026', '30/04/2027'],
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(filas, { origin: 'D5', cellDates: true });
+      const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Sheet1');
+      const excel = { name: '18_bombas_durabilidad.xlsx', mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', buffer: XLSX.write(wb, { type: 'buffer', bookType: 'xlsx' }) };
+      const { ctx, page, lab, errores } = await abrir(browser);
+      const celda = (i, k) => page.locator(`#imp-tbl tr[data-i="${i}"] [data-imp="${k}"]`);
+      const estadoFila = (i) => page.locator(`#imp-tbl tr[data-i="${i}"] .c-st`).textContent();
+      await check('Importar Excel: solo con permiso de edición', async () => {
+        assert.ok(await page.isHidden('#btn-imp'));
+        await entrar(page, 'ana.ruiz@fluidra.com', 'Ana Ruiz');
+        assert.ok(await page.isVisible('#btn-imp'));
+      });
+      await check('Importar Excel: lee la tabla desde D5 e interpreta petaca, potencia, serie y fechas; nada se guarda todavía', async () => {
+        await page.setInputFiles('#imp-file', excel);
+        await page.waitForSelector('#ov-imp:not([hidden])');
+        assert.match(await page.textContent('#imp-sub'), /6 filas leídas de 18_bombas_durabilidad\.xlsx/);
+        assert.equal(await celda(0, 'posicion').inputValue(), '27');
+        assert.equal(await celda(0, 'petaca').inputValue(), '27.3');
+        assert.equal(await celda(0, 'tipo').inputValue(), 'mono');
+        assert.equal(await celda(0, 'potencia').inputValue(), '1,5');
+        assert.equal(await celda(0, 'numSerie').inputValue(), '33262078867');
+        assert.equal(await celda(0, 'fechaInicio').inputValue(), '2026-11-12');
+        assert.equal(await celda(0, 'fechaFin').inputValue(), '2027-05-12', 'fin = inicio + 6 meses');
+        assert.equal(await celda(5, 'tipo').inputValue(), 'tri');
+        assert.equal(await celda(5, 'potencia').inputValue(), '3');
+        assert.equal(await celda(5, 'fechaFin').inputValue(), '2027-04-30');
+        assert.equal(lab.puts.length, 0);
+      });
+      await check('Importar Excel: marca la fase repetida entre filas, la posición ocupada y la bomba que ya está', async () => {
+        assert.match(await estadoFila(0), /Correcta/);
+        assert.match(await estadoFila(1), /Correcta/);
+        assert.match(await estadoFila(2), /La fase 28\.1 está ocupada/);
+        assert.match(await estadoFila(3), /La posición 1 está ocupada/);
+        assert.match(await estadoFila(4), /Ya está en la piscina/);
+        assert.match(await page.textContent('#imp-sum'), /3 correctas · 2 con errores \(no se importan\) · 1 ya en la piscina/);
+        assert.match(await page.textContent('#imp-ok'), /Importar 3 bombas/);
+      });
+      await check('Importar Excel: sustituir un fabricante mal escrito en todas sus filas y corregir una celda', async () => {
+        assert.match(await page.textContent('#imp-fab'), /«HEIENENG» no existe todavía \(1 fila\)/);
+        assert.match(await page.textContent('#imp-fab'), /«HEINENG» no existe todavía \(4 filas\)/);
+        for (const n of ['HEIENENG', 'HEINENG']) {
+          await page.fill(`#imp-fab input[data-fab="${n}"]`, 'HAINENG MSL');
+          await page.click(`#imp-fab [data-fab-go="${n}"]`);
+        }
+        assert.equal(await celda(0, 'fabricante').inputValue(), 'HAINENG MSL');
+        assert.equal(await celda(1, 'fabricante').inputValue(), 'HAINENG MSL');
+        assert.match(await page.textContent('#imp-fab'), /«HAINENG MSL» no existe todavía \(5 filas\)/);
+        await celda(2, 'petaca').fill('28.2');
+        await celda(2, 'petaca').blur();
+        await page.waitForFunction(() => /Importar 4 bombas/.test(document.querySelector('#imp-ok').textContent));
+        assert.match(await estadoFila(2), /Correcta/);
+      });
+      await check('Importar Excel: aceptar guarda las filas correctas en un único PUT, con los campos del formulario', async () => {
+        await page.click('#imp-ok');
+        await waitFor(() => lab.puts.length === 1);
+        const p = lab.puts[0];
+        assert.equal(p.via, 'funcion');
+        assert.match(p.message, /^Importa 4 bombas desde Excel \(pos\. 27, 28, 29, 30\)$/);
+        const nuevas = Object.values(p.data.bombas).filter((b) => String(b.origen || '').startsWith('Importación'));
+        assert.equal(nuevas.length, 4);
+        const b27 = nuevas.find((b) => b.posicion === 27);
+        assert.deepEqual(
+          [b27.petaca, b27.fase, b27.tipo, b27.potencia, b27.unidad, b27.fabricante, b27.numSerie, b27.fechaInicio, b27.fechaFin, b27.estado, b27.fechaRetirada],
+          [27, 3, 'mono', 1.5, 'HP', 'HAINENG MSL', '33262078867', '2026-11-12', '2027-05-12', 'activa', null]);
+        const b30 = nuevas.find((b) => b.posicion === 30);
+        assert.deepEqual([b30.petaca, b30.fase, b30.tipo, b30.potencia], [30, null, 'tri', 3]);
+        assert.equal(Object.values(p.data.bombas).filter((b) => b.posicion === 1 && b.estado === 'activa').length, 1, 'la posición ocupada no se toca');
+        await page.waitForSelector('#ov-imp', { state: 'hidden' });
+        assert.match(await page.textContent('#toast'), /4 bombas importadas/);
+      });
+      await check('Importar Excel: un fichero sin la tabla avisa y no abre la ventana; sin errores de consola', async () => {
+        const otro = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(otro, XLSX.utils.aoa_to_sheet([['Hola', 'Mundo'], [1, 2]]), 'H');
+        await page.setInputFiles('#imp-file', { ...excel, name: 'otro.xlsx', buffer: XLSX.write(otro, { type: 'buffer', bookType: 'xlsx' }) });
+        await page.waitForFunction(() => /No encuentro la tabla/.test(document.querySelector('#toast').textContent));
+        assert.ok(await page.isHidden('#ov-imp'));
+        assert.deepEqual(lab.bloqueadas, []);
+        assert.deepEqual(erroresReales(errores), []);
+      });
+      await ctx.close();
+    }
+    {
       const { ctx, page, lab, errores } = await abrir(browser, { supabaseUrl: '', anonKey: '' });
       await check('sin config y raw 404: el aviso de siempre ("Los datos de esta app son privados"), sin mención al correo', async () => {
         const t = await page.locator('#banners').textContent();
