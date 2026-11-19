@@ -110,12 +110,18 @@ const enviarSinPermiso = (page) => page.evaluate(() => {
     // ---------- sin sesión, repositorio privado (raw responde 404) ----------
     {
       const { ctx, page, lab, errores, peticiones } = await abrir(browser);
-      await check('sin sesión y raw 404 (repo privado): "Entra con tu correo para ver la piscina." y ningún dato', async () => {
-        assert.match(await page.locator('#banners').textContent(), /Entra con tu correo para ver la piscina\./);
+      await check('sin sesión (repo privado): cualquiera ve la piscina en modo consulta, leída por la función sin credenciales', async () => {
+        await page.waitForFunction(() => document.querySelector('#cnt-act').textContent.trim() === '2');
+        assert.match(await page.locator('#banners').textContent(), /Modo consulta\. Para registrar o modificar bombas, pulsa «Entrar con tu correo»\./);
         assert.doesNotMatch(await page.locator('#banners').textContent(), /Conectar con GitHub/);
-        assert.equal(await hayDatos(page), false);
         assert.equal(await textoBoton(page), 'Entrar con tu correo');
-        assert.equal(lecturasGithub(peticiones) + lecturasFuncion(peticiones), 0);
+        assert.equal(await botonNueva(page), false);
+        assert.ok(await page.isHidden('#btn-imp'));
+        assert.equal(lecturasGithub(peticiones), 0);
+        const lect = peticiones.filter((q) => q.method === 'GET' && q.url.includes(CONTENTS));
+        assert.equal(lect.length, 1);
+        assert.equal(lect[0].headers.authorization, undefined, 'la lectura pública no lleva sesión');
+        assert.equal(lab.puts.length, 0);
       });
       await check('diálogo: "Entrar con tu correo" arriba y "Usar una clave de GitHub" debajo; correo no registrado → "Correo o contraseña incorrectos."', async () => {
         await page.click('#btn-gh');
@@ -145,7 +151,8 @@ const enviarSinPermiso = (page) => page.evaluate(() => {
         assert.equal(await page.inputValue('#gh-pass'), '', 'la contraseña no se queda en la página');
         assert.equal(await page.evaluate(() => window.LabAuth.sesion()), null);
         assert.equal(await textoBoton(page), 'Entrar con tu correo');
-        assert.equal(await hayDatos(page), false);
+        assert.equal(await hayDatos(page), true, 'la piscina se sigue viendo');
+        assert.equal(await botonNueva(page), false);
         await page.click('#ov-gh .foot-row [data-close]');
       });
       await check('sin sesión: sin errores de consola ni peticiones bloqueadas', async () => {
@@ -213,11 +220,10 @@ const enviarSinPermiso = (page) => page.evaluate(() => {
         await esperarBoton(page, 'Entrar con tu correo');
         assert.equal(await botonNueva(page), false);
       });
-      await check('salir: los datos privados desaparecen de la pantalla y sale "Entra con tu correo para ver la piscina."', async () => {
-        assert.equal(await hayDatos(page), false);
-        const t = await textoPagina(page);
-        assert.doesNotMatch(t, /Proyecto Demo Piscina|REF-DEMO|SN-DEMO|Hotbox demo/);
-        assert.match(await page.locator('#banners').textContent(), /Entra con tu correo para ver la piscina\./);
+      await check('salir: la piscina se sigue viendo, en modo consulta y sin botones de registro', async () => {
+        await page.waitForFunction(() => /Modo consulta\./.test(document.querySelector('#banners').textContent));
+        assert.equal(await botonNueva(page), false);
+        assert.ok(await page.isHidden('#btn-imp'));
         assert.equal(peticiones.filter((q) => q.url.startsWith('https://api.github.com/') || ((q.headers.authorization || q.headers.apikey) && q.url.startsWith('https://raw.githubusercontent.com/'))).length, 0);
       });
       await check('editar: sin errores de consola ni peticiones bloqueadas', async () => {
@@ -256,12 +262,12 @@ const enviarSinPermiso = (page) => page.evaluate(() => {
     // ---------- ninguno ----------
     {
       const { ctx, page, lab, errores, peticiones } = await abrir(browser);
-      await check('ninguno: "No tienes acceso a esta app. Pídeselo a un administrador." y ningún dato', async () => {
+      await check('sin rol en la piscina: entra y la ve en solo lectura, como cualquiera', async () => {
         await entrar(page, 'nora.n@fluidra.com', 'Nora Nadie');
-        await page.waitForFunction(() => /No tienes acceso a esta app\. Pídeselo a un administrador\./.test(document.querySelector('#banners').textContent));
-        assert.equal(await hayDatos(page), false);
-        assert.equal(peticiones.filter((p) => p.url.includes('/contents/')).length, 0);
+        await page.waitForFunction(() => /solo puedes consultar los datos/.test(document.querySelector('#banners').textContent));
+        await page.waitForFunction(() => document.querySelector('#cnt-act').textContent.trim() === '2');
         assert.equal(await botonNueva(page), false);
+        assert.equal(peticiones.filter((p) => p.method === 'PUT').length, 0);
         assert.deepEqual(lab.bloqueadas, []);
         assert.deepEqual(erroresReales(errores), []);
         assert.deepEqual(errores.otros404(), []);
@@ -391,6 +397,7 @@ const enviarSinPermiso = (page) => page.evaluate(() => {
         await page.click('#btn-gh');
         await page.click('#ov-gh summary');
         await page.fill('#gh-token', 'ghp_prueba');
+        const antes = peticiones.filter((p) => p.url.includes(CONTENTS)).length; // la lectura pública del arranque
         await page.press('#gh-token', 'Enter');
         await page.waitForFunction(() => document.querySelector('#btn-gh-label').textContent === '@persona-gh' && document.querySelector('#ov-gh').hidden);
         await page.waitForFunction(() => document.querySelector('#cnt-act').textContent.trim() === '2');
@@ -398,7 +405,8 @@ const enviarSinPermiso = (page) => page.evaluate(() => {
         await waitFor(() => lab.puts.length === 1);
         assert.equal(lab.puts[0].via, 'clave');
         assert.equal(lab.puts[0].path, FICHERO);
-        assert.equal(peticiones.filter((p) => p.url.includes(CONTENTS)).length, 0, 'la sesión de correo no se usa con la clave');
+        assert.equal(peticiones.filter((p) => p.url.includes(CONTENTS)).length, antes, 'con la clave no se usa la función');
+        assert.equal(peticiones.filter((p) => p.url.includes(CONTENTS) && p.headers.authorization).length, 0);
         assert.deepEqual(lab.bloqueadas, []);
         assert.deepEqual(erroresReales(errores), []);
         assert.deepEqual(errores.otros404(), []);
@@ -473,7 +481,7 @@ const enviarSinPermiso = (page) => page.evaluate(() => {
     {
       const { ctx, page, lab, errores } = await abrir(browser, { lang: 'en' });
       await check('idioma: en inglés desde el arranque, sin sesión: aviso y botón en inglés', async () => {
-        await page.waitForFunction(() => /Sign in with your email to see the pool\./.test(document.querySelector('#banners').textContent));
+        await page.waitForFunction(() => /Read-only mode\. To add or edit pumps, click “Sign in with your email”\./.test(document.querySelector('#banners').textContent));
         assert.equal(await textoBoton(page), 'Sign in with your email');
         assert.equal(await page.locator('#tab-consumo span[data-i18n]').textContent(), 'Energy consumption');
         assert.deepEqual(lab.bloqueadas, []);

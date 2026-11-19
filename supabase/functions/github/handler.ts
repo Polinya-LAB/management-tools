@@ -5,6 +5,7 @@ import {
   type Acceso,
   type AppId,
   comprobarEscritura,
+  LECTURA_PUBLICA,
   PERMISOS,
   puedeLeer,
   type Rol,
@@ -41,6 +42,9 @@ function jsonDeB64(b64: unknown): { ok: true; valor: unknown } | { ok: false } {
 }
 
 // Solo valores conocidos; cualquier otro cuenta como `ninguno`.
+// Quien lee sin sesión (o sin fila en `acceso`) en una app de lectura pública.
+const ANONIMO: Acceso = { email: "", nombre: "", roles: {}, admin: false };
+
 function normalizar(a: Acceso): Acceso {
   const roles: Acceso["roles"] = {};
   if (a.roles && typeof a.roles === "object") {
@@ -95,15 +99,28 @@ async function atender(
   const resto = seg.slice(2);
   const rutaRara = /[%\\]/.test(pathname) || resto.some((s) => s === "" || s === "." || s === "..");
 
+  const appId = app as AppId;
+  // Lectura pública (piscina): un GET de contenidos se atiende sin sesión, y también a quien ha entrado sin rol en
+  // la app. Todo lo demás (/user, /repos, PUT) sigue como siempre.
+  const publica = LECTURA_PUBLICA.has(appId) && req.method === "GET" && resto[0] === "repos" && resto[3] === "contents";
+
   // Sesión
   const m = /^Bearer\s+(\S+)$/i.exec(req.headers.get("authorization") ?? "");
-  if (!m) return error(401, "Requires authentication");
-  const usuario = await deps.usuario(m[1]);
-  if (!usuario?.email) return error(401, "Bad credentials");
-  const fila = await deps.acceso(usuario.email.trim().toLowerCase());
-  if (!fila) return error(403, "No tienes acceso; pídeselo a un administrador");
-  const acceso = normalizar(fila);
-  const appId = app as AppId;
+  let acceso: Acceso;
+  if (!m) {
+    if (!publica) return error(401, "Requires authentication");
+    acceso = ANONIMO;
+  } else {
+    const usuario = await deps.usuario(m[1]);
+    if (!usuario?.email) return error(401, "Bad credentials");
+    const fila = await deps.acceso(usuario.email.trim().toLowerCase());
+    if (!fila && !publica) return error(403, "No tienes acceso; pídeselo a un administrador");
+    acceso = fila ? normalizar(fila) : ANONIMO;
+  }
+  // En una lectura pública, quien no tiene rol lee como "ver".
+  if (publica && rolDe(acceso, appId) === "ninguno") {
+    acceso = { ...acceso, roles: { ...acceso.roles, [PERMISOS[appId].rol]: "ver" } };
+  }
 
   if (rutaRara) return error(403, "Ruta no permitida");
 

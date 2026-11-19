@@ -211,7 +211,8 @@ Deno.test("GET contents fuera de leer → 404 sin llamar a gh; ninguno → 403",
   );
   assertEquals(r.status, 404);
   await r.body?.cancel();
-  r = await handler(pet("/github/piscina/repos/Polinya-LAB/endurance-data/contents/piscina.json?ref=main"));
+  // (La piscina es de lectura pública: el rol "ninguno" se prueba con otra app.)
+  r = await handler(pet("/github/mantenimiento/repos/Polinya-LAB/lab-data/contents/mantenimiento/registro.json?ref=main"));
   assertEquals(r.status, 403);
   await r.body?.cancel();
   assertEquals(llamadas.length, 0);
@@ -429,4 +430,57 @@ Deno.test("rutas no permitidas → 403 sin llamar a gh", async () => {
     await res.body?.cancel();
   }
   assertEquals(llamadas.length, 0);
+});
+
+// ---------- Lectura pública de la piscina ----------
+
+const PIS = "/github/piscina/repos/Polinya-LAB/endurance-data/contents/piscina.json";
+const sinSesion = (ruta: string, init: RequestInit = {}) => new Request(`${BASE}${ruta}`, { ...init, headers: { origin: ORIGEN } });
+const fichero = () => json({ sha: "abc", content: btoa("{}"), encoding: "base64" }, 200);
+
+Deno.test("piscina: cualquiera lee piscina.json sin sesión (y con sesión sin rol o sin fila)", async () => {
+  for (const [roles, opts, req] of [
+    [{}, {}, sinSesion(PIS)],
+    [{}, {}, sinSesion(`${PIS}?ref=main`)],
+    [{}, {}, pet(PIS)], // con sesión y rol ninguno
+    [{ ensayos: "editar" }, {}, pet(PIS)],
+    [{}, { sinFila: true }, pet(PIS)], // persona sin fila en acceso
+  ] as [Acceso["roles"], { sinFila?: boolean }, Request][]) {
+    const { handler, llamadas } = montar(roles, fichero, opts);
+    const res = await handler(req);
+    assertEquals(res.status, 200);
+    assertEquals((await res.json()).sha, "abc");
+    assertEquals(llamadas.length, 1);
+    assertEquals(llamadas[0].path, "/repos/Polinya-LAB/endurance-data/contents/piscina.json?ref=main");
+  }
+});
+
+Deno.test("piscina sin sesión: solo ese fichero y solo leer; lo demás sigue pidiendo sesión", async () => {
+  const casos: [Request, number][] = [
+    [sinSesion("/github/piscina/user"), 401],
+    [sinSesion("/github/piscina/repos/Polinya-LAB/endurance-data"), 401],
+    [sinSesion(PIS, { method: "PUT", body: "{}" }), 401],
+    [sinSesion(PIS, { method: "DELETE" }), 401],
+    [sinSesion("/github/piscina/repos/Polinya-LAB/endurance-data/contents/otro.json"), 404],
+    [sinSesion("/github/piscina/repos/Polinya-LAB/lab-data/contents/ensayos/ensayos.json"), 403],
+    [sinSesion(`${PIS}?ref=otra`), 403],
+    [sinSesion("/github/piscina/repos/Polinya-LAB/endurance-data/contents/..%2Fpiscina.json"), 403],
+    // Las demás apps no cambian.
+    [sinSesion(ENS), 401],
+    [sinSesion("/github/muestras/repos/Polinya-LAB/lab-data/contents/ensayos/ensayos.json"), 401],
+  ];
+  for (const [req, status] of casos) {
+    const { handler, llamadas } = montar({}, fichero);
+    const res = await handler(req);
+    assertEquals(res.status, status, `${req.method} ${req.url}`);
+    assertEquals(llamadas.length, 0, `${req.method} ${req.url} no debe llegar a GitHub`);
+  }
+});
+
+Deno.test("piscina: una sesión que ya no vale sigue dando 401 (la app decide leer sin sesión); escribir sin rol, 403", async () => {
+  const { handler, llamadas } = montar({}, fichero);
+  assertEquals((await handler(pet(PIS, { headers: { authorization: "Bearer caducado" } }))).status, 401);
+  const put = await handler(pet(PIS, { method: "PUT", body: JSON.stringify({ message: "x", content: btoa("{}"), sha: "abc" }) }));
+  assertEquals(put.status, 403);
+  assertEquals(llamadas.filter((l) => (l.init?.method ?? "GET") === "PUT").length, 0);
 });

@@ -2,6 +2,15 @@
 
 Fecha: 5/11/2026 · Estado: borrador para revisión de Daniel Quesada
 
+## Cambio 19/11: la piscina se puede ver sin entrar
+
+Pedido por Daniel el 19/11. Cualquiera, sin identificarse, ve la app de la piscina de durabilidad en modo consulta. El
+repositorio endurance-data sigue privado: la función `github` atiende sin sesión el `GET` de
+`endurance-data/piscina.json` para la app `piscina` (`LECTURA_PUBLICA` en `_shared/permisos.ts`), y a quien ha entrado
+sin rol en la piscina lo trata como "ver". Registrar y modificar sigue pidiendo sesión con rol "editar". La app consulta
+cada 5 minutos sin sesión (60 s con sesión). Donde este documento diga que la piscina no se ve sin entrar, o que al salir
+se borran sus datos de la pantalla, vale esto. Las demás apps no cambian.
+
 ## Cambio 5/11: contraseña en lugar de código
 
 Aprobado por Daniel el 5/11. No hay servicio de correo (ni Brevo, ni Gmail, ni el SMTP de Fluidra), así que no se envía

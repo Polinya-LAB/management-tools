@@ -2240,7 +2240,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
   const LA = window.LabAuth && window.LabAuth.activo ? window.LabAuth : null;
   const APP_ID = 'piscina';
   const AU = { es: {
-    btn: 'Entrar con tu correo', btnT: 'Entra con tu correo para ver y modificar los datos', title: 'Entrar con tu correo',
+    btn: 'Entrar con tu correo', btnT: 'Entra con tu correo para registrar y modificar bombas', title: 'Entrar con tu correo',
     mail: 'Correo', pass: 'Contraseña', enter: 'Entrar',
     forgot: '¿Has olvidado la contraseña? Pídesela a un administrador.', wait: 'Comprobando…', key: 'Usar una clave de GitHub', signout: 'Salir',
     as: (n, m) => `Has entrado como <b>${n}</b> (${m}).`, in: n => `Has entrado como ${n}.`,
@@ -2256,7 +2256,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
     eSave: 'Tu sesión ha caducado y el cambio no se ha guardado. Vuelve a entrar y repítelo.',
     ePerm: 'No puedes modificar los datos: tu cuenta no tiene permiso de edición en esta app. Pídeselo a un administrador.'
   }, en: {
-    btn: 'Sign in with your email', btnT: 'Sign in with your email to view and edit the data', title: 'Sign in with your email',
+    btn: 'Sign in with your email', btnT: 'Sign in with your email to add and edit pumps', title: 'Sign in with your email',
     mail: 'Email', pass: 'Password', enter: 'Sign in',
     forgot: 'Forgot your password? Ask an administrator.', wait: 'Checking…', key: 'Use a GitHub token', signout: 'Sign out',
     as: (n, m) => `Signed in as <b>${n}</b> (${m}).`, in: n => `Signed in as ${n}.`,
@@ -2303,8 +2303,15 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
     return { code: res.status === 401 ? 'auth' : limited ? 'rate' : (res.status === 403 || res.status === 404) ? 'forbidden' : 'unavailable', status: res.status };
   };
 
-  async function fetchApi(useEtag) {
-    const res = await ghFetch(`${apiBase()}/contents/${REPO.path}?ref=${REPO.branch}`, useEtag && remote.etag ? { headers: { 'If-None-Match': remote.etag } } : {});
+  // anon: lectura pública por la función del laboratorio, sin sesión (solo la clave pública del proyecto). La piscina la
+  // puede ver cualquiera; registrar y modificar sigue pidiendo sesión con permiso de edición.
+  const anonFetch = (url, opts = {}) => fetch(url, {
+    cache: 'no-store', ...opts,
+    headers: { Accept: 'application/vnd.github+json', apikey: String(window.LAB_SUPABASE?.anonKey || ''), ...(opts.headers || {}) }
+  });
+  async function fetchApi(useEtag, anon = false) {
+    const base = anon ? mailRepo() : apiBase(), get = anon ? anonFetch : ghFetch;
+    const res = await get(`${base}/contents/${REPO.path}?ref=${REPO.branch}`, useEtag && remote.etag ? { headers: { 'If-None-Match': remote.etag } } : {});
     if (res.status === 304) return null;
     if (res.status === 404) throw { code: 'private', status: 404 };
     if (!res.ok) throw httpError(res);
@@ -2312,7 +2319,7 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
     let text;
     if (j.content) text = b64decode(j.content);
     else {
-      const blob = await ghFetch(`${apiBase()}/git/blobs/${j.sha}`);
+      const blob = await get(`${base}/git/blobs/${j.sha}`);
       if (!blob.ok) throw httpError(blob);
       text = b64decode((await blob.json()).content);
     }
@@ -2347,18 +2354,17 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
     if (byMail() && !state.gh.login && !mail.expired) {
       try { await connectMail(mail.email); renderGh(); renderAll(); }
       catch (err) {
+        // Sesión que ya no vale: se sigue leyendo sin sesión. Otro fallo (la función no responde): se reintenta luego.
         if (err.code === 'auth') mailExpired();
-        if (!state.loaded) state.dbStatus = err.code === 'auth' ? 'login' : 'error';
-        renderAll(); return;
+        else { if (!state.loaded) state.dbStatus = 'error'; renderAll(); return; }
       }
     }
-    // Con sesión de correo sin rol en esta app, o caducada, no se lee nada; lo que hay en pantalla se queda.
-    if (byMail() && !viaApi()) { if (!state.loaded) state.dbStatus = 'login'; renderAll(); return; }
     try {
-      const r = viaApi() ? await fetchApi(true) : await fetchRaw();
+      // Sin sesión (o con la sesión caducada) se lee igualmente: lectura pública por la función del laboratorio.
+      const r = viaApi() ? await fetchApi(true) : LA ? await fetchApi(true, true) : await fetchRaw();
       if (r) { Object.assign(remote, r); applyData(r.data); }
     } catch (err) {
-      if (err.code === 'auth' && byMail()) { mailExpired(); if (!state.loaded) state.dbStatus = 'login'; renderAll(); return; }
+      if (err.code === 'auth' && byMail() && !mail.expired) { mailExpired(); return refresh(); }
       if (err.code === 'auth') { state.gh = { login: null, push: false, tokenInvalid: true }; state.canWrite = false; return refresh(); }
       if (!state.loaded) { state.dbStatus = err.code === 'private' ? 'private' : 'error'; renderAll(); }
     }
@@ -2444,7 +2450,8 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
     if (!u.ok && u.status !== 403) throw httpError(u);
     if (!r.ok && r.status !== 403) throw httpError(r);
     const user = u.ok ? await u.json() : {}, repo = r.ok ? await r.json() : {};
-    modo = 'correo'; Object.assign(mail, { email, noAccess: !r.ok, expired: false });
+    // Sin rol en esta app (403) se entra igualmente en solo lectura: la piscina la puede ver cualquiera.
+    modo = 'correo'; Object.assign(mail, { email, noAccess: false, expired: false });
     state.gh = { login: user.login || email, push: !!repo.permissions?.push, tokenInvalid: false };
     state.canWrite = state.gh.push;
   }
@@ -2456,8 +2463,8 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
     modo = null; Object.assign(mail, { email: '', noAccess: false, expired: false });
     state.gh = { login: null, push: false, tokenInvalid: false }; state.canWrite = false; remote.etag = null;
     if (token) { modo = 'clave'; try { await connect(token); } catch (err) { if (err.code === 'auth') state.gh.tokenInvalid = true; } await refresh(); }
-    // Sin clave: los datos privados salen de la memoria y de la pantalla, para que la siguiente persona de este navegador no los vea.
-    else forgetPrivate();
+    // Sin clave: se sigue viendo la piscina, en solo lectura (lectura pública).
+    else await refresh();
     renderGh(); renderAll(); toast(ta('out'));
   }
   function forgetPrivate() {
@@ -2640,8 +2647,11 @@ legend { font-family: var(--f-mono); font-size: 11px; letter-spacing: .12em; tex
     renderGh();
     await refresh();
     // Consulta periódica: 30 s con clave de GitHub, 60 s con sesión de correo (límites del plan gratuito); solo con la pestaña visible.
-    const every = () => byMail() ? 60000 : token ? 30000 : 60000;
-    const poll = () => setTimeout(() => { if (!document.hidden) refresh(); poll(); }, every()); poll();
+    // Sin sesión, cada 5 min: quien solo mira no gasta el cupo de llamadas de la función.
+    const every = () => byMail() ? 60000 : token ? 30000 : LA ? 300000 : 60000;
+    // El intervalo depende de cómo se ha entrado, y eso cambia con la app abierta: se mira cada 30 s si ya toca.
+    let last = Date.now();
+    setInterval(() => { if (!document.hidden && Date.now() - last >= every() - 500) { last = Date.now(); refresh(); } }, 30000);
     document.addEventListener('visibilitychange', () => { if (!document.hidden) refresh(); });
   })();
 })();

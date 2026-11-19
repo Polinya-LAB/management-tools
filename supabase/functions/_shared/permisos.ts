@@ -40,6 +40,10 @@ export const PERMISOS: Record<AppId, { rol: ClaveRol; leer: string[]; escribir: 
   },
 };
 
+// Apps cuyos datos puede leer cualquiera, sin sesión (decidido por Daniel el 19/11/2026: la piscina de durabilidad).
+// Solo lectura de los ficheros de `leer`; escribir sigue pidiendo sesión y rol "editar".
+export const LECTURA_PUBLICA: ReadonlySet<AppId> = new Set<AppId>(["piscina"]);
+
 const REPOS = new Set(["lab-data", "endurance-data"]);
 
 export function rolDe(a: Acceso, app: AppId): Rol {
